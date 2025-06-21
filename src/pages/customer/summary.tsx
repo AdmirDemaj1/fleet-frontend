@@ -8,6 +8,9 @@ import {
     Link,
     Grid,
     Chip,
+    Paper,
+    Stack,
+    Divider
   } from '@mui/material';
   import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
   import DirectionsCarFilledIcon from '@mui/icons-material/DirectionsCarFilled';
@@ -43,6 +46,21 @@ import {
       transmission: 'Manual',
       color: 'Black',
     },
+  ];
+  
+  const mockComments = [
+    {
+      id: 1,
+      admin: 'John D.',
+      date: '2025-06-20 14:35',
+      content: 'Reviewed contract terms with the customer and updated vehicle status.'
+    },
+    {
+      id: 2,
+      admin: 'Elisa G.',
+      date: '2025-06-18 09:20',
+      content: 'Called to remind about upcoming payment. Customer confirmed awareness.'
+    }
   ];
   
   const SummaryPage = () => {
@@ -131,8 +149,34 @@ import {
             </AccordionDetails>
           </Accordion>
         ))}
+  
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" fontWeight={600} mb={2}>
+            Admin Comments
+          </Typography>
+          <Stack spacing={3}>
+            {mockComments.map((comment) => (
+              <Paper key={comment.id} sx={{ p: 3, borderRadius: 3 }} elevation={1}>
+                <Stack direction="row" spacing={2} alignItems="center" mb={1}>
+                  <Avatar>{comment.admin[0]}</Avatar>
+                  <Box>
+                    <Typography fontWeight={600}>{comment.admin}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {comment.date}
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Divider sx={{ mb: 1 }} />
+                <Typography variant="body1" color="text.primary">
+                  {comment.content}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
+        </Box>
       </Box>
     );
   };
   
   export default SummaryPage;
+  

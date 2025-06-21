@@ -11,10 +11,8 @@ import {
   const navItems = [
     { label: 'Summary', path: '/summary' },
     { label: 'Activation', path: '/activation' },
-    { label: 'DNS', path: '/dns' },
-    { label: 'SSL', path: '/ssl' },
-    { label: 'Sub-Accounts', path: '/subaccounts' },
     { label: 'Bills', path: '/bills' },
+    { label: 'Contracts', path: '/contracts' },
     { label: 'Comments', path: '/comments' },
     { label: 'Contact', path: '/contact' },
     { label: 'Logs', path: '/logs' },

@@ -6,6 +6,9 @@ import Sidebar from './components/customerview/sidebar';
 
 import Summary from './pages/customer/summary';
 import LogsPage from './pages/customer/logs';
+import ContactPage from './pages/customer/contact';
+import CommentsPage from './pages/customer/comments';
+import ContractsPage from './pages/customer/contracts';
 
 // Placeholder pages
 const Activation = () => <div>Activation Page</div>;
@@ -26,8 +29,10 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Summary />} />
               <Route path="/summary" element={<Summary />} />
+              <Route path="/comments" element={<CommentsPage />} />
+              <Route path="/contracts" element={<ContractsPage />} />
               <Route path="/activation" element={<Activation />} />
-              <Route path="/dns" element={<DNS />} />
+              <Route path="/contact" element={<ContactPage />} />
               <Route path="/logs" element={<LogsPage />} />
               {/* Add other routes here */}
             </Routes>
