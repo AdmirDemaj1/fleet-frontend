@@ -7,20 +7,26 @@ import {
   } from '@mui/material';
   import { useNavigate, useLocation } from 'react-router-dom';
   import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+  import Cusnav from '../customerview/cusnav'; // Import Cusnav
   
   const navItems = [
-    { label: 'Summary', path: '/summary' },
-    { label: 'Activation', path: '/activation' },
-    { label: 'Bills', path: '/bills' },
-    { label: 'Contracts', path: '/contracts' },
-    { label: 'Comments', path: '/comments' },
-    { label: 'Contact', path: '/contact' },
-    { label: 'Logs', path: '/logs' },
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Customer', path: '/customer' },
   ];
   
-  const TopNav = () => {
+  const Adminnav = () => {
     const navigate = useNavigate();
     const location = useLocation();
+  
+    // Check if the current route is under customer-related routes
+    const isCustomerRoute =
+      location.pathname.startsWith('/customer') ||
+      location.pathname.startsWith('/summary') ||
+      location.pathname.startsWith('/comments') ||
+      location.pathname.startsWith('/contracts') ||
+      location.pathname.startsWith('/activation') ||
+      location.pathname.startsWith('/contact') ||
+      location.pathname.startsWith('/logs');
   
     return (
       <AppBar
@@ -39,7 +45,7 @@ import {
             px: 2,
           }}
         >
-          {/* Left: Navigation buttons with flexGrow to push icon to right */}
+          {/* Left: Navigation buttons */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', flexGrow: 1 }}>
             {navItems.map((item) => {
               const isActive = location.pathname.startsWith(item.path);
@@ -75,9 +81,11 @@ import {
             <AccountCircleIcon />
           </IconButton>
         </Toolbar>
+  
+        {/* Render Cusnav for customer-related routes */}
+        {isCustomerRoute && <Cusnav />}
       </AppBar>
     );
   };
   
-  export default TopNav;
-  
+  export default Adminnav;
