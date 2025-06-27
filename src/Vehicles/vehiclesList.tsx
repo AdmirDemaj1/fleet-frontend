@@ -2,7 +2,6 @@ import * as React from 'react';
 import {
     List,
     ColumnsButton,
-    DateField,
     TextField,
     TopToolbar,
     CreateButton,
@@ -12,10 +11,10 @@ import {
     useListContext,
     DataTable,
     TextInput,
+    useRecordContext,
+    useRedirect,
 } from 'react-admin';
-
-// Mock components to replace the removed imports
-const VehicleDetails = () => <div>Mock Vehicle Details</div>;
+import { Button } from '@mui/material';
 
 const listFilters = [
     <TextInput source="make" label="Make" alwaysOn />,
@@ -43,8 +42,24 @@ const VehiclesTitle = () => {
     );
 };
 
-const Column = DataTable.Col<any>; // Using `any` as a placeholder type
-const ColumnNumber = DataTable.NumberCol<any>;
+// Custom Edit Button Component
+const EditButton = () => {
+    const record = useRecordContext(); // Get the current row's record
+    const redirect = useRedirect();
+
+    if (!record) return null;
+
+    return (
+        <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={() => redirect(`/vehicles/${record.id}`)}
+        >
+            Edit
+        </Button>
+    );
+};
 
 const VehiclesList = () => (
     <List
@@ -55,30 +70,23 @@ const VehiclesList = () => (
         title={<VehiclesTitle />}
     >
         <DataTable
-            rowClick="expand"
-            expand={<VehicleDetails />}
+            rowClick={false}
             sx={{
-                '& .onlyLarge': {
-                    display: { xs: 'none', lg: 'table-cell' },
-                },
+                '& .onlyLarge': {  display: { xs: 'none', lg: 'table-cell' },},
             }}
         >
-            <Column source="id" label="ID" />
-            <Column source="make" label="Make" />
-            <Column source="model" label="Model" />
-            <Column source="year" label="Year" />
-            <Column source="license_plate" label="License Plate" />
-            <Column source="status" label="Status" />
-            <ColumnNumber source="mileage" label="Mileage" className="onlyLarge" />
+            <DataTable.Col source="id" label="ID" />
+            <DataTable.Col source="make" label="Make" />
+            <DataTable.Col source="model" label="Model" />
+            <DataTable.Col source="year" label="Year" />
+            <DataTable.Col source="license_plate" label="License Plate" />
+            <DataTable.Col source="status" label="Status" />
+            <DataTable.NumberCol source="mileage" label="Mileage" className="onlyLarge" />
+            <DataTable.Col label="Actions">
+                <EditButton />
+            </DataTable.Col>
         </DataTable>
-    
     </List>
-    
-
 );
-
-
-    
-
 
 export default VehiclesList;

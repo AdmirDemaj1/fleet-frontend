@@ -1,5 +1,4 @@
-import jsonServerProvider from 'ra-data-json-server';
+import fakeRestProvider from 'ra-data-fakerest';
+import { mockData } from './fakeRestProvider';
 
-export const dataProvider = jsonServerProvider(
-    import.meta.env.VITE_JSON_SERVER_URL
-);
+export const dataProvider = fakeRestProvider(mockData);
