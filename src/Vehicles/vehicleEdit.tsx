@@ -1,9 +1,9 @@
 import {
     Edit,
-    SimpleForm,
+    TabbedForm,
     TextInput,
     NumberInput,
-    SelectInput,
+    DateInput,
     required,
     Toolbar,
     SaveButton,
@@ -23,7 +23,6 @@ const VehicleFormToolbar = ({ record }: { record?: any }) => {
     const handleDelete = () => {
         if (!record) {
             console.error('No record found');
-            
         }
         deleteOne(
             'vehicles', // Resource name
@@ -35,7 +34,7 @@ const VehicleFormToolbar = ({ record }: { record?: any }) => {
                     refresh();
                 },
                 onError: (error) => {
-                    notify(`Error: ${error.message}`, { type: 'error' });
+                    notify(`Error: ${(error as Error).message}`, { type: 'error' });
                 },
             }
         );
@@ -66,75 +65,81 @@ const VehicleFormToolbar = ({ record }: { record?: any }) => {
 
 export const VehicleEdit = () => (
     <Edit>
-        <SimpleForm
+        <TabbedForm
+            toolbar={<VehicleFormToolbar />}
             sanitizeEmptyValues
             warnWhenUnsavedChanges
-            toolbar={<VehicleFormToolbar />}
         >
-            {/* Basic Info */}
-            <Typography variant="h5" gutterBottom>
-                Basic Information
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
-                <Box flex={1} mr={{ sm: '0.5em' }}>
-                    <TextInput source="make" label="Make" fullWidth validate={required()} />
+            <TabbedForm.Tab
+                label="Basic Info"
+                sx={{ maxWidth: '40em' }}
+            >
+                <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
+                    <Box flex={1} mr={{ sm: '0.5em' }}>
+                        <TextInput source="make" label="Make" fullWidth validate={required()} />
+                    </Box>
+                    <Box flex={1} ml={{ sm: '0.5em' }}>
+                        <TextInput source="model" label="Model" fullWidth validate={required()} />
+                    </Box>
                 </Box>
-                <Box flex={1} ml={{ sm: '0.5em' }}>
-                    <TextInput source="model" label="Model" fullWidth validate={required()} />
+                <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
+                    <Box flex={1} mr={{ sm: '0.5em' }}>
+                        <TextInput source="license_plate" label="License Plate" fullWidth validate={required()} />
+                    </Box>
+                    <Box flex={1} ml={{ sm: '0.5em' }}>
+                        <TextInput source="status" label="Status" fullWidth />
+                    </Box>
                 </Box>
-            </Box>
-            <TextInput source="vin" label="VIN" fullWidth validate={required()} />
+                <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
+                    <Box flex={1} mr={{ sm: '0.5em' }}>
+                        <NumberInput source="year" label="Year" fullWidth validate={required()} />
+                    </Box>
+                    <Box flex={1} ml={{ sm: '0.5em' }}>
+                        <NumberInput source="mileage" label="Mileage" fullWidth />
+                    </Box>
+                </Box>
+            </TabbedForm.Tab>
 
-            {/* Specifications */}
-            <Typography variant="h5" gutterBottom mt={4}>
-                Specifications
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
-                <Box flex={1} mr={{ sm: '0.5em' }}>
-                    <NumberInput source="year" label="Year" fullWidth validate={required()} />
+            <TabbedForm.Tab
+                label="Owner Info"
+                sx={{ maxWidth: '40em' }}
+            >
+                <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
+                    <Box flex={1} mr={{ sm: '0.5em' }}>
+                        <TextInput source="owner" label="Owner" fullWidth />
+                    </Box>
+                    <Box flex={1} ml={{ sm: '0.5em' }}>
+                        <TextInput source="client" label="Client" fullWidth />
+                    </Box>
                 </Box>
-                <Box flex={1} ml={{ sm: '0.5em' }}>
-                    <TextInput source="engine" label="Engine Type" fullWidth />
+                <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
+                    <Box flex={1} mr={{ sm: '0.5em' }}>
+                        <TextInput source="color" label="Color" fullWidth />
+                    </Box>
                 </Box>
-            </Box>
-            <SelectInput
-                source="transmission"
-                label="Transmission"
-                choices={[
-                    { id: 'manual', name: 'Manual' },
-                    { id: 'automatic', name: 'Automatic' },
-                ]}
-                fullWidth
-                validate={required()}
-            />
-            <SelectInput
-                source="fuel"
-                label="Fuel Type"
-                choices={[
-                    { id: 'gasoline', name: 'Gasoline' },
-                    { id: 'diesel', name: 'Diesel' },
-                    { id: 'electric', name: 'Electric' },
-                    { id: 'hybrid', name: 'Hybrid' },
-                ]}
-                fullWidth
-            />
+            </TabbedForm.Tab>
 
-            {/* Appearance */}
-            <Typography variant="h5" gutterBottom mt={4}>
-                Appearance
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
-                <Box flex={1} mr={{ sm: '0.5em' }}>
-                    <TextInput source="color" label="Color" fullWidth />
+            <TabbedForm.Tab
+                label="Insurance"
+                sx={{ maxWidth: '40em' }}
+            >
+                <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
+                    <Box flex={1} mr={{ sm: '0.5em' }}>
+                        <TextInput source="insurance" label="Insurance" fullWidth />
+                    </Box>
+                    <Box flex={1} ml={{ sm: '0.5em' }}>
+                        <DateInput source="tpl_expiry" label="TPL Expiry" fullWidth />
+                    </Box>
                 </Box>
-                <Box flex={1} ml={{ sm: '0.5em' }}>
-                    <NumberInput source="mileage" label="Mileage (km)" fullWidth />
+                <Box display={{ xs: 'block', sm: 'flex' }} mb={2}>
+                    <Box flex={1} mr={{ sm: '0.5em' }}>
+                        <DateInput source="kasko_expiry" label="Kasko Expiry" fullWidth />
+                    </Box>
+                    <Box flex={1} ml={{ sm: '0.5em' }}>
+                        <DateInput source="passenger_insurance" label="Passenger Insurance" fullWidth />
+                    </Box>
                 </Box>
-            </Box>
-            <TextInput source="image" label="Image URL" fullWidth />
-        </SimpleForm>
+            </TabbedForm.Tab>
+        </TabbedForm>
     </Edit>
 );
