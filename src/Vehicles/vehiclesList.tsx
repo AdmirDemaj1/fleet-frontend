@@ -1,8 +1,6 @@
-import * as React from 'react';
 import {
     List,
     ColumnsButton,
-    TextField,
     TopToolbar,
     CreateButton,
     ExportButton,
@@ -81,6 +79,11 @@ const EditButton = () => {
 
     return (
         <Button
+            sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+            }}
 
             size="small"
             onClick={() => redirect(`/vehicles/${record.id}`)}
@@ -98,8 +101,13 @@ const VehiclesList = () => (
         sort={{ field: 'year', order: 'DESC' }}
         actions={<ListActions />}
         title={<VehiclesTitle />}
+        
     >
-        <DataTable rowClick={false}>
+        <DataTable 
+        rowClick={false}
+        size="small"
+        bulkActionButtons={false}
+        >
             <DataTable.Col source="id" label="ID" />
             <DataTable.Col source="make" label="Make" />
             <DataTable.Col source="model" label="Model" />

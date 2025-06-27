@@ -12,7 +12,7 @@ import {
     useNotify,
     useRefresh,
 } from 'react-admin';
-import { Box, Typography, Button, Divider } from '@mui/material';
+import { Box, Button, } from '@mui/material';
 
 const VehicleFormToolbar = ({ record }: { record?: any }) => {
     const redirect = useRedirect();
