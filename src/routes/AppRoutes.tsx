@@ -12,15 +12,32 @@ export const AppRoutes: React.FC = () => {
     <Routes>
       <Route path="/" element={<DashboardLayout />}>
         <Route index element={<Navigate to="/customers" replace />} />
+
         <Route path="customers">
           <Route index element={<CustomersPage />} />
           <Route path="new" element={<CreateCustomerPage />} />
-          {/* <Route path=":id" element={<CustomerDetailsPage />} /> */}
+          <Route path=":id" element={<div>New Vehicle Page</div>} /> 
           <Route path=":id/edit" element={<EditCustomerPage />} />
         </Route>
-        {/* Add other routes here */}
-        <Route path="vehicles" element={<div>Vehicles Page</div>} />
-        <Route path="contracts" element={<div>Contracts Page</div>} />
+
+        
+        <Route path="vehicles">
+          <Route index element={<div>Vehicles Pager</div>} />
+          <Route path="new" element={<div>New Vehicle Page</div>} />
+          <Route path=":id/edit" element={<div>edit Vehicle Page</div>} />
+        </Route>
+
+         
+        <Route path="contracts">
+          <Route index element={<div>Contracts Pager</div>} />
+          <Route path="new" element={<div>New Contract Pager</div>} />
+          <Route path=":id/edit" element={<div>Edit Contract Page</div>} />
+        </Route>
+
+        <Route path='logs' element={<div>Logs Page</div>} />
+
+
+
         <Route path="assets" element={<div>Assets Page</div>} />
       </Route>
     </Routes>
