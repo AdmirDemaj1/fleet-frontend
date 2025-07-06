@@ -62,7 +62,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   return (
     <FormProvider {...methods}>
       <form onSubmit={handleSubmit}>
-        <Card>
+        <Card sx={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               Customer Type
@@ -93,7 +93,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               <BusinessCustomerForm />
             )}
 
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2, pb: 2 }}>
               <Button
                 variant="outlined"
                 onClick={() => window.history.back()}
