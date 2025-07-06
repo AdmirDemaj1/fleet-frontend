@@ -27,8 +27,15 @@ export const customerApi = {
   },
 
   create: async (data: CreateCustomerDto): Promise<Customer> => {
-    const response = await api.post<Customer>('/customers', data);
-    return response.data;
+    console.log("API create called with data:", data);
+    try {
+      const response = await api.post<Customer>('/customers', data);
+      console.log("API create response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("API create error:", error);
+      throw error;
+    }
   },
 
   update: async (id: string, data: UpdateCustomerDto): Promise<Customer> => {

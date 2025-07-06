@@ -11,6 +11,8 @@ export const useCreateCustomer = () => {
   const { showSuccess, showError } = useNotification();
 
   const createCustomer = async (data: CreateCustomerDto) => {
+
+    console.log("dataaaaa",data );
     setLoading(true);
     setError(null);
     

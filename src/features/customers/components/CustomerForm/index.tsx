@@ -16,6 +16,9 @@ import { CustomerType, CreateCustomerDto } from '../../types/customer.types';
 import { IndividualCustomerForm } from './IndividualCustomerForm';
 import { BusinessCustomerForm } from './BusinessCustomerForm';
 import { getValidationSchema } from '../../utils/customerValidation';
+import { v4 as uuidv4 } from 'uuid'; // for generating a fake id
+import { useDispatch } from 'react-redux';
+import { addCustomer } from '../../slices/customerSlice';
 
 interface CustomerFormProps {
   onSubmit: (data: CreateCustomerDto) => Promise<void>;
@@ -28,14 +31,23 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   initialData,
   loading = false
 }) => {
+  const dispatch = useDispatch();
   const [customerType, setCustomerType] = useState<CustomerType>(
     initialData?.individualDetails ? CustomerType.INDIVIDUAL : CustomerType.BUSINESS
   );
 
   const methods = useForm<CreateCustomerDto>({
     resolver: yupResolver(getValidationSchema(customerType)) as any,
-    defaultValues: initialData || {}
+    defaultValues: initialData || {
+      individualDetails: customerType === CustomerType.INDIVIDUAL ? { type: CustomerType.INDIVIDUAL } : undefined,
+      businessDetails: customerType === CustomerType.BUSINESS ? { type: CustomerType.BUSINESS } : undefined
+    }
   });
+
+  const { formState: { errors, isValid } } = methods;
+
+  console.log("Form errors:", errors);
+  console.log("Form is valid:", isValid);
 
   const handleTypeChange = (
     event: React.MouseEvent<HTMLElement>,
@@ -43,20 +55,60 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   ) => {
     if (newType !== null) {
       setCustomerType(newType);
-      methods.reset({});
+      
+      // Set the appropriate type field based on the new customer type
+      if (newType === CustomerType.INDIVIDUAL) {
+        methods.reset({
+          individualDetails: { type: CustomerType.INDIVIDUAL },
+          businessDetails: undefined
+        });
+      } else {
+        methods.reset({
+          businessDetails: { type: CustomerType.BUSINESS },
+          individualDetails: undefined
+        });
+      }
     }
   };
 
   const handleSubmit = methods.handleSubmit(async (data) => {
+    console.log("Form data received:", data);
+    console.log("Customer type:", customerType);
+    
     const formattedData: CreateCustomerDto = {};
+    let newCustomer;
+    if (customerType === CustomerType.INDIVIDUAL && data.individualDetails) {
+      newCustomer = {
+        ...data.individualDetails,
+        id: uuidv4(),
+      };
+    } else if (customerType === CustomerType.BUSINESS && data.businessDetails) {
+      newCustomer = {
+        ...data.businessDetails,
+        id: uuidv4(),
+      };
+    } else {
+      // Optionally handle error here
+      return;
+    }
+    dispatch(addCustomer(newCustomer));
     
     if (customerType === CustomerType.INDIVIDUAL) {
       formattedData.individualDetails = data.individualDetails!;
+      console.log("Individual details:", formattedData.individualDetails);
     } else {
       formattedData.businessDetails = data.businessDetails!;
+      console.log("Business details:", formattedData.businessDetails);
     }
 
-    await onSubmit(formattedData);
+    console.log("Formatted data to submit:", formattedData);
+    
+    try {
+      await onSubmit(formattedData);
+      console.log("Form submission completed successfully");
+    } catch (error) {
+      console.error("Form submission failed:", error);
+    }
   });
 
   return (
