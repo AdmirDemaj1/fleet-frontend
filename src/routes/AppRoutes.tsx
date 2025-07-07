@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '../shared/components/Layout/DashboardLayout';
 import { CustomersPage } from '../features/customers/containers/CustomersPage';
 import { CreateCustomerPage } from '../features/customers/containers/CreateCustomerPage';
-import  VehiclesPage  from '../features/vehicles/containers/VehiclesPage';
+import { VehiclesPage } from '../features/vehicles/containers/VehiclesPage';
 // import { CustomerDetailsPage } from '../features/customers/containers/CustomerDetailsPage';
 import { EditCustomerPage } from '../features/customers/containers/EditCustomerPage';
 // Import other pages as you create them
