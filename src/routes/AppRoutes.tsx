@@ -4,6 +4,7 @@ import { DashboardLayout } from '../shared/components/Layout/DashboardLayout';
 import { CustomersPage } from '../features/customers/containers/CustomersPage';
 import { CreateCustomerPage } from '../features/customers/containers/CreateCustomerPage';
 import { VehiclesPage } from '../features/vehicles/containers/VehiclesPage';
+import AuditPage from '../features/logs/containers/AuditPage';
 // import { CustomerDetailsPage } from '../features/customers/containers/CustomerDetailsPage';
 import { EditCustomerPage } from '../features/customers/containers/EditCustomerPage';
 // Import other pages as you create them
@@ -35,7 +36,7 @@ export const AppRoutes: React.FC = () => {
           <Route path=":id/edit" element={<div>Edit Contract Page</div>} />
         </Route>
 
-        <Route path='logs' element={<div>Logs Page</div>} />
+        <Route path='logs' element={<AuditPage/>} />
 
 
 
