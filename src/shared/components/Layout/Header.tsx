@@ -10,6 +10,7 @@ import {
   MenuItem
 } from '@mui/material';
 import { Menu as MenuIcon, AccountCircle, Logout } from '@mui/icons-material';
+import { ThemeToggle } from '../Layout/ThemeToggle';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -57,7 +58,9 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           Fleet Management System
         </Typography>
 
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <ThemeToggle />
+          
           <IconButton
             size="large"
             aria-label="account of current user"
@@ -65,6 +68,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             aria-haspopup="true"
             onClick={handleMenu}
             color="inherit"
+            sx={{ ml: 1 }}
           >
             <Avatar sx={{ width: 32, height: 32 }}>
               <AccountCircle />

@@ -1,18 +1,17 @@
-import React from 'react';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { SnackbarProvider } from 'notistack';
 import { store } from './app/store';
 import { AppRoutes } from './routes/AppRoutes';
-import { theme } from './theme';
+//mport { theme } from './theme';
+import { ThemeProvider } from './shared/contexts/ThemeContext';
 
 function App() {
   return (
     <Provider store={store}>
-      <ThemeProvider theme={theme}>
+      <ThemeProvider >
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <SnackbarProvider maxSnack={3}>
             <BrowserRouter>
