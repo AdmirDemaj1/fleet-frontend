@@ -5,11 +5,9 @@ import { CustomersPage } from '../features/customers/containers/CustomersPage';
 import { CreateCustomerPage } from '../features/customers/containers/CreateCustomerPage';
 import { VehiclesPage } from '../features/vehicles/containers/VehiclesPage';
 import AuditPage from '../features/logs/containers/AuditPage';
-// import { CustomerDetailsPage } from '../features/customers/containers/CustomerDetailsPage';
 import { EditCustomerPage } from '../features/customers/containers/EditCustomerPage';
-import { CustomerDetailsPage } from '../features/customers/components/CustomerDetails';
-// Import other pages as you create them
-
+import CustomerAccountPage from '../features/customers/containers/CustomerAccountPage';
+import CustomerSummaryPage from '../features/customers/containers/Account/CustomerSummaryPage';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -19,27 +17,30 @@ export const AppRoutes: React.FC = () => {
         <Route path="customers">
           <Route index element={<CustomersPage />} />
           <Route path="new" element={<CreateCustomerPage />} />
-          <Route path=":id" element={ <CustomerDetailsPage />} /> 
+          <Route path=":id" element={<CustomerAccountPage />}>
+            <Route index element={<Navigate to="summary" replace />} />
+            <Route path="summary" element={<CustomerSummaryPage/>} />
+            <Route path="contracts" element={<div>Customer Contracts</div>} />
+            <Route path="invoices" element={<div>Customer Invoices</div>} />
+            <Route path="vehicles" element={<div>Customer Vehicles</div>} />
+            <Route path="logs" element={<div>Customer Logs</div>} />
+          </Route>
           <Route path=":id/edit" element={<EditCustomerPage />} />
         </Route>
 
-        
         <Route path="vehicles">
           <Route index element={<VehiclesPage />} />
           <Route path="new" element={<div>New Vehicle Page</div>} />
           <Route path=":id/edit" element={<div>edit Vehicle Page</div>} />
         </Route>
 
-         
         <Route path="contracts">
           <Route index element={<div>Contracts Pager</div>} />
           <Route path="new" element={<div>New Contract Pager</div>} />
           <Route path=":id/edit" element={<div>Edit Contract Page</div>} />
         </Route>
 
-        <Route path='logs' element={<AuditPage/>} />
-
-
+        <Route path='logs' element={<AuditPage />} />
 
         <Route path="assets" element={<div>Assets Page</div>} />
       </Route>

@@ -2,6 +2,10 @@ export enum CustomerType {
     INDIVIDUAL = 'individual',
     BUSINESS = 'business'
   }
+
+  export interface CustomerAccountMenuProps {
+    customerId: string;
+  }
   
   export interface BaseCustomer {
     id?: string;
