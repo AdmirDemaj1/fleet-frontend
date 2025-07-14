@@ -7,6 +7,7 @@ import { VehiclesPage } from '../features/vehicles/containers/VehiclesPage';
 import AuditPage from '../features/logs/containers/AuditPage';
 // import { CustomerDetailsPage } from '../features/customers/containers/CustomerDetailsPage';
 import { EditCustomerPage } from '../features/customers/containers/EditCustomerPage';
+import { CustomerDetailsPage } from '../features/customers/components/CustomerDetails';
 // Import other pages as you create them
 
 export const AppRoutes: React.FC = () => {
@@ -18,7 +19,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="customers">
           <Route index element={<CustomersPage />} />
           <Route path="new" element={<CreateCustomerPage />} />
-          <Route path=":id" element={<div>New Vehicle Page</div>} /> 
+          <Route path=":id" element={ <CustomerDetailsPage />} /> 
           <Route path=":id/edit" element={<EditCustomerPage />} />
         </Route>
 
