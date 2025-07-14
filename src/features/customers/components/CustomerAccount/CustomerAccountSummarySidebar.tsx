@@ -1,13 +1,19 @@
 import React from 'react';
-import { Box, Typography, List, ListItem, ListItemText } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemText, ListItemIcon, Avatar, Divider } from '@mui/material';
+import { AccountCircle, AttachMoney, Event, CheckCircle, Cancel, Pending } from '@mui/icons-material';
 
 interface CustomerAccountSidebarProps {
-  /* Define the props you need to pass to this component, e.g., customer data */
   accountNumber: string;
-  status: string;
+  status: 'Active' | 'Inactive' | 'Pending';
   totalDue: string;
   nextBill: string;
 }
+
+const statusColors: { [key: string]: string } = {
+  Active: 'success.main',
+  Inactive: 'error.main',
+  Pending: 'warning.main',
+};
 
 const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
   accountNumber,
@@ -16,24 +22,60 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
   nextBill,
 }) => {
   return (
-    <Box sx={{ width: 240, bgcolor: 'background.paper', p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Account: {accountNumber}
+    <Box
+      sx={{
+        width: 240, // Increased width
+        bgcolor: 'background.paper',
+        borderRadius: 2, // Rounded corners
+        boxShadow: 1, // Subtle shadow
+        p: 3, // Increased padding
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Avatar sx={{ mr: 1, bgcolor: 'primary.main' }}>
+          <AccountCircle />
+        </Avatar>
+        <Typography variant="h6" gutterBottom>
+          Account: {accountNumber}
+        </Typography>
+      </Box>
+
+      <Divider sx={{ mb: 2 }} />
+
+      <Typography variant="subtitle1" fontWeight="bold" mb={1}>
+        Billing Information
       </Typography>
-      <Typography variant="subtitle1">Bills</Typography>
-      <List>
+      <List dense>
         <ListItem disablePadding>
+          <ListItemIcon>
+            {status === 'Active' && <CheckCircle sx={{ color: statusColors[status] }} />}
+            {status === 'Inactive' && <Cancel sx={{ color: statusColors[status] }} />}
+            {status === 'Pending' && <Pending sx={{ color: statusColors[status] }} />}
+          </ListItemIcon>
           <ListItemText primary={`Status: ${status}`} />
         </ListItem>
         <ListItem disablePadding>
+          <ListItemIcon>
+            <AttachMoney />
+          </ListItemIcon>
           <ListItemText primary={`Total Due: ${totalDue}`} />
         </ListItem>
         <ListItem disablePadding>
+          <ListItemIcon>
+            <Event />
+          </ListItemIcon>
           <ListItemText primary={`Next Bill: ${nextBill}`} />
         </ListItem>
       </List>
-      <Typography variant="subtitle1">Account Details</Typography>
-      <List>
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="subtitle1" fontWeight="bold" mb={1}>
+        Account Details
+      </Typography>
+      <List dense>
         <ListItem disablePadding>
           <ListItemText primary="Order Date" />
         </ListItem>

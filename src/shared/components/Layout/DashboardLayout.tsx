@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Box, CssBaseline, Toolbar } from '@mui/material';
+import { Box, CssBaseline, Toolbar, useTheme } from '@mui/material';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
 const drawerWidth = 240;
-const collapsedDrawerWidth = 64; // Width when only icons are visible
+const collapsedDrawerWidth = 72; // Slightly wider to fit small text
 
 export const DashboardLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false); // New state for collapsed sidebar
+  const [collapsed, setCollapsed] = useState(false);
+  const theme = useTheme();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -24,11 +25,11 @@ export const DashboardLayout: React.FC = () => {
       <CssBaseline />
       <Header onMenuClick={handleDrawerToggle} />
       <Sidebar
-        drawerWidth={collapsed ? collapsedDrawerWidth : drawerWidth} // Use different width based on collapsed state
+        drawerWidth={collapsed ? collapsedDrawerWidth : drawerWidth}
         mobileOpen={mobileOpen}
         onClose={handleDrawerToggle}
-        collapsed={collapsed} // Pass collapsed state
-        onCollapse={handleSidebarCollapse} // Pass collapse handler
+        collapsed={collapsed}
+        onCollapse={handleSidebarCollapse}
       />
       <Box
         component="main"
@@ -36,7 +37,10 @@ export const DashboardLayout: React.FC = () => {
           flexGrow: 1,
           p: 3,
           width: { sm: `calc(100% - ${collapsed ? collapsedDrawerWidth : drawerWidth}px)` },
-          // Adjust margin based on collapsed state
+          transition: theme.transitions.create(['width', 'margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
         }}
       >
         <Toolbar />

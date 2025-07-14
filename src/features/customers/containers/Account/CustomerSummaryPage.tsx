@@ -5,7 +5,12 @@ import CustomerAssetSummary from './../../components/CustomerAccount/CustomerAss
 
 const CustomerSummaryPage: React.FC = () => {
   // Dummy data for testing
-  const customerData = {
+  const customerData: {
+    accountNumber: string;
+    status: 'Active' | 'Inactive' | 'Pending';
+    totalDue: string;
+    nextBill: string;
+  } = {
     accountNumber: '362668',
     status: 'Active',
     totalDue: '$1250.56',
