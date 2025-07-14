@@ -25,9 +25,7 @@ const CustomerSummaryPage: React.FC = () => {
   return (
     <Box sx={{ display: 'flex' }}>
       <CustomerAccountSidebar {...customerData} />
-      <Box sx={{ flexGrow: 1, p: 3 }}>
-        <Typography variant="h6">Customer Summary</Typography>
-        <Typography>Displaying summary for this customer.</Typography>
+      <Box sx={{ flexGrow: 1,pl: 3, }}>
         <CustomerAssetSummary assets={assetData} />
       </Box>
     </Box>
