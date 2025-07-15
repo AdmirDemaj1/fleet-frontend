@@ -5,6 +5,7 @@ import { CustomersPage } from '../features/customers/containers/CustomersPage';
 import { CreateCustomerPage } from '../features/customers/containers/CreateCustomerPage';
 // import { CustomerDetailsPage } from '../features/customers/containers/CustomerDetailsPage';
 import { EditCustomerPage } from '../features/customers/containers/EditCustomerPage';
+import { ContractsPage } from '../features/contracts/components/TableList';
 // Import other pages as you create them
 
 export const AppRoutes: React.FC = () => {
@@ -20,7 +21,7 @@ export const AppRoutes: React.FC = () => {
         </Route>
         {/* Add other routes here */}
         <Route path="vehicles" element={<div>Vehicles Page</div>} />
-        <Route path="contracts" element={<div>Contracts Page</div>} />
+        <Route path="contracts" element={<ContractsPage/>} />
         <Route path="assets" element={<div>Assets Page</div>} />
       </Route>
     </Routes>
