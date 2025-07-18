@@ -33,7 +33,7 @@ export const ContractsPage: React.FC = () => {
           startIcon={<Add />}
           onClick={() => navigate("/contracts/new")}
         >
-          Add Contrat
+          Add Contract
         </Button>
       </Box>
   
