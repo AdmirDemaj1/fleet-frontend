@@ -12,6 +12,7 @@ import {
     MenuItem
 } from '@mui/material';
 import { Add, Search }  from '@mui/icons-material';
+import { ContratTable } from "../components/ContratTable";
 
 export const ContractsPage: React.FC = () => {
     const navigate = useNavigate();
@@ -23,7 +24,6 @@ export const ContractsPage: React.FC = () => {
     const [typeFilter, setTypeFilter] = useState< ''>('');
 
     
- 
   return (
     <Box>
       <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -33,7 +33,7 @@ export const ContractsPage: React.FC = () => {
           startIcon={<Add />}
           onClick={() => navigate("/contracts/new")}
         >
-          Add Contract
+          Add Contrat
         </Button>
       </Box>
   
@@ -65,6 +65,7 @@ export const ContractsPage: React.FC = () => {
           </Select>
         </FormControl>
       </Box>
+      <ContratTable/>
   
       
       

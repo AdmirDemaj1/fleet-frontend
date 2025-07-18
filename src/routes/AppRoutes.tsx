@@ -5,8 +5,11 @@ import { CustomersPage } from '../features/customers/containers/CustomersPage';
 import { CreateCustomerPage } from '../features/customers/containers/CreateCustomerPage';
 // import { CustomerDetailsPage } from '../features/customers/containers/CustomerDetailsPage';
 import { EditCustomerPage } from '../features/customers/containers/EditCustomerPage';
-import { ContractsPage } from '../features/contracts/components/TableList';
+import { ContractsPage } from '../features/contracts/containers/ContratsPage';
 // Import other pages as you create them
+import { ContractForm } from '../features/contracts/components/ContractForm';
+import AddContract from '../features/contracts/containers/AddContract';
+import CreateContrats from '../features/contracts/containers/CreateContrats';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -23,6 +26,10 @@ export const AppRoutes: React.FC = () => {
         <Route path="vehicles" element={<div>Vehicles Page</div>} />
         <Route path="contracts" element={<ContractsPage/>} />
         <Route path="assets" element={<div>Assets Page</div>} />
+        <Route path="/contracts" element={<ContractsPage />} />
+        <Route path="/contracts/new" element={<AddContract />} />
+        <Route path="create" element={<CreateContrats />} />
+
       </Route>
     </Routes>
   );
