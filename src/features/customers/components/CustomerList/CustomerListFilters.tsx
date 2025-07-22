@@ -39,6 +39,12 @@ interface CustomerListFiltersProps {
   onSearchChange: (value: string) => void;
   typeFilter: CustomerType | '';
   onTypeChange: (value: CustomerType | '') => void;
+  hasVehicles?: boolean;
+  onHasVehiclesChange: (value: boolean | undefined) => void;
+  hasContracts?: boolean;
+  onHasContractsChange: (value: boolean | undefined) => void;
+  hasCollaterals?: boolean;
+  onHasCollateralsChange: (value: boolean | undefined) => void;
   onClearFilters: () => void;
 }
 
@@ -47,6 +53,12 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
   onSearchChange,
   typeFilter,
   onTypeChange,
+  hasVehicles,
+  onHasVehiclesChange,
+  hasContracts,
+  onHasContractsChange,
+  hasCollaterals,
+  onHasCollateralsChange,
   onClearFilters
 }) => {
   const theme = useTheme();
@@ -55,8 +67,8 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
   const [dateRange, setDateRange] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   
-  const hasActiveFilters = searchTerm || typeFilter || dateRange || statusFilter;
-  const filterCount = [searchTerm, typeFilter, dateRange, statusFilter].filter(Boolean).length;
+  const hasActiveFilters = searchTerm || typeFilter || dateRange || statusFilter || hasVehicles !== undefined || hasContracts !== undefined || hasCollaterals !== undefined;
+  const filterCount = [searchTerm, typeFilter, dateRange, statusFilter, hasVehicles !== undefined ? 'hasVehicles' : '', hasContracts !== undefined ? 'hasContracts' : '', hasCollaterals !== undefined ? 'hasCollaterals' : ''].filter(Boolean).length;
 
   const handleViewModeChange = (
     _event: React.MouseEvent<HTMLElement>,
@@ -265,6 +277,60 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
               
               <Grid item xs={12} sm={6} md={3}>
                 <FormControl fullWidth size="small">
+                  <InputLabel>Has Vehicles</InputLabel>
+                  <Select
+                    value={hasVehicles === undefined ? '' : hasVehicles.toString()}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      onHasVehiclesChange(value === '' ? undefined : value === 'true');
+                    }}
+                    label="Has Vehicles"
+                  >
+                    <MenuItem value="">Any</MenuItem>
+                    <MenuItem value="true">With Vehicles</MenuItem>
+                    <MenuItem value="false">Without Vehicles</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Has Contracts</InputLabel>
+                  <Select
+                    value={hasContracts === undefined ? '' : hasContracts.toString()}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      onHasContractsChange(value === '' ? undefined : value === 'true');
+                    }}
+                    label="Has Contracts"
+                  >
+                    <MenuItem value="">Any</MenuItem>
+                    <MenuItem value="true">With Contracts</MenuItem>
+                    <MenuItem value="false">Without Contracts</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Has Collaterals</InputLabel>
+                  <Select
+                    value={hasCollaterals === undefined ? '' : hasCollaterals.toString()}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      onHasCollateralsChange(value === '' ? undefined : value === 'true');
+                    }}
+                    label="Has Collaterals"
+                  >
+                    <MenuItem value="">Any</MenuItem>
+                    <MenuItem value="true">With Collaterals</MenuItem>
+                    <MenuItem value="false">Without Collaterals</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
                   <InputLabel>Region</InputLabel>
                   <Select
                     value=""
@@ -296,7 +362,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                 </FormControl>
               </Grid>
               
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={6}>
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button 
                     variant="outlined" 
@@ -360,6 +426,35 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                 label={`Status: ${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}`} 
                 size="small"
                 onDelete={() => setStatusFilter('')}
+                sx={{ borderRadius: 1.5 }}
+              />
+            )}
+            
+            {hasVehicles !== undefined && (
+              <Chip 
+                label={`Vehicles: ${hasVehicles ? 'With' : 'Without'}`} 
+                size="small"
+                onDelete={() => onHasVehiclesChange(undefined)}
+                sx={{ borderRadius: 1.5 }}
+                icon={<DirectionsCar fontSize="small" />}
+              />
+            )}
+            
+            {hasContracts !== undefined && (
+              <Chip 
+                label={`Contracts: ${hasContracts ? 'With' : 'Without'}`} 
+                size="small"
+                onDelete={() => onHasContractsChange(undefined)}
+                sx={{ borderRadius: 1.5 }}
+                icon={<BusinessCenter fontSize="small" />}
+              />
+            )}
+            
+            {hasCollaterals !== undefined && (
+              <Chip 
+                label={`Collaterals: ${hasCollaterals ? 'With' : 'Without'}`} 
+                size="small"
+                onDelete={() => onHasCollateralsChange(undefined)}
                 sx={{ borderRadius: 1.5 }}
               />
             )}

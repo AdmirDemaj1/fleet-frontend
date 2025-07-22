@@ -4,15 +4,9 @@ import { useDispatch } from 'react-redux';
 import {
   Box,
   Button,
-  Typography,
-  TextField,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
+  Typography
 } from '@mui/material';
-import { Add, Search } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import { CustomerList } from '../components/CustomerList';
 import { CustomerListFilters } from '../components/CustomerList/CustomerListFilters';
 import { useCustomers } from '../hooks/useCustomers';
@@ -32,6 +26,9 @@ export const CustomersPage: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<CustomerType | ''>('');
+  const [hasVehicles, setHasVehicles] = useState<boolean | undefined>(undefined);
+  const [hasContracts, setHasContracts] = useState<boolean | undefined>(undefined);
+  const [hasCollaterals, setHasCollaterals] = useState<boolean | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
 
@@ -42,9 +39,19 @@ export const CustomersPage: React.FC = () => {
       search: debouncedSearchTerm,
       type: typeFilter || undefined,
       limit: rowsPerPage,
-      offset: page * rowsPerPage
+      offset: page * rowsPerPage,
+      hasVehicles,
+      hasContracts,
+      hasCollaterals
     }));
-  }, [debouncedSearchTerm, typeFilter, page, rowsPerPage, dispatch]);
+  }, [debouncedSearchTerm, typeFilter, page, rowsPerPage, hasVehicles, hasContracts, hasCollaterals, dispatch]);
+
+  // Reset to first page when filters change (except page and rowsPerPage)
+  React.useEffect(() => {
+    if (page > 0) {
+      setPage(0);
+    }
+  }, [debouncedSearchTerm, typeFilter, hasVehicles, hasContracts, hasCollaterals]);
 
   const handleDelete = (id: string) => {
     setCustomerToDelete(id);
@@ -56,6 +63,12 @@ export const CustomersPage: React.FC = () => {
       await deleteCustomer(customerToDelete);
       setDeleteDialogOpen(false);
       setCustomerToDelete(null);
+      
+      // If we deleted the last item on the current page and we're not on the first page,
+      // go back to the previous page
+      if (customers.length === 1 && page > 0) {
+        setPage(page - 1);
+      }
     }
   };
 
@@ -65,6 +78,15 @@ export const CustomersPage: React.FC = () => {
 
   const handleRowsPerPageChange = (newRowsPerPage: number) => {
     setRowsPerPage(newRowsPerPage);
+    setPage(0);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setTypeFilter('');
+    setHasVehicles(undefined);
+    setHasContracts(undefined);
+    setHasCollaterals(undefined);
     setPage(0);
   };
 
@@ -81,34 +103,19 @@ export const CustomersPage: React.FC = () => {
         </Button>
       </Box>
 
-      <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
-        <TextField
-          placeholder="Search customers..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            )
-          }}
-          sx={{ flexGrow: 1, maxWidth: 400 }}
-        />
-        
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Customer Type</InputLabel>
-          <Select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as CustomerType | '')}
-            label="Customer Type"
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value={CustomerType.INDIVIDUAL}>Individual</MenuItem>
-            <MenuItem value={CustomerType.BUSINESS}>Business</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+      <CustomerListFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        typeFilter={typeFilter}
+        onTypeChange={setTypeFilter}
+        hasVehicles={hasVehicles}
+        onHasVehiclesChange={setHasVehicles}
+        hasContracts={hasContracts}
+        onHasContractsChange={setHasContracts}
+        hasCollaterals={hasCollaterals}
+        onHasCollateralsChange={setHasCollaterals}
+        onClearFilters={handleClearFilters}
+      />
 
       <CustomerList
         customers={customers}

@@ -9,13 +9,8 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  IconButton,
-  Chip,
   Typography,
   Skeleton,
-  Tooltip,
-  Menu,
-  MenuItem,
   Button,
   TableSortLabel,
   alpha,
@@ -24,22 +19,10 @@ import {
   Paper
 } from '@mui/material';
 import { 
-  Edit, 
-  Delete, 
-  MoreVert, 
-  Email as EmailIcon,
-  Phone as PhoneIcon,
-  BusinessCenter,
-  Person,
-  FileDownload,
-  Receipt,
-  DirectionsCar,
-  History,
-  AccountBox,
-  Dashboard
+  Person
 } from '@mui/icons-material';
 import { Customer } from '../../types/customer.types';
-import dayjs from 'dayjs';
+import { CustomerListItem } from './CustomerListItem';
 
 interface CustomerListProps {
   customers: Customer[];
@@ -71,47 +54,11 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   // Add sorting state
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('createdAt');
-  
-  // Menu state
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
 
   const handleRequestSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
-  };
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, id: string) => {
-    setActiveCustomerId(id);
-    setMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setMenuAnchorEl(null);
-    setActiveCustomerId(null);
-  };
-
-  // Format the email for display as a name
-  const getDisplayName = (customer: Customer): string => {
-    if (customer.email) {
-      // Use the part before @ in the email as name
-      const emailName = customer.email.split('@')[0];
-      // Format it by replacing dots and hyphens with spaces and capitalizing
-      return emailName
-        .split(/[.-]/)
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
-    }
-    
-    // Fallback to ID if no email
-    return `Customer ${customer.id?.substring(0, 8)}`;
-  };
-
-  // Format date for display
-  const formatDate = (dateString?: string | Date): string => {
-    if (!dateString) return 'N/A';
-    return dayjs(dateString).format('MMM D, YYYY');
   };
 
   // Create loading skeletons
@@ -218,160 +165,13 @@ export const CustomerList: React.FC<CustomerListProps> = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {customers.map((customer) => {
-              const isIndividual = customer.type === 'individual';
-              
-              return (
-                <TableRow 
-                  key={customer.id} 
-                  hover
-                  sx={{ 
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <TableCell sx={{ py: 1.5 }}>
-                    <Box 
-                      sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          color: theme.palette.primary.main
-                        }
-                      }}
-                      onClick={() => navigate(`/customers/${customer.id}`)}
-                    >
-                      <Box
-                        sx={{
-                          width: 36,
-                          height: 36,
-                          bgcolor: alpha(
-                            isIndividual 
-                              ? theme.palette.primary.main 
-                              : theme.palette.secondary.main,
-                            0.1
-                          ),
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mr: 1.5
-                        }}
-                      >
-                        {isIndividual ? (
-                          <Person 
-                            fontSize="small"
-                            sx={{ color: theme.palette.primary.main }} 
-                          />
-                        ) : (
-                          <BusinessCenter 
-                            fontSize="small"
-                            sx={{ color: theme.palette.secondary.main }} 
-                          />
-                        )}
-                      </Box>
-                      <Box>
-                        <Typography 
-                          variant="body1" 
-                          fontWeight={500}
-                          id={`customer-${customer.id}`}
-                          sx={{ 
-                            transition: 'color 0.2s ease',
-                            borderBottom: '1px dotted transparent',
-                            '&:hover': {
-                              borderBottomColor: theme.palette.primary.main,
-                            }
-                          }}
-                        >
-                          {getDisplayName(customer)}
-                        </Typography>
-                        <Typography 
-                          variant="caption" 
-                          color="text.secondary"
-                          sx={{ display: 'block' }}
-                        >
-                          ID: {customer.id?.slice(0, 8)}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={isIndividual ? 'Individual' : 'Business'}
-                      size="small"
-                      color={isIndividual ? 'primary' : 'secondary'}
-                      variant="outlined"
-                      sx={{ 
-                        fontWeight: 500,
-                        px: 0.5,
-                        '& .MuiChip-label': { px: 1 }
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <EmailIcon 
-                        fontSize="small" 
-                        sx={{ color: 'text.secondary', mr: 1, opacity: 0.7 }} 
-                      />
-                      <Tooltip title={customer.email}>
-                        <Typography 
-                          variant="body2" 
-                          noWrap 
-                          sx={{ maxWidth: 150 }}
-                        >
-                          {customer.email}
-                        </Typography>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <PhoneIcon 
-                        fontSize="small" 
-                        sx={{ color: 'text.secondary', mr: 1, opacity: 0.7 }} 
-                      />
-                      <Typography variant="body2">{customer.phone}</Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {formatDate(customer.createdAt)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <Tooltip title="Edit customer">
-                        <IconButton
-                          size="small"
-                          onClick={() => navigate(`/customers/${customer.id}/edit`)}
-                          sx={{ 
-                            color: theme.palette.warning.main,
-                            transition: 'transform 0.2s',
-                            '&:hover': { transform: 'scale(1.1)' }
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="More options">
-                        <IconButton
-                          size="small"
-                          onClick={(e) => handleMenuOpen(e, customer.id!)}
-                          aria-haspopup="true"
-                          sx={{ 
-                            transition: 'transform 0.2s',
-                            '&:hover': { transform: 'scale(1.1)' }
-                          }}
-                        >
-                          <MoreVert fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {customers.map((customer) => (
+              <CustomerListItem
+                key={customer.id}
+                customer={customer}
+                onDelete={onDelete}
+              />
+            ))}
             {customers.length === 0 && !loading && (
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
@@ -412,132 +212,42 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       
       <TablePagination
         component="div"
-        count={totalCount}
-        page={page}
-        onPageChange={(_, newPage) => onPageChange(newPage)}
+        count={totalCount || 0}
+        page={Math.min(page, Math.max(0, Math.ceil((totalCount || 0) / rowsPerPage) - 1))}
+        onPageChange={(_, newPage) => {
+          console.log('Page change requested:', newPage, 'Current total:', totalCount);
+          onPageChange(newPage);
+        }}
         rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(e) => onRowsPerPageChange(parseInt(e.target.value, 10))}
+        onRowsPerPageChange={(e) => {
+          const newRowsPerPage = parseInt(e.target.value, 10);
+          console.log('Rows per page change:', newRowsPerPage);
+          onRowsPerPageChange(newRowsPerPage);
+        }}
         rowsPerPageOptions={[5, 10, 25, 50, 100]}
+        labelRowsPerPage="Rows per page:"
+        labelDisplayedRows={({ from, to, count }) => {
+          const safeCount = count === -1 ? totalCount : count;
+          if (loading) {
+            return 'Loading...';
+          }
+          return `${from}–${to} of ${safeCount !== -1 ? safeCount : `more than ${to}`}`;
+        }}
+        disabled={loading}
         sx={{
           borderTop: `1px solid ${theme.palette.divider}`,
           '& .MuiTablePagination-select': {
             pr: 1
+          },
+          '& .MuiTablePagination-displayedRows': {
+            fontSize: '0.875rem',
+            color: theme.palette.text.secondary
+          },
+          '&.Mui-disabled': {
+            opacity: 0.6
           }
         }}
       />
-      
-      <Menu
-        anchorEl={menuAnchorEl}
-        open={Boolean(menuAnchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          elevation: 3,
-          sx: { 
-            minWidth: 200,
-            borderRadius: 1,
-            overflow: 'hidden'
-          }
-        }}
-      >
-        {/* Overview group */}
-        <MenuItem 
-          onClick={() => {
-            if (activeCustomerId) navigate(`/customers/${activeCustomerId}`);
-            handleMenuClose();
-          }}
-          dense
-        >
-          <AccountBox fontSize="small" sx={{ mr: 1.5 }} />
-          Customer Details
-        </MenuItem>
-        <MenuItem 
-          onClick={() => {
-            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/summary`);
-            handleMenuClose();
-          }}
-          dense
-        >
-          <Dashboard fontSize="small" sx={{ mr: 1.5 }} />
-          Dashboard
-        </MenuItem>
-        
-        <Divider />
-        
-        {/* Assets & Contracts group */}
-        <MenuItem 
-          onClick={() => {
-            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/contracts`);
-            handleMenuClose();
-          }}
-          dense
-        >
-          <BusinessCenter fontSize="small" sx={{ mr: 1.5 }} />
-          Contracts
-        </MenuItem>
-        <MenuItem 
-          onClick={() => {
-            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/vehicles`);
-            handleMenuClose();
-          }}
-          dense
-        >
-          <DirectionsCar fontSize="small" sx={{ mr: 1.5 }} />
-          Vehicles
-        </MenuItem>
-        
-        <Divider />
-        
-        {/* Finance group */}
-        <MenuItem 
-          onClick={() => {
-            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/invoices`);
-            handleMenuClose();
-          }}
-          dense
-        >
-          <Receipt fontSize="small" sx={{ mr: 1.5 }} />
-          Invoices
-        </MenuItem>
-        <MenuItem 
-          onClick={() => {
-            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/export`);
-            handleMenuClose();
-          }}
-          dense
-        >
-          <FileDownload fontSize="small" sx={{ mr: 1.5 }} />
-          Export Data
-        </MenuItem>
-        
-        <Divider />
-        
-        {/* History group */}
-        <MenuItem 
-          onClick={() => {
-            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/logs`);
-            handleMenuClose();
-          }}
-          dense
-        >
-          <History fontSize="small" sx={{ mr: 1.5 }} />
-          Activity Logs
-        </MenuItem>
-        
-        <Divider />
-        
-        {/* Danger zone */}
-        <MenuItem 
-          onClick={() => {
-            if (activeCustomerId) onDelete(activeCustomerId);
-            handleMenuClose();
-          }}
-          dense
-          sx={{ color: theme.palette.error.main }}
-        >
-          <Delete fontSize="small" sx={{ mr: 1.5 }} />
-          Delete Customer
-        </MenuItem>
-      </Menu>
     </Paper>
   );
 };

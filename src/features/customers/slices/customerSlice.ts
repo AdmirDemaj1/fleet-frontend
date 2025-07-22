@@ -17,7 +17,10 @@ const initialState: CustomerState = {
   error: null,
   filters: {
     limit: 10,
-    offset: 0
+    offset: 0,
+    hasVehicles: undefined,
+    hasContracts: undefined,
+    hasCollaterals: undefined
   },
   totalCount: 0 // Updated to reflect empty array
 };

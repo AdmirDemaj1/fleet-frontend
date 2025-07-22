@@ -121,4 +121,7 @@ export enum CustomerType {
     search?: string;
     limit?: number;
     offset?: number;
+    hasVehicles?: boolean;
+    hasContracts?: boolean;
+    hasCollaterals?: boolean;
   }
