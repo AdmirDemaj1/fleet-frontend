@@ -1,10 +1,32 @@
 export enum VehicleStatus {
-  AVAILABLE = 'AVAILABLE',
-  LEASED = 'LEASED',
-  MAINTENANCE = 'MAINTENANCE',
-  COLLATERAL = 'COLLATERAL',
-  SOLD = 'SOLD',
-  OTHER = 'OTHER'
+  AVAILABLE = 'AVAILABLE', // Available for lease/use
+  LEASED = 'LEASED', // Currently leased out
+  // COLLATERAL = 'COLLATERAL', // Used as loan collateral
+  MAINTENANCE = 'MAINTENANCE', // Under maintenance
+  SOLD = 'SOLD', // Sold to customer
+  LIQUID_ASSET = 'LIQUID_ASSET', // Liquidated/retired assets
+}
+
+export enum ConditionStatus {
+  EXCELLENT = 'EXCELLENT',
+  GOOD = 'GOOD',
+  FAIR = 'FAIR',
+  POOR = 'POOR',
+  NEEDS_REPAIR = 'NEEDS_REPAIR',
+}
+
+export enum FuelType {
+  GASOLINE = 'GASOLINE',
+  DIESEL = 'DIESEL',
+  ELECTRIC = 'ELECTRIC',
+  HYBRID = 'HYBRID',
+  LPG = 'LPG'
+}
+
+export enum InsuranceCompany {
+  SIGMA = 'SIGMA',
+  ALBSIG = 'ALBSIG',
+  OTHER = 'OTHER',
 }
 
 export interface Vehicle {
@@ -16,8 +38,9 @@ export interface Vehicle {
   year: number;
   color?: string;
   status: VehicleStatus;
+  condition?: ConditionStatus;
   mileage?: number;
-  fuelType?: string;
+  fuelType?: FuelType;
   transmission?: string;
   currentValuation?: number;
   marketValue?: number;
@@ -26,7 +49,7 @@ export interface Vehicle {
   purchasePrice?: number;
   registrationDate?: string;
   registrationExpiryDate?: string;
-  insuranceProvider?: string;
+  insuranceProvider?: InsuranceCompany;
   insurancePolicyNumber?: string;
   insuranceExpiryDate?: string;
   maintenanceHistory?: MaintenanceRecord[];

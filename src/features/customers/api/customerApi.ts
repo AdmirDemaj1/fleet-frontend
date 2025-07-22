@@ -1,4 +1,5 @@
 import { api } from '../../../shared/utils/api';
+import { API_ENDPOINTS } from '../../../shared/utils/constants';
 import {
   Customer,
   CustomerDetailed,
@@ -18,7 +19,7 @@ export const customerApi = {
     if (filters?.limit) params.append('limit', filters.limit.toString());
     if (filters?.offset) params.append('offset', filters.offset.toString());
     
-    const response = await api.get<Customer[]>(`/customers?${params.toString()}`);
+    const response = await api.get<Customer[]>(`${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`);
     
     // The API returns an array directly, not an object with a data property
     const processedCustomers = response.data.map(customer => ({
@@ -38,14 +39,14 @@ export const customerApi = {
   },
 
   getById: async (id: string): Promise<CustomerDetailed> => {
-    const response = await api.get<CustomerDetailed>(`/customers/${id}`);
+    const response = await api.get<CustomerDetailed>(`${API_ENDPOINTS.CUSTOMERS}/${id}`);
     return response.data;
   },
 
   create: async (data: CreateCustomerDto): Promise<Customer> => {
     console.log("API create called with data:", data);
     try {
-      const response = await api.post<Customer>('/customers', data);
+      const response = await api.post<Customer>(API_ENDPOINTS.CUSTOMERS, data);
       console.log("API create response:", response.data);
       return response.data;
     } catch (error) {
@@ -55,12 +56,12 @@ export const customerApi = {
   },
 
   update: async (id: string, data: UpdateCustomerDto): Promise<Customer> => {
-    const response = await api.put<Customer>(`/customers/${id}`, data);
+    const response = await api.put<Customer>(`${API_ENDPOINTS.CUSTOMERS}/${id}`, data);
     return response.data;
   },
 
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/customers/${id}`);
+    await api.delete(`${API_ENDPOINTS.CUSTOMERS}/${id}`);
   },
 
   getContracts: async (
