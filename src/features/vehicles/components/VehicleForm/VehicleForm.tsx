@@ -1,19 +1,32 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
 import { 
   Box, 
   Button, 
   Divider, 
   Grid, 
   Typography, 
-  CircularProgress 
+  CircularProgress,
+  Stepper,
+  Step,
+  StepLabel,
+  Paper,
+  Alert,
+  Fade
 } from '@mui/material';
-import { Vehicle, VehicleStatus, FuelType, ConditionStatus, InsuranceCompany } from '../../types/vehicleType';
-import { BasicInfoStep } from '../Steps/basicinfostep';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { Vehicle, VehicleStatus } from '../../types/vehicleType';
+import { BasicInfoStep } from '../Steps/BasicInfoStep';
 import { DetailsStep } from '../Steps/DetailsStep';
 import { DocumentationStep } from '../Steps/DocumentationStep';
+import { 
+  createVehicleValidationSchema, 
+  STEP_FIELDS, 
+  REQUIRED_FIELDS, 
+  STEP_CONFIG 
+} from '../../utils/vehicleFormValidation';
 
 interface VehicleFormProps {
   initialData?: Partial<Vehicle>;
@@ -22,71 +35,8 @@ interface VehicleFormProps {
   activeStep: number;
   onStepChange: (step: number) => void;
   steps: string[];
+  isEdit?: boolean;
 }
-
-// Step-specific validation schemas
-const basicInfoSchema = yup.object({
-  licensePlate: yup.string().required('License plate is required'),
-  vin: yup.string().required('VIN is required'),
-  make: yup.string().required('Make is required'),
-  model: yup.string().required('Model is required'),
-  year: yup.number()
-    .required('Year is required')
-    .min(1900, 'Year must be at least 1900')
-    .max(new Date().getFullYear() + 1, `Year must not exceed ${new Date().getFullYear() + 1}`),
-  status: yup.string().required('Status is required'),
-});
-
-const detailsSchema = yup.object({
-  mileage: yup.number().min(0, 'Mileage must be positive').nullable(),
-  fuelType: yup.string().oneOf([...Object.values(FuelType), ''], 'Invalid fuel type').nullable(),
-  transmission: yup.string().nullable(),
-  condition: yup.string().oneOf([...Object.values(ConditionStatus), ''], 'Invalid condition').nullable(),
-  legalOwner: yup.string().nullable(),
-  isLiquidAsset: yup.boolean().nullable(),
-  purchaseDate: yup.string().nullable(),
-  purchasePrice: yup.number().min(0, 'Purchase price must be positive').nullable(),
-});
-
-const documentationSchema = yup.object({
-  registrationDate: yup.string().nullable(),
-  registrationExpiryDate: yup.string().nullable(),
-  insuranceProvider: yup.string().oneOf([...Object.values(InsuranceCompany), ''], 'Invalid insurance provider').nullable(),
-  insurancePolicyNumber: yup.string().nullable(),
-  insuranceExpiryDate: yup.string().nullable(),
-  currentValuation: yup.number().min(0, 'Valuation must be positive').nullable(),
-  marketValue: yup.number().min(0, 'Market value must be positive').nullable(),
-  depreciatedValue: yup.number().min(0, 'Depreciated value must be positive').nullable(),
-});
-
-// Complete validation schema for final submission
-const validationSchema = yup.object({
-  licensePlate: yup.string().required('License plate is required'),
-  vin: yup.string().required('VIN is required'),
-  make: yup.string().required('Make is required'),
-  model: yup.string().required('Model is required'),
-  year: yup.number()
-    .required('Year is required')
-    .min(1900, 'Year must be at least 1900')
-    .max(new Date().getFullYear() + 1, `Year must not exceed ${new Date().getFullYear() + 1}`),
-  status: yup.string().required('Status is required'),
-  mileage: yup.number().min(0, 'Mileage must be positive').nullable(),
-  fuelType: yup.string().oneOf([...Object.values(FuelType), ''], 'Invalid fuel type').nullable(),
-  transmission: yup.string().nullable(),
-  condition: yup.string().oneOf([...Object.values(ConditionStatus), ''], 'Invalid condition').nullable(),
-  legalOwner: yup.string().nullable(),
-  isLiquidAsset: yup.boolean().nullable(),
-  purchaseDate: yup.string().nullable(),
-  purchasePrice: yup.number().min(0, 'Purchase price must be positive').nullable(),
-  registrationDate: yup.string().nullable(),
-  registrationExpiryDate: yup.string().nullable(),
-  insuranceProvider: yup.string().oneOf([...Object.values(InsuranceCompany), ''], 'Invalid insurance provider').nullable(),
-  insurancePolicyNumber: yup.string().nullable(),
-  insuranceExpiryDate: yup.string().nullable(),
-  currentValuation: yup.number().min(0, 'Valuation must be positive').nullable(),
-  marketValue: yup.number().min(0, 'Market value must be positive').nullable(),
-  depreciatedValue: yup.number().min(0, 'Depreciated value must be positive').nullable(),
-});
 
 export const VehicleForm: React.FC<VehicleFormProps> = ({
   initialData,
@@ -94,8 +44,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   loading,
   activeStep,
   onStepChange,
-  steps
+  steps,
+  isEdit = false
 }) => {
+  const validationSchema = useMemo(() => createVehicleValidationSchema(), []);
+  
   const methods = useForm<Partial<Vehicle>>({
     defaultValues: {
       licensePlate: '',
@@ -105,97 +58,144 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       year: new Date().getFullYear(),
       color: '',
       status: VehicleStatus.AVAILABLE,
-      mileage: 0,
+      mileage: null,
       fuelType: '',
       transmission: '',
-      currentValuation: 0,
-      isLiquidAsset: false,
+      condition: '',
       legalOwner: '',
+      isLiquidAsset: false,
+      purchaseDate: null,
+      purchasePrice: null,
+      registrationDate: null,
+      registrationExpiryDate: null,
+      insuranceProvider: '',
+      insurancePolicyNumber: '',
+      insuranceExpiryDate: null,
+      currentValuation: null,
+      marketValue: null,
+      depreciatedValue: null,
       ...initialData
     },
-    // Remove resolver from here - we'll validate step by step
-    mode: 'onChange'
+    resolver: yupResolver(validationSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange'
   });
 
-  const { handleSubmit, formState: { errors }, trigger, getValues, clearErrors } = methods;
+  const { 
+    handleSubmit, 
+    formState: { errors, isValid, touchedFields }, 
+    trigger, 
+    getValues,
+    reset
+  } = methods;
 
-  // Get step-specific field names
-  const getStepFields = (step: number): (keyof Vehicle)[] => {
+  // Get step-specific validation fields
+  const getStepFields = useCallback((step: number) => {
     switch (step) {
-      case 0:
-        return ['licensePlate', 'vin', 'make', 'model', 'year', 'color', 'status'];
-      case 1:
-        return ['mileage', 'fuelType', 'transmission', 'condition', 'legalOwner', 'isLiquidAsset', 'purchaseDate', 'purchasePrice'];
-      case 2:
-        return ['registrationDate', 'registrationExpiryDate', 'insuranceProvider', 'insurancePolicyNumber', 'insuranceExpiryDate', 'currentValuation', 'marketValue', 'depreciatedValue'];
-      default:
-        return [];
+      case 0: return STEP_FIELDS.BASIC_INFO;
+      case 1: return STEP_FIELDS.DETAILS;
+      case 2: return STEP_FIELDS.DOCUMENTATION;
+      default: return [];
     }
-  };
+  }, []);
 
-  // Validate current step before allowing navigation
-  const validateCurrentStep = async (): Promise<boolean> => {
-    const currentData = getValues();
+  // Get required fields for each step
+  const getRequiredFields = useCallback((step: number) => {
+    switch (step) {
+      case 0: return REQUIRED_FIELDS.BASIC_INFO;
+      case 1: return REQUIRED_FIELDS.DETAILS;
+      case 2: return REQUIRED_FIELDS.DOCUMENTATION;
+      default: return [];
+    }
+  }, []);
+
+  // Check if current step is valid
+  const isCurrentStepValid = useCallback(() => {
+    const stepFields = getStepFields(activeStep);
+    const requiredFields = getRequiredFields(activeStep);
     
-    try {
-      switch (activeStep) {
-        case 0:
-          await basicInfoSchema.validate(currentData, { abortEarly: false });
-          break;
-        case 1:
-          await detailsSchema.validate(currentData, { abortEarly: false });
-          break;
-        case 2:
-          await documentationSchema.validate(currentData, { abortEarly: false });
-          break;
-        default:
-          return true;
-      }
-      
-      // Clear any existing errors for this step
-      const stepFields = getStepFields(activeStep);
-      stepFields.forEach(field => clearErrors(field));
-      
-      return true;
-    } catch (validationError: any) {
-      // Trigger validation to show errors for current step fields
-      const stepFields = getStepFields(activeStep);
-      await trigger(stepFields);
-      return false;
-    }
-  };
+    // Check if all required fields are filled and have no errors
+    const hasRequiredValues = requiredFields.every(field => {
+      const value = getValues(field);
+      return value !== null && value !== undefined && value !== '';
+    });
+    
+    // Check if any step fields have errors
+    const hasNoErrors = stepFields.every(field => !errors[field]);
+    
+    return hasRequiredValues && hasNoErrors;
+  }, [activeStep, errors, getStepFields, getRequiredFields, getValues]);
 
-  const handleNext = async () => {
+  // Validate current step before navigation
+  const validateCurrentStep = useCallback(async (): Promise<boolean> => {
+    const stepFields = getStepFields(activeStep);
+    const result = await trigger(stepFields);
+    return result;
+  }, [activeStep, getStepFields, trigger]);
+
+  // Navigation handlers
+  const handleNext = useCallback(async () => {
     const isStepValid = await validateCurrentStep();
     if (isStepValid) {
       onStepChange(activeStep + 1);
     }
-  };
+  }, [activeStep, onStepChange, validateCurrentStep]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     onStepChange(activeStep - 1);
-  };
+  }, [activeStep, onStepChange]);
 
-  // Only called when user clicks "Create Vehicle" on the final step
-  const handleFinalSubmit = async (data: Partial<Vehicle>) => {
-    // Validate all data before final submission
+  // Final submission with full validation
+  const handleFinalSubmit = useCallback(async (data: Partial<Vehicle>) => {
     try {
-      await validationSchema.validate(data, { abortEarly: false });
+      // Trigger validation for all fields
+      const isFormValid = await trigger();
+      
+      if (!isFormValid) {
+        console.error('Form validation failed');
+        return;
+      }
+      
       await onSubmit(data);
-    } catch (validationError: any) {
-      console.error('Final validation failed:', validationError);
-      // Trigger validation for all fields to show errors
-      await trigger();
+    } catch (error) {
+      console.error('Submission failed:', error);
     }
-  };
+  }, [onSubmit, trigger]);
 
-  // Check if current step is valid for button state
-  const isCurrentStepValid = () => {
-    const stepFields = getStepFields(activeStep);
-    return stepFields.every(field => !errors[field]);
-  };
+  // Reset form when initialData changes
+  React.useEffect(() => {
+    if (initialData) {
+      reset({
+        licensePlate: '',
+        vin: '',
+        make: '',
+        model: '',
+        year: new Date().getFullYear(),
+        color: '',
+        status: VehicleStatus.AVAILABLE,
+        mileage: null,
+        fuelType: '',
+        transmission: '',
+        condition: '',
+        legalOwner: '',
+        isLiquidAsset: false,
+        purchaseDate: null,
+        purchasePrice: null,
+        registrationDate: null,
+        registrationExpiryDate: null,
+        insuranceProvider: '',
+        insurancePolicyNumber: '',
+        insuranceExpiryDate: null,
+        currentValuation: null,
+        marketValue: null,
+        depreciatedValue: null,
+        ...initialData
+      });
+    }
+  }, [initialData, reset]);
 
-  const renderStepContent = () => {
+  // Step content renderer
+  const renderStepContent = useCallback(() => {
     switch (activeStep) {
       case 0:
         return <BasicInfoStep />;
@@ -206,62 +206,136 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       default:
         return null;
     }
-  };
+  }, [activeStep]);
+
+  // Get current step errors for display
+  const currentStepErrors = useMemo(() => {
+    const stepFields = getStepFields(activeStep);
+    return stepFields.filter(field => errors[field]).map(field => ({
+      field,
+      message: errors[field]?.message
+    }));
+  }, [activeStep, errors, getStepFields]);
 
   return (
-    <FormProvider {...methods}>
-      <Box>
-        {renderStepContent()}
-        
-        <Divider sx={{ my: 3 }} />
-        
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Button
-            type="button"
-            variant="outlined"
-            onClick={handleBack}
-            disabled={activeStep === 0}
-            sx={{ 
-              borderRadius: 1,
-              px: 3
-            }}
-          >
-            Back
-          </Button>
-          
-          <Box>
-            {activeStep < steps.length - 1 ? (
-              <Button 
-                type="button"
-                variant="contained" 
-                onClick={handleNext}
-                disabled={activeStep === 0 && !isCurrentStepValid()} // Only validate required first step
-                sx={{ 
-                  borderRadius: 1,
-                  px: 3
-                }}
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="contained"
-                color="primary"
-                disabled={loading}
-                onClick={handleSubmit(handleFinalSubmit)}
-                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
-                sx={{ 
-                  borderRadius: 1,
-                  px: 3
-                }}
-              >
-                {loading ? 'Creating...' : 'Create Vehicle'}
-              </Button>
-            )}
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <FormProvider {...methods}>
+        <Paper elevation={2} sx={{ p: 4 }}>
+          {/* Header */}
+          <Box mb={4}>
+            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+              {isEdit ? 'Edit Vehicle' : 'Add New Vehicle'}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {isEdit ? 'Update vehicle information' : 'Enter vehicle details in the form below'}
+            </Typography>
           </Box>
-        </Box>
-      </Box>
-    </FormProvider>
+
+          {/* Stepper */}
+          <Box mb={4}>
+            <Stepper activeStep={activeStep} alternativeLabel>
+              {STEP_CONFIG.map((stepConfig, index) => (
+                <Step key={stepConfig.label}>
+                  <StepLabel
+                    error={activeStep === index && currentStepErrors.length > 0}
+                  >
+                    {stepConfig.label}
+                  </StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
+
+          {/* Error Alert */}
+          {currentStepErrors.length > 0 && (
+            <Fade in>
+              <Alert severity="error" sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Please fix the following errors:
+                </Typography>
+                <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                  {currentStepErrors.map(({ field, message }) => (
+                    <li key={field}>
+                      <Typography variant="body2">{message}</Typography>
+                    </li>
+                  ))}
+                </Box>
+              </Alert>
+            </Fade>
+          )}
+
+          {/* Step Content */}
+          <Box mb={4}>
+            {renderStepContent()}
+          </Box>
+          
+          <Divider sx={{ my: 3 }} />
+          
+          {/* Navigation */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={handleBack}
+              disabled={activeStep === 0}
+              sx={{ 
+                borderRadius: 2,
+                px: 3,
+                py: 1.5,
+                textTransform: 'none',
+                fontWeight: 600
+              }}
+            >
+              Back
+            </Button>
+            
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              {/* Step indicator */}
+              <Typography variant="body2" color="text.secondary">
+                Step {activeStep + 1} of {STEP_CONFIG.length}
+              </Typography>
+              
+              {activeStep < STEP_CONFIG.length - 1 ? (
+                <Button 
+                  type="button"
+                  variant="contained" 
+                  onClick={handleNext}
+                  disabled={!isCurrentStepValid()}
+                  sx={{ 
+                    borderRadius: 2,
+                    px: 3,
+                    py: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    boxShadow: 2
+                  }}
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="contained"
+                  color="primary"
+                  disabled={loading || !isValid}
+                  onClick={handleSubmit(handleFinalSubmit)}
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+                  sx={{ 
+                    borderRadius: 2,
+                    px: 3,
+                    py: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    boxShadow: 2
+                  }}
+                >
+                  {loading ? 'Saving...' : (isEdit ? 'Update Vehicle' : 'Create Vehicle')}
+                </Button>
+              )}
+            </Box>
+          </Box>
+        </Paper>
+      </FormProvider>
+    </LocalizationProvider>
   );
 };

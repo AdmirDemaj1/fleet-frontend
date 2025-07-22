@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Grid, Typography, Box, Paper, Divider, Alert, Button } from '@mui/material';
+import { Typography, Box, Alert, Button } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { VehicleList } from '../components/VehicleList/VehicleList';
@@ -82,59 +82,45 @@ export const VehiclesPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={3}>
-        {/* Page Header */}
-        <Grid item xs={12}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Vehicle Management
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<Add />}
-              onClick={handleAddVehicle}
-            >
-              Add Vehicle
-            </Button>
-          </Box>
-          <Divider sx={{ mb: 3 }} />
-        </Grid>
+    <Box>
+      {/* Header matching CustomersPage style */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4">Vehicles</Typography>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={handleAddVehicle}
+        >
+          Add Vehicle
+        </Button>
+      </Box>
 
-        {/* Filters */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <VehicleFilters 
-              filters={filters} 
-              onFilterChange={handleFilterChange} 
-            />
-          </Paper>
-        </Grid>
+      {/* Filters */}
+      <VehicleFilters 
+        filters={filters} 
+        onFilterChange={handleFilterChange} 
+      />
 
-        {/* Error Display */}
-        {error && (
-          <Grid item xs={12}>
-            <Alert severity="error">{error}</Alert>
-          </Grid>
-        )}
+      {/* Error Display */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
-        {/* Vehicle List */}
-        <Grid item xs={12}>
-          <VehicleList
-            vehicles={vehicles}
-            loading={loading}
-            totalCount={totalCount}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            onPageChange={handlePageChange}
-            onRowsPerPageChange={handleRowsPerPageChange}
-            onEdit={handleEditVehicle}
-            onDelete={handleDeleteVehicle}
-          />
-        </Grid>
-      </Grid>
-    </Container>
+      {/* Vehicle List */}
+      <VehicleList
+        vehicles={vehicles}
+        loading={loading}
+        totalCount={totalCount}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={handlePageChange}
+        onRowsPerPageChange={handleRowsPerPageChange}
+        onEdit={handleEditVehicle}
+        onDelete={handleDeleteVehicle}
+      />
+    </Box>
   );
 };
 

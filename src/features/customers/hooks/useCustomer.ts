@@ -12,14 +12,25 @@ export const useCustomer = (id: string) => {
 
   useEffect(() => {
     const fetchCustomer = async () => {
-      if (!id) return;
+      if (!id) {
+        console.log('useCustomer: No ID provided');
+        return;
+      }
       
+      console.log('useCustomer: Fetching customer with ID:', id);
       dispatch(setLoading(true));
+      dispatch(setError(null)); // Clear any previous errors
+      
       try {
         const customer = await customerApi.getById(id);
+        console.log('useCustomer: Customer fetched successfully:', customer);
         dispatch(setSelectedCustomer(customer));
+        dispatch(setLoading(false));
       } catch (err) {
-        dispatch(setError(err instanceof Error ? err.message : 'Failed to fetch customer'));
+        console.error('useCustomer: Error fetching customer:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch customer';
+        dispatch(setError(errorMessage));
+        dispatch(setLoading(false));
       }
     };
 
