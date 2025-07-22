@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Customer, CustomerDetailed, CustomerFilters } from '../types/customer.types';
+import { Customer, CustomerDetailed, CustomerFilters, CustomerType } from '../types/customer.types';
 
 interface CustomerState {
   customers: Customer[];
@@ -11,7 +11,7 @@ interface CustomerState {
 }
 
 const initialState: CustomerState = {
-  customers: [],
+  customers: [], // Removed all dummy data
   selectedCustomer: null,
   loading: false,
   error: null,
@@ -19,7 +19,7 @@ const initialState: CustomerState = {
     limit: 10,
     offset: 0
   },
-  totalCount: 0
+  totalCount: 0 // Updated to reflect empty array
 };
 
 const customerSlice = createSlice({
@@ -50,7 +50,11 @@ const customerSlice = createSlice({
     },
     clearSelectedCustomer: (state) => {
       state.selectedCustomer = null;
-    }
+    },
+    addCustomer: (state, action: PayloadAction<Customer>) => {
+      state.customers.push(action.payload);
+      state.totalCount += 1;
+    },
   }
 });
 
@@ -61,7 +65,8 @@ export const {
   setError,
   setFilters,
   resetFilters,
-  clearSelectedCustomer
+  clearSelectedCustomer,
+  addCustomer
 } = customerSlice.actions;
 
 export default customerSlice.reducer;
