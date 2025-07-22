@@ -17,8 +17,24 @@ export const customerApi = {
     if (filters?.search) params.append('search', filters.search);
     if (filters?.limit) params.append('limit', filters.limit.toString());
     if (filters?.offset) params.append('offset', filters.offset.toString());
-    const response = await api.get<{ data: Customer[]; total: number }>(`/customers?${params.toString()}`);
-    return response.data;
+    
+    const response = await api.get<Customer[]>(`/customers?${params.toString()}`);
+    
+    // The API returns an array directly, not an object with a data property
+    const processedCustomers = response.data.map(customer => ({
+      ...customer,
+      // Convert string dates to Date objects if needed
+      createdAt: customer.createdAt,
+      updatedAt: customer.updatedAt
+    }));
+    
+    // Get total from headers if available, otherwise use array length
+    const total = parseInt(response.headers['x-total-count'] || '0', 10) || processedCustomers.length;
+    
+    return {
+      data: processedCustomers,
+      total: total
+    };
   },
 
   getById: async (id: string): Promise<CustomerDetailed> => {

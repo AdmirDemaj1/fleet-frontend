@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -9,26 +9,30 @@ import {
   IconButton,
   Card,
   CardContent,
-  TextField,
-  InputAdornment,
   Divider,
   Menu,
   MenuItem,
   alpha,
   useTheme,
-  Pagination
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  Stack
 } from '@mui/material';
 import {
   DataGrid,
   GridColDef,
   GridRenderCellParams,
-  GridCellParams,
+  GridToolbarQuickFilter,
+  GridActionsCellItem,
 } from '@mui/x-data-grid';
 import {
   Visibility,
   Add as AddIcon,
   FilterList as FilterListIcon,
-  Search as SearchIcon,
   MoreVert as MoreVertIcon,
   Download as DownloadIcon,
   Edit as EditIcon,
@@ -36,198 +40,190 @@ import {
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
   ErrorOutline as ErrorIcon,
-  AccessTime as PendingIcon
+  AccessTime as PendingIcon,
+  DescriptionOutlined as ContractIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
+import { customerApi } from '../../api/customerApi';
+import { ContractSummary } from '../../types/customer.types';
 
-// Contract type definition
-interface Contract {
-  id: string;
-  contractNumber: string;
-  type: string;
-  status: 'active' | 'pending' | 'completed' | 'cancelled';
-  startDate: string;
-  endDate: string;
-  totalAmount: number;
-  remainingAmount: number;
-  customer: {
-    id: string;
-    name: string;
-  };
-  lastUpdated: string;
-}
+// Status configuration for consistent styling
+const STATUS_CONFIG = {
+  active: {
+    icon: <CheckCircleIcon fontSize="small" />,
+    color: 'success' as const,
+    label: 'Active'
+  },
+  pending: {
+    icon: <PendingIcon fontSize="small" />,
+    color: 'warning' as const,
+    label: 'Pending'
+  },
+  completed: {
+    icon: <CheckCircleIcon fontSize="small" />,
+    color: 'default' as const,
+    label: 'Completed'
+  },
+  cancelled: {
+    icon: <ErrorIcon fontSize="small" />,
+    color: 'error' as const,
+    label: 'Cancelled'
+  }
+};
 
-// Dummy data for demonstration
-const dummyContracts: Contract[] = [
-  {
-    id: '1',
-    contractNumber: 'CT-2025-001',
-    type: 'Lease',
-    status: 'active',
-    startDate: '2025-01-01',
-    endDate: '2026-01-01',
-    totalAmount: 12500,
-    remainingAmount: 9375,
-    customer: {
-      id: '1',
-      name: 'Acme Corporation'
-    },
-    lastUpdated: '2025-06-15'
-  },
-  {
-    id: '2',
-    contractNumber: 'CT-2025-002',
-    type: 'Maintenance',
-    status: 'pending',
-    startDate: '2025-02-15',
-    endDate: '2025-08-15',
-    totalAmount: 4800,
-    remainingAmount: 4800,
-    customer: {
-      id: '1',
-      name: 'Acme Corporation'
-    },
-    lastUpdated: '2025-06-10'
-  },
-  {
-    id: '3',
-    contractNumber: 'CT-2024-045',
-    type: 'Rental',
-    status: 'completed',
-    startDate: '2024-10-01',
-    endDate: '2025-04-01',
-    totalAmount: 7200,
-    remainingAmount: 0,
-    customer: {
-      id: '1',
-      name: 'Acme Corporation'
-    },
-    lastUpdated: '2025-04-05'
-  },
-  {
-    id: '4',
-    contractNumber: 'CT-2025-015',
-    type: 'Fleet Management',
-    status: 'active',
-    startDate: '2025-03-01',
-    endDate: '2026-03-01',
-    totalAmount: 24000,
-    remainingAmount: 20000,
-    customer: {
-      id: '1',
-      name: 'Acme Corporation'
-    },
-    lastUpdated: '2025-06-01'
-  },
-  {
-    id: '5',
-    contractNumber: 'CT-2025-018',
-    type: 'Lease',
-    status: 'cancelled',
-    startDate: '2025-04-01',
-    endDate: '2026-04-01',
-    totalAmount: 9600,
-    remainingAmount: 9600,
-    customer: {
-      id: '1',
-      name: 'Acme Corporation'
-    },
-    lastUpdated: '2025-04-15'
-  },
-  {
-    id: '6',
-    contractNumber: 'CT-2025-022',
-    type: 'Insurance',
-    status: 'active',
-    startDate: '2025-05-01',
-    endDate: '2026-05-01',
-    totalAmount: 3600,
-    remainingAmount: 3300,
-    customer: {
-      id: '1',
-      name: 'Acme Corporation'
-    },
-    lastUpdated: '2025-06-01'
-  },
-];
-
-// Custom DataGrid Toolbar component
-const CustomToolbar = () => {
+// Modern DataGrid toolbar with search and export
+function CustomToolbar({ onExport }: { onExport: () => void }) {
   return (
-    <Box sx={{ p: 1, display: 'flex', justifyContent: 'flex-end' }}>
-      <Button size="small" startIcon={<DownloadIcon />}>
+    <Box
+      sx={{
+        p: 2,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}
+    >
+      <GridToolbarQuickFilter 
+        sx={{ 
+          '& .MuiInputBase-root': { 
+            borderRadius: 2,
+            minWidth: 300
+          }
+        }} 
+      />
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<DownloadIcon />}
+        onClick={onExport}
+        sx={{
+          borderRadius: 2,
+          borderColor: 'divider',
+          '&:hover': {
+            borderColor: 'primary.main',
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04)
+          }
+        }}
+      >
         Export
       </Button>
     </Box>
   );
+}
+
+// Format currency consistently
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(amount);
 };
 
-const CustomerAccountContracts: React.FC = () => {
+interface CustomerAccountContractsProps {
+  customerId?: string; // Optional because we can get it from URL params too
+}
+
+const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ customerId: propCustomerId }) => {
   const theme = useTheme();
-  const { id } = useParams<{ id: string }>();
-  const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
+  const { id: urlCustomerId } = useParams<{ id: string }>();
+  const customerId = propCustomerId || urlCustomerId;
+  
+  const [contracts, setContracts] = useState<ContractSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showNewContractDialog, setShowNewContractDialog] = useState(false);
+  const [paginationModel, setPaginationModel] = useState({
+    pageSize: 5,
+    page: 0,
+  });
+  
+  // Menu state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedContract, setSelectedContract] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-  
-  // Filter contracts by search term
-  const filteredContracts = dummyContracts.filter(contract => 
-    contract.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contract.type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
-  // Handle menu open/close
-  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, contractId: string) => {
+  // Fetch contracts data
+  useEffect(() => {
+    if (!customerId) return;
+    
+    const fetchContracts = async () => {
+      setIsLoading(true);
+      try {
+        const data = await customerApi.getContracts(customerId);
+        setContracts(data);
+      } catch (error) {
+        console.error('Failed to fetch contracts:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchContracts();
+  }, [customerId]);
+
+  // Action handlers
+  const handleViewContract = useCallback((contractId: string) => {
+    navigate(`/contracts/${contractId}`);
+    handleMenuClose();
+  }, [navigate]);
+  
+  const handleEditContract = useCallback((contractId: string) => {
+    navigate(`/contracts/${contractId}/edit`);
+    handleMenuClose();
+  }, [navigate]);
+  
+  const handleCancelContract = useCallback((contractId: string) => {
+    // This would typically show a confirmation dialog before cancellation
+    console.log(`Cancelling contract ${contractId}`);
+    handleMenuClose();
+  }, []);
+  
+  const handleExport = useCallback(() => {
+    setIsExporting(true);
+    // Export logic would go here
+    setTimeout(() => {
+      setIsExporting(false);
+    }, 1000);
+  }, []);
+
+  // Menu handlers
+  const handleMenuOpen = useCallback((event: React.MouseEvent<HTMLButtonElement>, contractId: string) => {
     setAnchorEl(event.currentTarget);
     setSelectedContract(contractId);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedContract(null);
-  };
+  }, []);
 
-  const handleChangePage = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value);
-  };
+  const toggleNewContractDialog = useCallback(() => {
+    setShowNewContractDialog(prev => !prev);
+  }, []);
 
-  // Render status chip with appropriate icon and color
-  const renderStatusCell = (params: GridRenderCellParams) => {
-    const status = params.value as string;
-    let icon = null;
-    let color: 'success' | 'warning' | 'error' | 'default' = 'default';
-    
-    switch (status?.toLowerCase()) {
-      case 'active':
-        icon = <CheckCircleIcon fontSize="small" />;
-        color = 'success';
-        break;
-      case 'pending':
-        icon = <PendingIcon fontSize="small" />;
-        color = 'warning';
-        break;
-      case 'completed':
-        icon = <CheckCircleIcon fontSize="small" />;
-        color = 'default';
-        break;
-      case 'cancelled':
-        icon = <ErrorIcon fontSize="small" />;
-        color = 'error';
-        break;
-      default:
-        icon = <WarningIcon fontSize="small" />;
-        color = 'default';
-    }
+  const handleCreateNewContract = useCallback(() => {
+    navigate(`/contracts/new?customerId=${customerId}`);
+    toggleNewContractDialog();
+  }, [navigate, customerId, toggleNewContractDialog]);
+
+  // Cell renderers
+  const renderStatusCell = useCallback((params: GridRenderCellParams) => {
+    const status = params.value as keyof typeof STATUS_CONFIG;
+    const config = STATUS_CONFIG[status] || {
+      icon: <WarningIcon fontSize="small" />,
+      color: 'default' as const,
+      label: 'Unknown'
+    };
     
     return (
       <Chip
-        icon={icon}
-        label={status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown'}
+        icon={config.icon}
+        label={config.label}
         size="small"
-        color={color}
+        color={config.color}
         sx={{ 
           minWidth: 90,
+          fontWeight: 500,
           '& .MuiChip-icon': { 
             fontSize: '0.875rem',
             ml: 0.5
@@ -235,25 +231,42 @@ const CustomerAccountContracts: React.FC = () => {
         }}
       />
     );
-  };
+  }, []);
 
-  // Render actions cell with menu
-  const renderActionsCell = (params: GridRenderCellParams) => {
-    return (
-      <Box>
-        <IconButton
-          size="small"
-          onClick={(e) => handleMenuOpen(e, params.row.id)}
-          aria-label="actions"
-        >
+  const getActions = useCallback((params: GridRenderCellParams) => [
+    <GridActionsCellItem
+      icon={
+        <Tooltip title="View contract">
+          <Visibility fontSize="small" />
+        </Tooltip>
+      }
+      label="View"
+      onClick={() => handleViewContract(params.id.toString())}
+    />,
+    <GridActionsCellItem
+      icon={
+        <Tooltip title="Edit contract">
+          <Edit fontSize="small" />
+        </Tooltip>
+      }
+      label="Edit"
+      onClick={() => handleEditContract(params.id.toString())}
+    />,
+    <GridActionsCellItem
+      icon={
+        <Tooltip title="More options">
           <MoreVertIcon fontSize="small" />
-        </IconButton>
-      </Box>
-    );
-  };
+        </Tooltip>
+      }
+      label="More"
+      onClick={(event: React.MouseEvent<HTMLButtonElement>) => 
+        handleMenuOpen(event, params.id.toString())
+      }
+    />
+  ], [handleViewContract, handleEditContract, handleMenuOpen]);
 
-  // Table columns configuration
-  const columns: GridColDef[] = [
+  // Table columns
+  const columns = useMemo<GridColDef[]>(() => [
     { 
       field: 'contractNumber', 
       headerName: 'Contract #', 
@@ -269,7 +282,18 @@ const CustomerAccountContracts: React.FC = () => {
       field: 'type', 
       headerName: 'Type', 
       minWidth: 130,
-      flex: 1
+      flex: 1,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          variant="outlined"
+          sx={{ 
+            borderRadius: 1,
+            bgcolor: alpha(theme.palette.primary.main, 0.05)
+          }}
+        />
+      )
     },
     { 
       field: 'status', 
@@ -300,14 +324,14 @@ const CustomerAccountContracts: React.FC = () => {
     },
     { 
       field: 'totalAmount', 
-      headerName: 'Total Amount', 
+      headerName: 'Total Value', 
       minWidth: 130,
       flex: 1,
       headerAlign: 'right',
       align: 'right',
       valueFormatter: (params) => {
         if (params.value == null) return '';
-        return `$${Number(params.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return formatCurrency(Number(params.value));
       }
     },
     { 
@@ -319,38 +343,58 @@ const CustomerAccountContracts: React.FC = () => {
       align: 'right',
       valueFormatter: (params) => {
         if (params.value == null) return '';
-        return `$${Number(params.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return formatCurrency(Number(params.value));
       },
-      cellClassName: (params: GridCellParams) => {
-        // Safe access with type guard
-        if (params.value == null) return '';
-        return Number(params.value) > 0 ? '' : 'completed-amount';
+      cellClassName: (params) => {
+        return params.value === 0 ? 'completed-amount' : '';
       }
     },
     { 
       field: 'actions', 
       headerName: 'Actions', 
-      sortable: false,
-      minWidth: 80,
-      align: 'center',
-      headerAlign: 'center',
-      renderCell: renderActionsCell,
-      disableColumnMenu: true
+      type: 'actions',
+      width: 120,
+      getActions: getActions
     }
-  ];
+  ], [theme, renderStatusCell, getActions]);
 
   return (
     <Box sx={{ p: 0 }}>
-      <Card elevation={0} sx={{ mb: 3, borderRadius: 2 }}>
+      {/* Header Card */}
+      <Card 
+        elevation={0} 
+        sx={{ 
+          mb: 3, 
+          borderRadius: 2,
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: theme.shadows[2]
+          }
+        }}
+      >
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5" color="primary" fontWeight="bold">
-              Customer Contracts
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <ContractIcon 
+                color="primary" 
+                sx={{ mr: 1.5, fontSize: 28 }} 
+              />
+              <Typography variant="h5" color="primary" fontWeight="bold">
+                Customer Contracts
+              </Typography>
+            </Box>
+            
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              sx={{ borderRadius: 2 }}
+              onClick={toggleNewContractDialog}
+              sx={{ 
+                borderRadius: 2,
+                boxShadow: 2,
+                '&:hover': {
+                  boxShadow: 4
+                }
+              }}
             >
               New Contract
             </Button>
@@ -359,38 +403,10 @@ const CustomerAccountContracts: React.FC = () => {
           <Typography variant="body2" color="text.secondary" paragraph>
             Manage all contracts for this customer. View details, update status, or create new contracts.
           </Typography>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 3 }}>
-            <TextField
-              placeholder="Search contracts..."
-              variant="outlined"
-              size="small"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ width: 300 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Box>
-              <Button 
-                startIcon={<FilterListIcon />}
-                sx={{ mr: 1 }}
-              >
-                Filter
-              </Button>
-              <Button startIcon={<DownloadIcon />}>
-                Export
-              </Button>
-            </Box>
-          </Box>
         </CardContent>
       </Card>
 
+      {/* DataGrid */}
       <Paper 
         elevation={0} 
         variant="outlined" 
@@ -398,6 +414,11 @@ const CustomerAccountContracts: React.FC = () => {
           width: '100%',
           borderRadius: 2,
           overflow: 'hidden',
+          borderColor: theme.palette.divider,
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: theme.shadows[2]
+          },
           '& .MuiDataGrid-cell:focus-within, & .MuiDataGrid-cell:focus': {
             outline: 'none',
           },
@@ -421,48 +442,132 @@ const CustomerAccountContracts: React.FC = () => {
         }}
       >
         <DataGrid
-          rows={filteredContracts}
+          rows={contracts}
           columns={columns}
-          pageSize={pageSize}
-          rowsPerPageOptions={[5, 10, 20]}
-          onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-          disableSelectionOnClick
-          disableColumnMenu
-          loading={false}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          pageSizeOptions={[5, 10, 25]}
+          disableRowSelectionOnClick
+          loading={isLoading}
           autoHeight
-          components={{
-            Toolbar: CustomToolbar,
+          slots={{
+            toolbar: CustomToolbar,
+            loadingOverlay: CircularProgress,
+            noRowsOverlay: () => (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 3 }}>
+                <Typography color="text.secondary" align="center">
+                  No contracts found for this customer
+                </Typography>
+                <Button 
+                  startIcon={<AddIcon />} 
+                  variant="outlined" 
+                  sx={{ mt: 2 }}
+                  onClick={toggleNewContractDialog}
+                >
+                  Create Contract
+                </Button>
+              </Box>
+            ),
+          }}
+          slotProps={{
+            toolbar: {
+              onExport: handleExport,
+              showQuickFilter: true,
+              quickFilterProps: { debounceMs: 300 },
+            }
           }}
           sx={{
             border: 'none',
+            '& .MuiDataGrid-row': {
+              cursor: 'pointer'
+            }
           }}
         />
       </Paper>
 
-      {/* Actions menu */}
+      {/* Contract Actions Menu */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
         PaperProps={{
           elevation: 3,
-          sx: { minWidth: 180, borderRadius: 2 }
+          sx: { 
+            minWidth: 200, 
+            borderRadius: 2,
+            overflow: 'hidden',
+            mt: 0.5
+          }
         }}
       >
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem 
+          onClick={() => selectedContract && handleViewContract(selectedContract)}
+          sx={{ py: 1 }}
+        >
           <Visibility fontSize="small" sx={{ mr: 1.5 }} />
           View Details
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem 
+          onClick={() => selectedContract && handleEditContract(selectedContract)}
+          sx={{ py: 1 }}
+        >
           <EditIcon fontSize="small" sx={{ mr: 1.5 }} />
           Edit Contract
         </MenuItem>
         <Divider />
-        <MenuItem onClick={handleMenuClose} sx={{ color: theme.palette.error.main }}>
+        <MenuItem 
+          onClick={() => selectedContract && handleCancelContract(selectedContract)}
+          sx={{ 
+            py: 1,
+            color: theme.palette.error.main,
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.error.main, 0.08)
+            }
+          }}
+        >
           <DeleteIcon fontSize="small" sx={{ mr: 1.5 }} />
           Cancel Contract
         </MenuItem>
       </Menu>
+
+      {/* New Contract Dialog */}
+      <Dialog 
+        open={showNewContractDialog} 
+        onClose={toggleNewContractDialog}
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            width: '100%',
+            maxWidth: 600
+          }
+        }}
+      >
+        <DialogTitle fontWeight="bold">
+          New Contract
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Create a new contract for this customer. You can specify contract type, duration, value, and other details on the next screen.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button 
+            variant="outlined" 
+            onClick={toggleNewContractDialog}
+            sx={{ borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleCreateNewContract}
+            sx={{ borderRadius: 2, ml: 1 }}
+          >
+            Create Contract
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

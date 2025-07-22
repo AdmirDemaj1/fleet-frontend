@@ -16,26 +16,26 @@ export enum CustomerType {
     secondaryPhone?: string;
     secondaryEmail?: string;
     additionalNotes?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
+    createdAt?: Date | string; // Accept string from API
+    updatedAt?: Date | string; // Accept string from API
   }
+  
   
   export interface IndividualCustomer extends BaseCustomer {
     type: CustomerType.INDIVIDUAL;
-    firstName: string;
-    lastName: string;
-    idNumber: string;
-    dateOfBirth: string;
+    firstName?: string; // Optional in list response
+    lastName?: string; // Optional in list response
+    idNumber?: string; // Optional in list response
+    dateOfBirth?: string; // Optional in list response
   }
-  
   export interface BusinessCustomer extends BaseCustomer {
     type: CustomerType.BUSINESS;
-    legalName: string;
-    nuisNipt: string;
-    administratorName: string;
-    administratorId: string;
-    administratorPosition: string;
-    mainShareholders?: string;
+    legalName?: string; // Optional in list response
+    nuisNipt?: string; // Optional in list response
+    administratorName?: string; // Optional in list response
+    administratorId?: string; // Optional in list response
+    administratorPosition?: string; // Optional in list response
+    mainShareholders?: string; // Optional in list response
   }
   
   export type Customer = IndividualCustomer | BusinessCustomer;

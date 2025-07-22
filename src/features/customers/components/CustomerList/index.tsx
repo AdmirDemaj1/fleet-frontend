@@ -14,7 +14,6 @@ import {
   Typography,
   Skeleton,
   Tooltip,
-  Checkbox,
   Menu,
   MenuItem,
   Button,
@@ -27,16 +26,20 @@ import {
 import { 
   Edit, 
   Delete, 
-  Visibility, 
   MoreVert, 
   Email as EmailIcon,
   Phone as PhoneIcon,
   BusinessCenter,
   Person,
   FileDownload,
-  ContentCopy
+  Receipt,
+  DirectionsCar,
+  History,
+  AccountBox,
+  Dashboard
 } from '@mui/icons-material';
-import { Customer, CustomerType, IndividualCustomer, BusinessCustomer } from '../../types/customer.types';
+import { Customer } from '../../types/customer.types';
+import dayjs from 'dayjs';
 
 interface CustomerListProps {
   customers: Customer[];
@@ -50,7 +53,7 @@ interface CustomerListProps {
 }
 
 type Order = 'asc' | 'desc';
-type OrderBy = 'name' | 'type' | 'identifier' | 'email' | 'phone';
+type OrderBy = 'email' | 'type' | 'phone' | 'createdAt';
 
 export const CustomerList: React.FC<CustomerListProps> = ({
   customers,
@@ -65,45 +68,13 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   const navigate = useNavigate();
   const theme = useTheme();
   
-  // Add selection state
-  const [selected, setSelected] = useState<string[]>([]);
-  
   // Add sorting state
-  const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('name');
+  const [order, setOrder] = useState<Order>('desc');
+  const [orderBy, setOrderBy] = useState<OrderBy>('createdAt');
   
   // Menu state
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
-
-  const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.checked) {
-      const newSelected = customers.map(n => n.id!);
-      setSelected(newSelected);
-      return;
-    }
-    setSelected([]);
-  };
-
-  const handleClick = (id: string) => {
-    const selectedIndex = selected.indexOf(id);
-    let newSelected: string[] = [];
-
-    if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, id);
-    } else if (selectedIndex === 0) {
-      newSelected = newSelected.concat(selected.slice(1));
-    } else if (selectedIndex === selected.length - 1) {
-      newSelected = newSelected.concat(selected.slice(0, -1));
-    } else if (selectedIndex > 0) {
-      newSelected = newSelected.concat(
-        selected.slice(0, selectedIndex),
-        selected.slice(selectedIndex + 1),
-      );
-    }
-
-    setSelected(newSelected);
-  };
 
   const handleRequestSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -121,22 +92,26 @@ export const CustomerList: React.FC<CustomerListProps> = ({
     setActiveCustomerId(null);
   };
 
-  const isSelected = (id: string) => selected.indexOf(id) !== -1;
-
-  const getCustomerName = (customer: Customer): string => {
-    if (customer.type === CustomerType.INDIVIDUAL) {
-      const individualCustomer = customer as IndividualCustomer;
-      return `${individualCustomer.firstName} ${individualCustomer.lastName}`;
+  // Format the email for display as a name
+  const getDisplayName = (customer: Customer): string => {
+    if (customer.email) {
+      // Use the part before @ in the email as name
+      const emailName = customer.email.split('@')[0];
+      // Format it by replacing dots and hyphens with spaces and capitalizing
+      return emailName
+        .split(/[.-]/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
     }
-    const businessCustomer = customer as BusinessCustomer;
-    return businessCustomer.legalName;
+    
+    // Fallback to ID if no email
+    return `Customer ${customer.id?.substring(0, 8)}`;
   };
 
-  const getCustomerIdentifier = (customer: Customer): string => {
-    if (customer.type === CustomerType.INDIVIDUAL) {
-      return (customer as IndividualCustomer).idNumber;
-    }
-    return (customer as BusinessCustomer).nuisNipt;
+  // Format date for display
+  const formatDate = (dateString?: string | Date): string => {
+    if (!dateString) return 'N/A';
+    return dayjs(dateString).format('MMM D, YYYY');
   };
 
   // Create loading skeletons
@@ -160,7 +135,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
           </Box>
           <Divider sx={{ mb: 2 }} />
           <Box sx={{ display: 'flex', mb: 1.5 }}>
-            {['18%', '12%', '15%', '20%', '15%', '15%'].map((width, i) => (
+            {['25%', '15%', '25%', '20%', '15%'].map((width, i) => (
               <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
             ))}
           </Box>
@@ -171,7 +146,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
               alignItems: 'center',
               borderBottom: index < 4 ? `1px solid ${theme.palette.divider}` : 'none'
             }}>
-              {['18%', '12%', '15%', '20%', '15%', '15%'].map((width, i) => (
+              {['25%', '15%', '25%', '20%', '15%'].map((width, i) => (
                 <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
               ))}
             </Box>
@@ -196,81 +171,20 @@ export const CustomerList: React.FC<CustomerListProps> = ({
         }
       }}
     >
-      {selected.length > 0 && (
-        <Box 
-          sx={{ 
-            p: 2, 
-            bgcolor: alpha(theme.palette.primary.main, 0.1),
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <Typography variant="subtitle1" color="primary">
-            {selected.length} customer{selected.length > 1 ? 's' : ''} selected
-          </Typography>
-          <Box>
-            <Button 
-              size="small" 
-              startIcon={<EmailIcon />}
-              sx={{ mr: 1 }}
-            >
-              Email
-            </Button>
-            <Button 
-              size="small" 
-              startIcon={<FileDownload />}
-              sx={{ mr: 1 }}
-            >
-              Export
-            </Button>
-            <Button 
-              size="small"
-              color="error"
-              startIcon={<Delete />}
-            >
-              Delete
-            </Button>
-          </Box>
-        </Box>
-      )}
       <TableContainer>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell padding="checkbox">
-                <Checkbox
-                  indeterminate={selected.length > 0 && selected.length < customers.length}
-                  checked={customers.length > 0 && selected.length === customers.length}
-                  onChange={handleSelectAllClick}
-                  inputProps={{ 'aria-label': 'select all customers' }}
-                />
-              </TableCell>
               <TableCell>
-                <TableSortLabel
-                  active={orderBy === 'name'}
-                  direction={orderBy === 'name' ? order : 'asc'}
-                  onClick={() => handleRequestSort('name')}
-                >
-                  Name
-                </TableSortLabel>
+                Name
               </TableCell>
               <TableCell>
                 <TableSortLabel
                   active={orderBy === 'type'}
                   direction={orderBy === 'type' ? order : 'asc'}
-                  onClick={() => handleRequestSort('type')}
+                  onClick={() => handleRequestSort('type' as OrderBy)}
                 >
                   Type
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={orderBy === 'identifier'}
-                  direction={orderBy === 'identifier' ? order : 'asc'}
-                  onClick={() => handleRequestSort('identifier')}
-                >
-                  ID/NUIS
                 </TableSortLabel>
               </TableCell>
               <TableCell>
@@ -291,46 +205,48 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                   Phone
                 </TableSortLabel>
               </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={orderBy === 'createdAt'}
+                  direction={orderBy === 'createdAt' ? order : 'asc'}
+                  onClick={() => handleRequestSort('createdAt')}
+                >
+                  Created
+                </TableSortLabel>
+              </TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {customers.map((customer) => {
-              const isItemSelected = isSelected(customer.id!);
+              const isIndividual = customer.type === 'individual';
+              
               return (
                 <TableRow 
                   key={customer.id} 
                   hover
-                  onClick={() => handleClick(customer.id!)}
-                  role="checkbox"
-                  aria-checked={isItemSelected}
-                  selected={isItemSelected}
                   sx={{ 
-                    cursor: 'pointer',
                     transition: 'all 0.2s',
-                    '&.Mui-selected': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                      '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                      }
-                    }
                   }}
                 >
-                  <TableCell padding="checkbox">
-                    <Checkbox
-                      checked={isItemSelected}
-                      inputProps={{ 'aria-labelledby': `customer-${customer.id}` }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </TableCell>
                   <TableCell sx={{ py: 1.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box 
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          color: theme.palette.primary.main
+                        }
+                      }}
+                      onClick={() => navigate(`/customers/${customer.id}`)}
+                    >
                       <Box
                         sx={{
                           width: 36,
                           height: 36,
                           bgcolor: alpha(
-                            customer.type === CustomerType.INDIVIDUAL 
+                            isIndividual 
                               ? theme.palette.primary.main 
                               : theme.palette.secondary.main,
                             0.1
@@ -342,7 +258,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                           mr: 1.5
                         }}
                       >
-                        {customer.type === CustomerType.INDIVIDUAL ? (
+                        {isIndividual ? (
                           <Person 
                             fontSize="small"
                             sx={{ color: theme.palette.primary.main }} 
@@ -359,8 +275,15 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                           variant="body1" 
                           fontWeight={500}
                           id={`customer-${customer.id}`}
+                          sx={{ 
+                            transition: 'color 0.2s ease',
+                            borderBottom: '1px dotted transparent',
+                            '&:hover': {
+                              borderBottomColor: theme.palette.primary.main,
+                            }
+                          }}
                         >
-                          {getCustomerName(customer)}
+                          {getDisplayName(customer)}
                         </Typography>
                         <Typography 
                           variant="caption" 
@@ -374,9 +297,9 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={customer.type === CustomerType.INDIVIDUAL ? 'Individual' : 'Business'}
+                      label={isIndividual ? 'Individual' : 'Business'}
                       size="small"
-                      color={customer.type === CustomerType.INDIVIDUAL ? 'primary' : 'secondary'}
+                      color={isIndividual ? 'primary' : 'secondary'}
                       variant="outlined"
                       sx={{ 
                         fontWeight: 500,
@@ -387,28 +310,19 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="body2">{getCustomerIdentifier(customer)}</Typography>
-                      <Tooltip title="Copy to clipboard">
-                        <IconButton 
-                          size="small" 
-                          sx={{ ml: 0.5, opacity: 0.5, '&:hover': { opacity: 1 } }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(getCustomerIdentifier(customer));
-                          }}
-                        >
-                          <ContentCopy fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <EmailIcon 
                         fontSize="small" 
                         sx={{ color: 'text.secondary', mr: 1, opacity: 0.7 }} 
                       />
-                      <Typography variant="body2">{customer.email}</Typography>
+                      <Tooltip title={customer.email}>
+                        <Typography 
+                          variant="body2" 
+                          noWrap 
+                          sx={{ maxWidth: 150 }}
+                        >
+                          {customer.email}
+                        </Typography>
+                      </Tooltip>
                     </Box>
                   </TableCell>
                   <TableCell>
@@ -420,21 +334,13 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                       <Typography variant="body2">{customer.phone}</Typography>
                     </Box>
                   </TableCell>
-                  <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {formatDate(customer.createdAt)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="right">
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <Tooltip title="View details">
-                        <IconButton
-                          size="small"
-                          onClick={() => navigate(`/customers/${customer.id}`)}
-                          sx={{ 
-                            color: theme.palette.info.main,
-                            transition: 'transform 0.2s',
-                            '&:hover': { transform: 'scale(1.1)' }
-                          }}
-                        >
-                          <Visibility fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
                       <Tooltip title="Edit customer">
                         <IconButton
                           size="small"
@@ -468,7 +374,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
             })}
             {customers.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                   <Box sx={{ 
                     display: 'flex', 
                     flexDirection: 'column', 
@@ -489,7 +395,11 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                     <Typography variant="body2" color="textSecondary" align="center" sx={{ maxWidth: 500, mb: 3 }}>
                       No customers match your current filter criteria or there are no customers in the system yet.
                     </Typography>
-                    <Button variant="contained" color="primary">
+                    <Button 
+                      variant="contained" 
+                      color="primary"
+                      onClick={() => navigate('/customers/new')}
+                    >
                       Add New Customer
                     </Button>
                   </Box>
@@ -523,12 +433,37 @@ export const CustomerList: React.FC<CustomerListProps> = ({
         PaperProps={{
           elevation: 3,
           sx: { 
-            minWidth: 180,
+            minWidth: 200,
             borderRadius: 1,
             overflow: 'hidden'
           }
         }}
       >
+        {/* Overview group */}
+        <MenuItem 
+          onClick={() => {
+            if (activeCustomerId) navigate(`/customers/${activeCustomerId}`);
+            handleMenuClose();
+          }}
+          dense
+        >
+          <AccountBox fontSize="small" sx={{ mr: 1.5 }} />
+          Customer Details
+        </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/summary`);
+            handleMenuClose();
+          }}
+          dense
+        >
+          <Dashboard fontSize="small" sx={{ mr: 1.5 }} />
+          Dashboard
+        </MenuItem>
+        
+        <Divider />
+        
+        {/* Assets & Contracts group */}
         <MenuItem 
           onClick={() => {
             if (activeCustomerId) navigate(`/customers/${activeCustomerId}/contracts`);
@@ -536,8 +471,23 @@ export const CustomerList: React.FC<CustomerListProps> = ({
           }}
           dense
         >
-          View Contracts
+          <BusinessCenter fontSize="small" sx={{ mr: 1.5 }} />
+          Contracts
         </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/vehicles`);
+            handleMenuClose();
+          }}
+          dense
+        >
+          <DirectionsCar fontSize="small" sx={{ mr: 1.5 }} />
+          Vehicles
+        </MenuItem>
+        
+        <Divider />
+        
+        {/* Finance group */}
         <MenuItem 
           onClick={() => {
             if (activeCustomerId) navigate(`/customers/${activeCustomerId}/invoices`);
@@ -545,9 +495,37 @@ export const CustomerList: React.FC<CustomerListProps> = ({
           }}
           dense
         >
-          View Invoices
+          <Receipt fontSize="small" sx={{ mr: 1.5 }} />
+          Invoices
         </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/export`);
+            handleMenuClose();
+          }}
+          dense
+        >
+          <FileDownload fontSize="small" sx={{ mr: 1.5 }} />
+          Export Data
+        </MenuItem>
+        
         <Divider />
+        
+        {/* History group */}
+        <MenuItem 
+          onClick={() => {
+            if (activeCustomerId) navigate(`/customers/${activeCustomerId}/logs`);
+            handleMenuClose();
+          }}
+          dense
+        >
+          <History fontSize="small" sx={{ mr: 1.5 }} />
+          Activity Logs
+        </MenuItem>
+        
+        <Divider />
+        
+        {/* Danger zone */}
         <MenuItem 
           onClick={() => {
             if (activeCustomerId) onDelete(activeCustomerId);
@@ -556,7 +534,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
           dense
           sx={{ color: theme.palette.error.main }}
         >
-          <Delete fontSize="small" sx={{ mr: 1 }} />
+          <Delete fontSize="small" sx={{ mr: 1.5 }} />
           Delete Customer
         </MenuItem>
       </Menu>
