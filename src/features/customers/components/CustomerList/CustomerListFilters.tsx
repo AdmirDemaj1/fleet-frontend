@@ -16,21 +16,17 @@ import {
   Grid,
   Tooltip,
   useTheme,
-  alpha,
-  ToggleButtonGroup,
-  ToggleButton
+  alpha
 } from '@mui/material';
 import { 
   Search, 
   Clear, 
-  Save, 
   Tune,
-  ViewList,
-  ViewModule,
   Person,
   Business,
-  CalendarMonth,
-  KeyboardTab
+  BusinessCenter,
+  DirectionsCar,
+  CalendarMonth
 } from '@mui/icons-material';
 import { CustomerType } from '../../types/customer.types';
 
@@ -63,41 +59,11 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
 }) => {
   const theme = useTheme();
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('list');
   const [dateRange, setDateRange] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   
   const hasActiveFilters = searchTerm || typeFilter || dateRange || statusFilter || hasVehicles !== undefined || hasContracts !== undefined || hasCollaterals !== undefined;
   const filterCount = [searchTerm, typeFilter, dateRange, statusFilter, hasVehicles !== undefined ? 'hasVehicles' : '', hasContracts !== undefined ? 'hasContracts' : '', hasCollaterals !== undefined ? 'hasCollaterals' : ''].filter(Boolean).length;
-
-  const handleViewModeChange = (
-    _event: React.MouseEvent<HTMLElement>,
-    newViewMode: string | null,
-  ) => {
-    if (newViewMode !== null) {
-      setViewMode(newViewMode);
-    }
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    // Clear search with Escape key
-    if (event.key === 'Escape' && searchTerm) {
-      onSearchChange('');
-    }
-    
-    // Focus search field with Ctrl+K
-    if (event.key === 'k' && event.ctrlKey) {
-      event.preventDefault();
-      document.getElementById('customer-search-field')?.focus();
-    }
-  };
-
-  React.useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown as any);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown as any);
-    };
-  }, [searchTerm]);
 
   return (
     <Paper 
@@ -114,10 +80,10 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
     >
       <Box sx={{ p: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={8}>
             <TextField
               id="customer-search-field"
-              placeholder="Search customers..."
+              placeholder="Search customers by name, email, phone..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
               fullWidth
@@ -130,7 +96,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                 ),
                 endAdornment: searchTerm && (
                   <InputAdornment position="end">
-                    <Tooltip title="Clear search (Esc)">
+                    <Tooltip title="Clear search">
                       <IconButton 
                         size="small" 
                         onClick={() => onSearchChange('')}
@@ -150,13 +116,9 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                 }
               }}
             />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'flex', alignItems: 'center' }}>
-              <KeyboardTab fontSize="small" sx={{ mr: 0.5, opacity: 0.7 }} />
-              Press <Box component="span" sx={{ mx: 0.5, px: 1, bgcolor: alpha(theme.palette.action.hover, 0.8), borderRadius: 1, fontSize: '0.65rem' }}>Ctrl + K</Box> to search
-            </Typography>
           </Grid>
           
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <Box sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
               <FormControl sx={{ minWidth: 140 }}>
                 <InputLabel id="customer-type-label" size="small">Customer Type</InputLabel>
@@ -189,26 +151,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                 </Select>
               </FormControl>
               
-              <FormControl sx={{ minWidth: 140 }}>
-                <InputLabel id="date-range-label" size="small">Date Range</InputLabel>
-                <Select
-                  labelId="date-range-label"
-                  value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value as string)}
-                  label="Date Range"
-                  size="small"
-                  sx={{ borderRadius: 2 }}
-                >
-                  <MenuItem value="">Any Time</MenuItem>
-                  <MenuItem value="today">Today</MenuItem>
-                  <MenuItem value="week">This Week</MenuItem>
-                  <MenuItem value="month">This Month</MenuItem>
-                  <MenuItem value="quarter">This Quarter</MenuItem>
-                  <MenuItem value="year">This Year</MenuItem>
-                </Select>
-              </FormControl>
-              
-              <Tooltip title="Advanced filters">
+              <Tooltip title="More filters">
                 <IconButton 
                   color={advancedOpen ? 'primary' : 'default'} 
                   onClick={() => setAdvancedOpen(!advancedOpen)}
@@ -217,6 +160,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                     width: 40,
                     bgcolor: advancedOpen ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
                     border: `1px solid ${advancedOpen ? theme.palette.primary.main : theme.palette.divider}`,
+                    borderRadius: 2,
                     '&:hover': {
                       bgcolor: advancedOpen ? alpha(theme.palette.primary.main, 0.15) : alpha(theme.palette.action.hover, 0.8)
                     }
@@ -225,40 +169,35 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                   <Tune fontSize="small" />
                 </IconButton>
               </Tooltip>
-              
-              <Tooltip title="Change view">
-                <ToggleButtonGroup
-                  value={viewMode}
-                  exclusive
-                  onChange={handleViewModeChange}
-                  aria-label="view mode"
-                  size="small"
-                  sx={{ 
-                    height: 40,
-                    '& .MuiToggleButton-root': {
-                      border: `1px solid ${theme.palette.divider}`
-                    }
-                  }}
-                >
-                  <ToggleButton value="list" aria-label="list view">
-                    <ViewList fontSize="small" />
-                  </ToggleButton>
-                  <ToggleButton value="grid" aria-label="grid view">
-                    <ViewModule fontSize="small" />
-                  </ToggleButton>
-                </ToggleButtonGroup>
-              </Tooltip>
             </Box>
           </Grid>
         </Grid>
         
         <Collapse in={advancedOpen}>
           <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-              Advanced Filters
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom color="text.primary">
+              Additional Filters
             </Typography>
             
             <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Date Range</InputLabel>
+                  <Select
+                    value={dateRange}
+                    onChange={(e) => setDateRange(e.target.value)}
+                    label="Date Range"
+                  >
+                    <MenuItem value="">Any Time</MenuItem>
+                    <MenuItem value="today">Today</MenuItem>
+                    <MenuItem value="week">This Week</MenuItem>
+                    <MenuItem value="month">This Month</MenuItem>
+                    <MenuItem value="quarter">This Quarter</MenuItem>
+                    <MenuItem value="year">This Year</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
               <Grid item xs={12} sm={6} md={3}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Status</InputLabel>
@@ -275,7 +214,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                 </FormControl>
               </Grid>
               
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={2}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Has Vehicles</InputLabel>
                   <Select
@@ -287,13 +226,13 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                     label="Has Vehicles"
                   >
                     <MenuItem value="">Any</MenuItem>
-                    <MenuItem value="true">With Vehicles</MenuItem>
-                    <MenuItem value="false">Without Vehicles</MenuItem>
+                    <MenuItem value="true">Yes</MenuItem>
+                    <MenuItem value="false">No</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
               
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={2}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Has Contracts</InputLabel>
                   <Select
@@ -305,13 +244,13 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                     label="Has Contracts"
                   >
                     <MenuItem value="">Any</MenuItem>
-                    <MenuItem value="true">With Contracts</MenuItem>
-                    <MenuItem value="false">Without Contracts</MenuItem>
+                    <MenuItem value="true">Yes</MenuItem>
+                    <MenuItem value="false">No</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
               
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={2}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Has Collaterals</InputLabel>
                   <Select
@@ -323,64 +262,10 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                     label="Has Collaterals"
                   >
                     <MenuItem value="">Any</MenuItem>
-                    <MenuItem value="true">With Collaterals</MenuItem>
-                    <MenuItem value="false">Without Collaterals</MenuItem>
+                    <MenuItem value="true">Yes</MenuItem>
+                    <MenuItem value="false">No</MenuItem>
                   </Select>
                 </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Region</InputLabel>
-                  <Select
-                    value=""
-                    onChange={() => {}}
-                    label="Region"
-                  >
-                    <MenuItem value="">Any Region</MenuItem>
-                    <MenuItem value="north">North</MenuItem>
-                    <MenuItem value="south">South</MenuItem>
-                    <MenuItem value="east">East</MenuItem>
-                    <MenuItem value="west">West</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Contract Type</InputLabel>
-                  <Select
-                    value=""
-                    onChange={() => {}}
-                    label="Contract Type"
-                  >
-                    <MenuItem value="">Any Contract</MenuItem>
-                    <MenuItem value="standard">Standard</MenuItem>
-                    <MenuItem value="premium">Premium</MenuItem>
-                    <MenuItem value="enterprise">Enterprise</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={6}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button 
-                    variant="outlined" 
-                    startIcon={<Save />}
-                    size="small"
-                    fullWidth
-                  >
-                    Save Filter
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    sx={{ flexShrink: 0 }}
-                  >
-                    Apply
-                  </Button>
-                </Box>
               </Grid>
             </Grid>
           </Box>
@@ -432,7 +317,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
             
             {hasVehicles !== undefined && (
               <Chip 
-                label={`Vehicles: ${hasVehicles ? 'With' : 'Without'}`} 
+                label={`Vehicles: ${hasVehicles ? 'Yes' : 'No'}`} 
                 size="small"
                 onDelete={() => onHasVehiclesChange(undefined)}
                 sx={{ borderRadius: 1.5 }}
@@ -442,7 +327,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
             
             {hasContracts !== undefined && (
               <Chip 
-                label={`Contracts: ${hasContracts ? 'With' : 'Without'}`} 
+                label={`Contracts: ${hasContracts ? 'Yes' : 'No'}`} 
                 size="small"
                 onDelete={() => onHasContractsChange(undefined)}
                 sx={{ borderRadius: 1.5 }}
@@ -452,7 +337,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
             
             {hasCollaterals !== undefined && (
               <Chip 
-                label={`Collaterals: ${hasCollaterals ? 'With' : 'Without'}`} 
+                label={`Collaterals: ${hasCollaterals ? 'Yes' : 'No'}`} 
                 size="small"
                 onDelete={() => onHasCollateralsChange(undefined)}
                 sx={{ borderRadius: 1.5 }}
