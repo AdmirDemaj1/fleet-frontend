@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useGetAuditLogsQuery } from '../../../logs/api/auditapi';
 import AuditLogList from '../../../logs/components/AuditLogList/AuditLogList';
-import { Tooltip } from '@mui/material';
 import {
   Box,
+  Card,
+  CardContent,
   Paper,
   Typography,
   TextField,
@@ -19,10 +20,10 @@ import {
   Pagination,
   CircularProgress,
   Button,
-  Divider,
   alpha,
   useTheme,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Tooltip
 } from '@mui/material';
 import {
   Search,
@@ -30,9 +31,11 @@ import {
   Refresh,
   CalendarToday,
   Sort,
-  History
+  History as HistoryIcon,
+  FilterList as FilterListIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
-import { format, startOfDay, endOfDay, subDays, parse, isValid } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays } from 'date-fns';
 import { useDebounce } from '../../../../shared/hooks/useDebounce';
 
 interface CustomerAccountLogsProps {
@@ -55,6 +58,7 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId })
   const [endDate, setEndDate] = useState<Date | null>(new Date());
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [showFilters, setShowFilters] = useState(false);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -140,6 +144,7 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId })
     setDateRange('30days');
     setSelectedEventTypes([]);
     setSortOrder('desc');
+    setShowFilters(false);
   };
 
   const hasActiveFilters = searchTerm || 
@@ -147,22 +152,95 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId })
     dateRange !== '30days' ||
     sortOrder !== 'desc';
 
-  return (
-    <Box>
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
-        <History fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
-        <Typography variant="h6" component="h2">
-          Account Activity
-        </Typography>
-      </Box>
+  // Mock export function (you can replace with actual implementation)
+  const handleExport = () => {
+    console.log('Exporting logs...');
+    // Implement actual export functionality
+  };
 
+  return (
+    <Box sx={{ p: 0 }}>
+      {/* Header Card */}
+      <Card 
+        elevation={0} 
+        sx={{ 
+          mb: 3, 
+          borderRadius: 2,
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: theme.shadows[2]
+          }
+        }}
+      >
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <HistoryIcon 
+                color="primary" 
+                sx={{ mr: 1.5, fontSize: 28 }} 
+              />
+              <Typography variant="h5" color="primary" fontWeight="bold">
+                Account Activity
+              </Typography>
+            </Box>
+            
+            <Box>
+              <Tooltip title="Toggle filters">
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterListIcon />}
+                  onClick={() => setShowFilters(!showFilters)}
+                  sx={{ 
+                    borderRadius: 2,
+                    mr: 1,
+                    borderColor: 'divider',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04)
+                    }
+                  }}
+                >
+                  Filters {hasActiveFilters && `(${selectedEventTypes.length + (searchTerm ? 1 : 0) + (dateRange !== '30days' ? 1 : 0) + (sortOrder !== 'desc' ? 1 : 0)})`}
+                </Button>
+              </Tooltip>
+              
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleExport}
+                sx={{ 
+                  borderRadius: 2,
+                  borderColor: 'divider',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04)
+                  }
+                }}
+              >
+                Export
+              </Button>
+            </Box>
+          </Box>
+          
+          <Typography variant="body2" color="text.secondary" paragraph>
+            View all activity and changes related to this customer account. Filter by type, date, or search for specific events.
+          </Typography>
+        </CardContent>
+      </Card>
+
+      {/* Search & Filters */}
       <Paper 
         elevation={0} 
         variant="outlined" 
         sx={{ 
           p: 2, 
           mb: 3, 
-          borderRadius: 2
+          borderRadius: 2,
+          display: showFilters || hasActiveFilters ? 'block' : 'none',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: theme.shadows[1]
+          }
         }}
       >
         <Grid container spacing={2} alignItems="center">
@@ -326,42 +404,73 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId })
         )}
       </Paper>
 
-      {isLoading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" height={200}>
-          <CircularProgress />
-        </Box>
-      ) : error ? (
-        <Paper 
-          elevation={0} 
-          variant="outlined" 
-          sx={{ 
-            p: 3, 
-            borderRadius: 2,
-            bgcolor: alpha(theme.palette.error.main, 0.05),
-            borderColor: theme.palette.error.main,
-            mb: 3
-          }}
-        >
-          <Typography color="error" variant="h6" gutterBottom>
-            Error Loading Account Logs
-          </Typography>
-          <Typography color="error.dark">
-            {('message' in error) ? error.message : 'An unexpected error occurred while loading the account logs.'}
-          </Typography>
-          <Button 
-            variant="outlined" 
-            color="error" 
-            onClick={() => refetch()} 
-            sx={{ mt: 2, borderRadius: 2 }}
-            startIcon={<Refresh />}
+      {/* Main Content */}
+      <Paper 
+        elevation={0} 
+        variant="outlined" 
+        sx={{ 
+          width: '100%',
+          borderRadius: 2,
+          overflow: 'hidden',
+          borderColor: theme.palette.divider,
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: theme.shadows[2]
+          }
+        }}
+      >
+        {isLoading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Box 
+            sx={{ 
+              p: 3, 
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.error.main, 0.05),
+              textAlign: 'center'
+            }}
           >
-            Retry
-          </Button>
-        </Paper>
-      ) : (
-        <AuditLogList logs={logs} />
-      )}
+            <Typography color="error" variant="h6" gutterBottom>
+              Error Loading Account Logs
+            </Typography>
+            <Typography color="error.dark">
+              {('message' in error) ? error.message : 'An unexpected error occurred while loading the account logs.'}
+            </Typography>
+            <Button 
+              variant="outlined" 
+              color="error" 
+              onClick={() => refetch()} 
+              sx={{ mt: 2, borderRadius: 2 }}
+              startIcon={<Refresh />}
+            >
+              Retry
+            </Button>
+          </Box>
+        ) : logs.length === 0 ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 5 }}>
+            <HistoryIcon sx={{ fontSize: 48, color: alpha(theme.palette.text.secondary, 0.2), mb: 2 }} />
+            <Typography color="text.secondary" align="center">
+              No logs found for this customer
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1, mb: 2, maxWidth: 500 }}>
+              Try adjusting your search criteria or filters to find relevant account activity.
+            </Typography>
+            <Button 
+              variant="outlined" 
+              onClick={handleResetFilters}
+              sx={{ borderRadius: 2 }}
+            >
+              Reset Filters
+            </Button>
+          </Box>
+        ) : (
+          <AuditLogList logs={logs} />
+        )}
+      </Paper>
 
+      {/* Pagination Section */}
       {logs.length > 0 && !isLoading && (
         <Paper 
           sx={{ 
@@ -376,7 +485,7 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId })
           variant="outlined"
         >
           <Box>
-            <Typography variant="body2" color="textSecondary">
+            <Typography variant="body2" color="text.secondary">
               Showing {(page - 1) * rowsPerPage + 1} - {Math.min(page * rowsPerPage, total)} of {total} log entries
             </Typography>
           </Box>

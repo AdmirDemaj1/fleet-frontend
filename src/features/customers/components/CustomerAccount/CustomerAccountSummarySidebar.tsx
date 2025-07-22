@@ -1,12 +1,12 @@
 import React from 'react';
 import { 
   Box, Typography, Divider, Chip, Tooltip, Paper, 
-  List, ListItem, ListItemText, ListItemIcon, Avatar,
+  List, ListItem, ListItemText, Avatar,
   LinearProgress, alpha
 } from '@mui/material';
 import { 
   AccountCircle, AttachMoney, Event, LocalShipping,
-  Domain, Link, CalendarMonth, MoreVert
+  Domain, Link, CalendarMonth
 } from '@mui/icons-material';
 
 interface CustomerAccountSidebarProps {
