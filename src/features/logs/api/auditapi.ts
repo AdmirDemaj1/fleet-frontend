@@ -1,17 +1,27 @@
 // src/features/logs/api/auditapi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { AuditLogResponseDto, FindAuditLogsDto, CustomerLogFilters } from '../types/audit.types';
+import { API_ENDPOINTS } from '../../../shared/utils/constants';
 
 export const auditApi = createApi({
   reducerPath: 'auditApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: fetchBaseQuery({ 
+    baseUrl: '/api',
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
   endpoints: (builder) => ({
     getAuditLogs: builder.query<
       { data: AuditLogResponseDto[]; total: number },
       FindAuditLogsDto
     >({
       query: (params) => ({
-        url: '/audit/logs',
+        url: API_ENDPOINTS.AUDIT,
         params: {
           search: params.search,
           limit: params.limit,

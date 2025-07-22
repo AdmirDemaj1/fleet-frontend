@@ -1,10 +1,10 @@
 export enum VehicleStatus {
-  AVAILABLE = 'AVAILABLE', 
-  LEASED = 'LEASED', 
-  COLLATERAL = 'COLLATERAL', 
-  MAINTENANCE = 'MAINTENANCE', 
-  SOLD = 'SOLD', 
-  LIQUID_ASSET = 'LIQUID_ASSET', 
+  AVAILABLE = 'AVAILABLE', // Available for lease/use
+  LEASED = 'LEASED', // Currently leased out
+  // COLLATERAL = 'COLLATERAL', // Used as loan collateral
+  MAINTENANCE = 'MAINTENANCE', // Under maintenance
+  SOLD = 'SOLD', // Sold to customer
+  LIQUID_ASSET = 'LIQUID_ASSET', // Liquidated/retired assets
 }
 
 export enum ConditionStatus {
@@ -20,6 +20,7 @@ export enum FuelType {
   DIESEL = 'DIESEL',
   ELECTRIC = 'ELECTRIC',
   HYBRID = 'HYBRID',
+  LPG = 'LPG'
 }
 
 export enum InsuranceCompany {
@@ -28,53 +29,74 @@ export enum InsuranceCompany {
   OTHER = 'OTHER',
 }
 
-
 export interface Vehicle {
   id: string;
   licensePlate: string;
-  oldLicensePlate: string;
   vin: string;
   make: string;
   model: string;
   year: number;
-  color: string;
-  fuelType: FuelType;
-  legalOwner: string;
-  currentClientId: string;
+  color?: string;
   status: VehicleStatus;
-  conditionStatus: ConditionStatus;
-  isLiquidAsset: boolean;
-  purchaseValue: number;
-  depreciatedValue: number;
-  marketValue: number;
-  insuranceValue: number;
-  currentValuation: number;
-  lastValuationDate: Date;
-  primaryInsuranceCompany: InsuranceCompany;
-  tplExpiryDate: Date;
-  kaskoExpiryDate: Date;
-  passengerInsuranceExpiry: Date;
-  currentMileage: number;
-  nextMaintenanceDate: Date;
-  lastServiceDate: Date;
-  purchaseDate: Date;
-  registrationExpiry: Date;
-  creditStatus: string;
-  notes: string;
-  additionalData: Record<string, any>;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string;
-  updatedBy: string;
+  condition?: ConditionStatus;
+  mileage?: number;
+  fuelType?: FuelType;
+  transmission?: string;
+  currentValuation?: number;
+  marketValue?: number;
+  depreciatedValue?: number;
+  purchaseDate?: string;
+  purchasePrice?: number;
+  registrationDate?: string;
+  registrationExpiryDate?: string;
+  insuranceProvider?: InsuranceCompany;
+  insurancePolicyNumber?: string;
+  insuranceExpiryDate?: string;
+  maintenanceHistory?: MaintenanceRecord[];
+  documents?: Document[];
+  customerId?: string;
+  customerName?: string;
+  isLiquidAsset?: boolean;
+  legalOwner?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface VehicleFilters {
+export interface MaintenanceRecord {
+  id: string;
+  date: string;
+  description: string;
+  cost: number;
+  mileage: number;
+  performed: boolean;
+}
+
+export interface Document {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  uploadDate: string;
+}
+
+export interface VehicleQueryParams {
   status?: VehicleStatus;
+  legalOwner?: string;
   make?: string;
   model?: string;
   year?: number;
-  legalOwner?: string;
+  isLiquidAsset?: boolean;
   search?: string;
+  page?: number;
   limit?: number;
-  offset?: number;
+}
+
+export interface VehicleStatistics {
+  totalVehicles: number;
+  availableVehicles: number;
+  leasedVehicles: number;
+  collateralVehicles: number;
+  maintenanceVehicles: number;
+  liquidAssets: number;
+  totalValue: number;
 }

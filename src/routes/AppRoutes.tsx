@@ -10,6 +10,8 @@ import CustomerAccountPage from '../features/customers/containers/CustomerAccoun
 import CustomerSummaryPage from '../features/customers/containers/Account/CustomerSummaryPage';
 import CustomerContractsPage from '../features/customers/containers/Account/CustomerContractsPage';
 import CustomerLogsPage from '../features/customers/containers/Account/CustomerLogsPage';
+import createCustomerPage from '../features/customers/containers/CreateCustomerPage';
+import CreateVehiclePage from '../features/vehicles/containers/CreateVehiclePage';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -32,7 +34,7 @@ export const AppRoutes: React.FC = () => {
 
         <Route path="vehicles">
           <Route index element={<VehiclesPage />} />
-          <Route path="new" element={<div>New Vehicle Page</div>} />
+          <Route path="new" element={<CreateVehiclePage />} />
           <Route path=":id/edit" element={<div>edit Vehicle Page</div>} />
         </Route>
 
