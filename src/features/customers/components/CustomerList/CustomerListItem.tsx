@@ -218,19 +218,6 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         
         <TableCell align="right">
           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Tooltip title="Edit customer">
-              <IconButton
-                size="small"
-                onClick={() => navigate(`/customers/${customer.id}/edit`)}
-                sx={{ 
-                  color: theme.palette.warning.main,
-                  transition: 'transform 0.2s',
-                  '&:hover': { transform: 'scale(1.1)' }
-                }}
-              >
-                <Edit fontSize="small" />
-              </IconButton>
-            </Tooltip>
             <Tooltip title="More options">
               <IconButton
                 size="small"
