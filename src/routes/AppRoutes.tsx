@@ -10,6 +10,8 @@ import { ContractsPage } from '../features/contracts/containers/ContratsPage';
 import { ContractForm } from '../features/contracts/components/ContractForm';
 import AddContract from '../features/contracts/containers/AddContract';
 import CreateContrats from '../features/contracts/containers/CreateContrats';
+import PaymentsPage from '../features/payments/containers/PaymentsPage';
+
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -24,12 +26,10 @@ export const AppRoutes: React.FC = () => {
         </Route>
         {/* Add other routes here */}
         <Route path="vehicles" element={<div>Vehicles Page</div>} />
-        <Route path="contracts" element={<ContractsPage/>} />
-        <Route path="assets" element={<div>Assets Page</div>} />
-        <Route path="/contracts" element={<ContractsPage />} />
+        <Route path="/contracts" element={<ContractsPage/>} />
         <Route path="/contracts/new" element={<AddContract />} />
         <Route path="create" element={<CreateContrats />} />
-
+        <Route path="payments" element={<PaymentsPage />} />
       </Route>
     </Routes>
   );

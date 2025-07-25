@@ -30,7 +30,10 @@ const menuItems = [
   { text: 'Customers', icon: <People />, path: '/customers' },
   { text: 'Vehicles', icon: <DirectionsCar />, path: '/vehicles' },
   { text: 'Contracts', icon: <Description />, path: '/contracts' },
-  { text: 'Assets', icon: <AccountBalance />, path: '/assets' }
+  { text: 'Assets', icon: <AccountBalance />, path: '/assets' },
+  { text: 'Payments', icon: <AccountBalance />, path: '/payments' }
+
+ 
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ drawerWidth, mobileOpen, onClose }) => {
