@@ -174,7 +174,6 @@ export const customerApi = {
     }
   ): Promise<any[]> => {
     const params = new URLSearchParams();
-    params.append('customerId', id);
     if (options?.status) params.append('status', options.status);
     if (options?.type) params.append('type', options.type);
     if (options?.dateRange) params.append('dateRange', options.dateRange);
@@ -182,7 +181,7 @@ export const customerApi = {
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.offset) params.append('offset', options.offset.toString());
     
-    const response = await api.get<any[]>(`/payments?${params.toString()}`);
+    const response = await api.get<any[]>(`/customers/${id}/payments?${params.toString()}`);
     return response.data;
   }
 };
