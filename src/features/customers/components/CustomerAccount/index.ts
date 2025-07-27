@@ -1,7 +1,9 @@
 // Components
 export { ContractFilters } from './ContractFilters';
+export { VehicleFilters } from './VehicleFilters';
 export { default as CustomerAccountContracts } from './CustomerAccountContracts';
 export { default as CustomerAccountInvoices } from './CustomerAccountInvoices';
+export { default as CustomerAccountVehicles } from './CustomerAccountVehicles';
 
 // Types - Contract Filters
 export type {
@@ -40,6 +42,27 @@ export type {
   InvoiceMenuState
 } from '../../types/customerInvoices.types';
 
+// Types - Customer Vehicles
+export type {
+  VehicleOrder,
+  VehicleOrderBy,
+  CustomerAccountVehiclesProps,
+  VehicleStatusConfig,
+  VehicleNotificationState,
+  VehicleDialogStates,
+  VehicleMenuState
+} from '../../types/customerVehicles.types';
+
+// Types - Vehicle Filters
+export type {
+  VehicleFilters as VehicleFiltersType,
+  VehicleFiltersProps,
+  FilterOption as VehicleFilterOption,
+  StatusOption as VehicleStatusOption,
+  FilterKey as VehicleFilterKey,
+  FilterChipData as VehicleFilterChipData
+} from '../../types/vehicleFilters.types';
+
 // Hooks - Contract Filters
 export { useContractFilters, useFilterOptions } from '../../hooks/useContractFilters';
 
@@ -61,6 +84,19 @@ export {
   useInvoiceNotification
 } from '../../hooks/useCustomerInvoices';
 
+// Hooks - Customer Vehicles
+export {
+  useCustomerVehicles,
+  useVehiclesTable,
+  useVehicleDialogStates,
+  useVehicleMenuState,
+  useVehicleNotification,
+  useVehicleOperations
+} from '../../hooks/useCustomerVehicles';
+
+// Hooks - Vehicle Filters
+export { useVehicleFilters } from '../../hooks/useVehicleFilters';
+
 // Constants - Filters
 export { TYPE_OPTIONS, DATE_RANGE_OPTIONS, AMOUNT_RANGE_OPTIONS } from '../../constants/filterOptions';
 export { STATUS_OPTIONS } from '../../constants/statusOptions';
@@ -81,6 +117,19 @@ export {
   INVOICE_ROWS_PER_PAGE_OPTIONS
 } from '../../constants/invoiceConstants';
 
+// Constants - Vehicles
+export { 
+  VEHICLE_STATUS_CONFIG,
+  DEFAULT_VEHICLES_ROWS_PER_PAGE,
+  VEHICLES_ROWS_PER_PAGE_OPTIONS
+} from '../../constants/vehicleConstants';
+
+// Constants - Vehicle Filters
+export { 
+  VEHICLE_STATUS_OPTIONS,
+  getYearOptions
+} from '../../constants/vehicleFiltersConstants';
+
 // Utils - Contracts
 export { 
   formatCurrency as contractFormatCurrency, 
@@ -99,3 +148,14 @@ export {
   sortInvoices 
 } from '../../utils/invoiceUtils';
 export { renderInvoiceStatusCell, renderInvoiceTypeCell } from '../../utils/invoiceRenderUtils';
+
+// Utils - Vehicles
+export { 
+  formatCurrency as vehicleFormatCurrency, 
+  formatDate as vehicleFormatDate, 
+  getVehicleStatusColor,
+  getVehicleStatusText,
+  filterVehicles, 
+  sortVehicles 
+} from '../../utils/vehicleUtils';
+export { renderVehicleStatusCell } from '../../utils/vehicleRenderUtils';
