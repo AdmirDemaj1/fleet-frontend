@@ -13,7 +13,9 @@ import {
   ListItemIcon, 
   IconButton,
   useTheme,
-  alpha
+  alpha,
+  Skeleton,
+  Alert
 } from '@mui/material';
 import {
   Receipt as ReceiptIcon,
@@ -26,6 +28,7 @@ import {
   Assignment as LogIcon,
   Error as ErrorIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 interface Invoice {
   id: string;
@@ -43,15 +46,42 @@ interface LogEntry {
 }
 
 interface CustomerBillingAndLogsCardsProps {
+  customerId: string;
   recentInvoices: Invoice[];
   recentLogs: LogEntry[];
+  onInvoicesClick?: () => void;
+  onLogsClick?: () => void;
+  invoicesLoading?: boolean;
+  invoicesError?: string | null;
 }
 
 const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = ({ 
+  customerId,
   recentInvoices, 
-  recentLogs 
+  recentLogs,
+  onInvoicesClick,
+  onLogsClick,
+  invoicesLoading = false,
+  invoicesError = null
 }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
+
+  const handleInvoicesClick = () => {
+    if (onInvoicesClick) {
+      onInvoicesClick();
+    } else {
+      navigate(`/customers/${customerId}/invoices`);
+    }
+  };
+
+  const handleLogsClick = () => {
+    if (onLogsClick) {
+      onLogsClick();
+    } else {
+      navigate(`/customers/${customerId}/logs`);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch(status) {
@@ -111,7 +141,13 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                 <ReceiptIcon sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 20 }} />
                 <Typography variant="subtitle1" fontWeight="medium">Recent Invoices</Typography>
               </Box>
-              <IconButton size="small" color="primary" sx={{ p: 0.5 }}>
+              <IconButton 
+                size="small" 
+                color="primary" 
+                sx={{ p: 0.5 }}
+                onClick={handleInvoicesClick}
+                title="View all invoices"
+              >
                 <ArrowForwardIcon fontSize="small" />
               </IconButton>
             </Box>
@@ -119,7 +155,32 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
             <Divider />
             
             <List sx={{ p: 0, maxHeight: '300px', overflow: 'auto' }} dense>
-              {recentInvoices.length > 0 ? (
+              {invoicesLoading ? (
+                // Loading skeleton
+                [...Array(3)].map((_, index) => (
+                  <ListItem key={index} sx={{ py: 0.75, px: 1.5 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <Skeleton variant="circular" width={20} height={20} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={<Skeleton variant="text" width="60%" height={20} />}
+                      secondary={<Skeleton variant="text" width="40%" height={16} />}
+                      sx={{ my: 0 }}
+                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Skeleton variant="text" width={60} height={20} sx={{ mr: 1 }} />
+                      <Skeleton variant="rectangular" width={50} height={20} sx={{ borderRadius: 1 }} />
+                    </Box>
+                  </ListItem>
+                ))
+              ) : invoicesError ? (
+                // Error state
+                <Box sx={{ py: 2, px: 1.5 }}>
+                  <Alert severity="error" sx={{ fontSize: '0.75rem' }}>
+                    {invoicesError}
+                  </Alert>
+                </Box>
+              ) : recentInvoices.length > 0 ? (
                 recentInvoices.map((invoice, index) => (
                   <React.Fragment key={invoice.id}>
                     <ListItem 
@@ -134,8 +195,18 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                       </ListItemIcon>
                       <ListItemText 
                         primary={
-                          <Typography variant="body2" fontWeight="medium" sx={{ lineHeight: 0.87 }}>
-                            {invoice.id}
+                          <Typography 
+                            variant="body2" 
+                            fontWeight="medium" 
+                            sx={{ 
+                              lineHeight: 0.87,
+                              cursor: 'help',
+                              fontFamily: 'monospace',
+                              fontSize: '0.8rem'
+                            }}
+                            title={`Full ID: ${invoice.id}`}
+                          >
+                            INV-{invoice.id.split('-')[0].toUpperCase()}
                           </Typography>
                         }
                         secondary={
@@ -188,7 +259,13 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                 <LogIcon sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 20 }} />
                 <Typography variant="subtitle1" fontWeight="medium">Recent Activity</Typography>
               </Box>
-              <IconButton size="small" color="primary" sx={{ p: 0.5 }}>
+              <IconButton 
+                size="small" 
+                color="primary" 
+                sx={{ p: 0.5 }}
+                onClick={handleLogsClick}
+                title="View all logs"
+              >
                 <ArrowForwardIcon fontSize="small" />
               </IconButton>
             </Box>

@@ -38,29 +38,44 @@ import {
   Warning as WarningIcon,
   ErrorOutline as ErrorIcon,
   AccessTime as PendingIcon,
-  DescriptionOutlined as ContractIcon,
-  Receipt as InvoiceIcon
+  Receipt as InvoiceIcon,
+  Payment as PaymentIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { customerApi } from '../../api/customerApi';
-import { ContractSummary } from '../../types/customer.types';
-import { ContractFilters, ContractFilters as ContractFiltersType } from './ContractFilters';
+import InvoiceFilters, { InvoiceFilters as InvoiceFiltersType } from './InvoiceFilters';
 import { ConfirmDialog } from '../../../../shared/components/ConfirmDialog';
 
-// Status configuration
-const CONTRACT_STATUS_CONFIG = {
-  draft: { icon: <PendingIcon fontSize="small" />, color: 'default' as const, label: 'Draft' },
-  active: { icon: <CheckCircleIcon fontSize="small" />, color: 'success' as const, label: 'Active' },
+// Payment/Invoice status configuration
+const PAYMENT_STATUS_CONFIG = {
   pending: { icon: <PendingIcon fontSize="small" />, color: 'warning' as const, label: 'Pending' },
-  completed: { icon: <CheckCircleIcon fontSize="small" />, color: 'info' as const, label: 'Completed' },
+  paid: { icon: <CheckCircleIcon fontSize="small" />, color: 'success' as const, label: 'Paid' },
+  overdue: { icon: <ErrorIcon fontSize="small" />, color: 'error' as const, label: 'Overdue' },
   cancelled: { icon: <ErrorIcon fontSize="small" />, color: 'error' as const, label: 'Cancelled' }
 };
 
-// Contract type configuration
-const CONTRACT_TYPE_CONFIG = {
-  loan: { label: 'Loan', color: '#1976d2' },
-  leasing: { label: 'Leasing', color: '#9c27b0' }
+// Payment type configuration
+const PAYMENT_TYPE_CONFIG = {
+  monthly: { label: 'Monthly', color: '#1976d2' },
+  deposit: { label: 'Deposit', color: '#9c27b0' },
+  final: { label: 'Final', color: '#388e3c' },
+  penalty: { label: 'Penalty', color: '#f44336' }
 };
+
+// Invoice/Payment interface (based on backend PaymentDto)
+interface Invoice {
+  id: string;
+  contractId: string;
+  amount: number;
+  dueDate: string | Date;
+  paymentDate?: string | Date;
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+  type: 'monthly' | 'deposit' | 'final' | 'penalty';
+  notes?: string;
+  paymentMethod?: string;
+  transactionReference?: string;
+  createdAt: string | Date;
+}
 
 // Utility functions
 const formatCurrency = (amount: number | null | undefined): string => {
@@ -80,21 +95,26 @@ const formatDate = (date: string | Date | null | undefined): string => {
   }
 };
 
-type Order = 'asc' | 'desc';
-type OrderBy = 'contractNumber' | 'type' | 'status' | 'startDate' | 'endDate' | 'totalAmount' | 'remainingAmount';
+const isOverdue = (dueDate: string | Date, status: string): boolean => {
+  if (status === 'paid') return false;
+  return dayjs(dueDate).isBefore(dayjs(), 'day');
+};
 
-interface CustomerAccountContractsProps {
+type Order = 'asc' | 'desc';
+type OrderBy = 'amount' | 'dueDate' | 'paymentDate' | 'status' | 'type' | 'createdAt';
+
+interface CustomerAccountInvoicesProps {
   customerId?: string;
 }
 
-const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ customerId: propCustomerId }) => {
+const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ customerId: propCustomerId }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { id: urlCustomerId } = useParams<{ id: string }>();
   const customerId = propCustomerId || urlCustomerId;
   
   // State management
-  const [contracts, setContracts] = useState<ContractSummary[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -104,10 +124,10 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
   
   // Sorting
   const [order, setOrder] = useState<Order>('desc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('startDate');
+  const [orderBy, setOrderBy] = useState<OrderBy>('dueDate');
   
   // Filters
-  const [filters, setFilters] = useState<ContractFiltersType>({
+  const [filters, setFilters] = useState<InvoiceFiltersType>({
     search: '',
     status: '',
     type: '',
@@ -116,13 +136,13 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
   });
   
   // Dialogs
-  const [showNewContractDialog, setShowNewContractDialog] = useState(false);
+  const [showNewInvoiceDialog, setShowNewInvoiceDialog] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [contractToDelete, setContractToDelete] = useState<string | null>(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
   
   // Menu state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedContract, setSelectedContract] = useState<ContractSummary | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   
   // Notification
   const [notification, setNotification] = useState({
@@ -131,19 +151,20 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
     severity: 'info' as 'success' | 'error' | 'warning' | 'info'
   });
 
-  // Fetch contracts
-  const fetchContracts = useCallback(async () => {
+  // Fetch invoices (payments)
+  const fetchInvoices = useCallback(async () => {
     if (!customerId) return;
     
     setLoading(true);
     setError(null);
     
     try {
-      const data = await customerApi.getContracts(customerId);
-      setContracts(data);
+      // This would call the payments API filtered by customer
+      const data = await customerApi.getInvoices(customerId);
+      setInvoices(data);
     } catch (error) {
-      console.error('Failed to fetch contracts:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load contracts';
+      console.error('Failed to fetch invoices:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load invoices';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -151,59 +172,69 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
   }, [customerId]);
 
   useEffect(() => {
-    fetchContracts();
-  }, [fetchContracts]);
+    fetchInvoices();
+  }, [fetchInvoices]);
 
-  // Filter contracts
-  const filteredContracts = useMemo(() => {
-    let filtered = [...contracts];
+  // Filter invoices
+  const filteredInvoices = useMemo(() => {
+    let filtered = [...invoices].map(invoice => ({
+      ...invoice,
+      status: isOverdue(invoice.dueDate, invoice.status) && invoice.status === 'pending' 
+        ? 'overdue' 
+        : invoice.status
+    }));
 
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(contract => 
-        contract.contractNumber?.toLowerCase().includes(searchTerm) ||
-        contract.type?.toLowerCase().includes(searchTerm) ||
-        contract.status?.toLowerCase().includes(searchTerm)
+      filtered = filtered.filter(invoice => 
+        invoice.id?.toLowerCase().includes(searchTerm) ||
+        invoice.transactionReference?.toLowerCase().includes(searchTerm) ||
+        invoice.notes?.toLowerCase().includes(searchTerm)
       );
     }
 
     if (filters.status) {
-      filtered = filtered.filter(contract => 
-        contract.status?.toLowerCase() === filters.status.toLowerCase()
+      filtered = filtered.filter(invoice => 
+        invoice.status?.toLowerCase() === filters.status.toLowerCase()
       );
     }
 
     if (filters.type) {
-      filtered = filtered.filter(contract => 
-        contract.type?.toLowerCase() === filters.type.toLowerCase()
+      filtered = filtered.filter(invoice => 
+        invoice.type?.toLowerCase() === filters.type.toLowerCase()
       );
     }
 
     return filtered;
-  }, [contracts, filters]);
+  }, [invoices, filters]);
 
-  // Sort contracts
-  const sortedContracts = useMemo(() => {
-    return filteredContracts.slice().sort((a, b) => {
-      let aValue = a[orderBy];
-      let bValue = b[orderBy];
+  // Sort invoices
+  const sortedInvoices = useMemo(() => {
+    return filteredInvoices.slice().sort((a, b) => {
+      let aValue: any = a[orderBy];
+      let bValue: any = b[orderBy];
 
-      if (orderBy === 'startDate' || orderBy === 'endDate') {
+      if (orderBy === 'dueDate' || orderBy === 'paymentDate' || orderBy === 'createdAt') {
         aValue = aValue ? dayjs(aValue).valueOf() : 0;
         bValue = bValue ? dayjs(bValue).valueOf() : 0;
       }
+
+      // Handle undefined/null values
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return order === 'asc' ? -1 : 1;
+      if (bValue == null) return order === 'asc' ? 1 : -1;
 
       if (aValue < bValue) return order === 'asc' ? -1 : 1;
       if (aValue > bValue) return order === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [filteredContracts, order, orderBy]);
+  }, [filteredInvoices, order, orderBy]);
 
-  // Paginate contracts
-  const paginatedContracts = useMemo(() => {
+  // Paginate invoices
+  const paginatedInvoices = useMemo(() => {
     const startIndex = page * rowsPerPage;
-    return sortedContracts.slice(startIndex, startIndex + rowsPerPage);
-  }, [sortedContracts, page, rowsPerPage]);
+    return sortedInvoices.slice(startIndex, startIndex + rowsPerPage);
+  }, [sortedInvoices, page, rowsPerPage]);
 
   // Event handlers
   const handleRequestSort = (property: OrderBy) => {
@@ -223,49 +254,68 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
     setPage(0);
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, contract: ContractSummary) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, invoice: Invoice) => {
     setAnchorEl(event.currentTarget);
-    setSelectedContract(contract);
+    setSelectedInvoice(invoice);
   };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setSelectedContract(null);
+    setSelectedInvoice(null);
   };
 
-  const handleDelete = (contractId: string) => {
-    setContractToDelete(contractId);
+  const handleDelete = (invoiceId: string) => {
+    setInvoiceToDelete(invoiceId);
     setDeleteDialogOpen(true);
   };
 
   const confirmDelete = async () => {
-    if (contractToDelete) {
+    if (invoiceToDelete) {
       try {
-        console.log(`Deleting contract ${contractToDelete}`);
+        console.log(`Deleting invoice ${invoiceToDelete}`);
         setNotification({
           open: true,
-          message: 'Contract deleted successfully',
+          message: 'Invoice deleted successfully',
           severity: 'success'
         });
-        await fetchContracts();
-        if (paginatedContracts.length === 1 && page > 0) {
+        await fetchInvoices();
+        if (paginatedInvoices.length === 1 && page > 0) {
           setPage(page - 1);
         }
       } catch (error) {
         setNotification({
           open: true,
-          message: 'Failed to delete contract',
+          message: 'Failed to delete invoice',
           severity: 'error'
         });
       }
       setDeleteDialogOpen(false);
-      setContractToDelete(null);
+      setInvoiceToDelete(null);
+    }
+  };
+
+  const handleMarkAsPaid = async (invoiceId: string) => {
+    try {
+      // Call API to mark invoice as paid
+      console.log(`Marking invoice ${invoiceId} as paid`);
+      setNotification({
+        open: true,
+        message: 'Invoice marked as paid',
+        severity: 'success'
+      });
+      await fetchInvoices();
+    } catch (error) {
+      setNotification({
+        open: true,
+        message: 'Failed to mark invoice as paid',
+        severity: 'error'
+      });
     }
   };
 
   // Render functions
   const renderStatusCell = (status: string) => {
-    const config = CONTRACT_STATUS_CONFIG[status.toLowerCase() as keyof typeof CONTRACT_STATUS_CONFIG] || {
+    const config = PAYMENT_STATUS_CONFIG[status.toLowerCase() as keyof typeof PAYMENT_STATUS_CONFIG] || {
       icon: <WarningIcon fontSize="small" />,
       color: 'default' as const,
       label: 'Unknown'
@@ -283,7 +333,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
   };
 
   const renderTypeCell = (type: string) => {
-    const config = CONTRACT_TYPE_CONFIG[type?.toLowerCase() as keyof typeof CONTRACT_TYPE_CONFIG];
+    const config = PAYMENT_TYPE_CONFIG[type?.toLowerCase() as keyof typeof PAYMENT_TYPE_CONFIG];
     
     return (
       <Chip
@@ -302,7 +352,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
   };
 
   // Loading state - following customer list pattern
-  if (loading && contracts.length === 0) {
+  if (loading && invoices.length === 0) {
     return (
       <Paper 
         elevation={2}
@@ -322,7 +372,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
           </Box>
           <Divider sx={{ mb: 2 }} />
           <Box sx={{ display: 'flex', mb: 1.5 }}>
-            {['20%', '15%', '15%', '15%', '15%', '20%'].map((width, i) => (
+            {['15%', '15%', '15%', '15%', '15%', '15%', '10%'].map((width, i) => (
               <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
             ))}
           </Box>
@@ -333,7 +383,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
               alignItems: 'center',
               borderBottom: index < 4 ? `1px solid ${theme.palette.divider}` : 'none'
             }}>
-              {['20%', '15%', '15%', '15%', '15%', '20%'].map((width, i) => (
+              {['15%', '15%', '15%', '15%', '15%', '15%', '10%'].map((width, i) => (
                 <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
               ))}
             </Box>
@@ -347,7 +397,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
   }
 
   // Error state
-  if (error && !contracts.length) {
+  if (error && !invoices.length) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -355,7 +405,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
         </Alert>
         <Button
           variant="contained"
-          onClick={fetchContracts}
+          onClick={fetchInvoices}
         >
           Retry
         </Button>
@@ -369,29 +419,29 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h5" fontWeight={600} sx={{ mb: 0.5 }}>
-            Contracts
+            Invoices & Payments
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage and track customer contracts
+            Manage customer payments and invoicing
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setShowNewContractDialog(true)}
+            onClick={() => setShowNewInvoiceDialog(true)}
           >
-            New Contract
+            New Payment
           </Button>
         </Box>
       </Box>
 
       {/* Filters */}
       <Box sx={{ mb: 3 }}>
-        <ContractFilters
+        <InvoiceFilters
           filters={filters}
           onFilterChange={setFilters}
-          contractsCount={filteredContracts.length}
+          invoicesCount={filteredInvoices.length}
         />
       </Box>
 
@@ -413,11 +463,11 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
               <TableRow>
                 <TableCell>
                   <TableSortLabel
-                    active={orderBy === 'contractNumber'}
-                    direction={orderBy === 'contractNumber' ? order : 'asc'}
-                    onClick={() => handleRequestSort('contractNumber')}
+                    active={orderBy === 'amount'}
+                    direction={orderBy === 'amount' ? order : 'asc'}
+                    onClick={() => handleRequestSort('amount')}
                   >
-                    Contract #
+                    Amount
                   </TableSortLabel>
                 </TableCell>
                 <TableCell>
@@ -440,47 +490,30 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                 </TableCell>
                 <TableCell>
                   <TableSortLabel
-                    active={orderBy === 'startDate'}
-                    direction={orderBy === 'startDate' ? order : 'asc'}
-                    onClick={() => handleRequestSort('startDate')}
+                    active={orderBy === 'dueDate'}
+                    direction={orderBy === 'dueDate' ? order : 'asc'}
+                    onClick={() => handleRequestSort('dueDate')}
                   >
-                    Start Date
+                    Due Date
                   </TableSortLabel>
                 </TableCell>
                 <TableCell>
                   <TableSortLabel
-                    active={orderBy === 'endDate'}
-                    direction={orderBy === 'endDate' ? order : 'asc'}
-                    onClick={() => handleRequestSort('endDate')}
+                    active={orderBy === 'paymentDate'}
+                    direction={orderBy === 'paymentDate' ? order : 'asc'}
+                    onClick={() => handleRequestSort('paymentDate')}
                   >
-                    End Date
+                    Payment Date
                   </TableSortLabel>
                 </TableCell>
-                <TableCell align="right">
-                  <TableSortLabel
-                    active={orderBy === 'totalAmount'}
-                    direction={orderBy === 'totalAmount' ? order : 'asc'}
-                    onClick={() => handleRequestSort('totalAmount')}
-                  >
-                    Total Value
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell align="right">
-                  <TableSortLabel
-                    active={orderBy === 'remainingAmount'}
-                    direction={orderBy === 'remainingAmount' ? order : 'asc'}
-                    onClick={() => handleRequestSort('remainingAmount')}
-                  >
-                    Remaining
-                  </TableSortLabel>
-                </TableCell>
+                <TableCell>Payment Method</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedContracts.map((contract) => (
+              {paginatedInvoices.map((invoice) => (
                 <TableRow 
-                  key={contract.id} 
+                  key={invoice.id} 
                   hover
                   sx={{ 
                     transition: 'all 0.2s',
@@ -491,48 +524,42 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                 >
                   <TableCell>
                     <Typography variant="body2" fontWeight={600} color="primary">
-                      {contract.contractNumber}
+                      {formatCurrency(invoice.amount)}
                     </Typography>
                   </TableCell>
-                  <TableCell>{renderTypeCell(contract.type || 'N/A')}</TableCell>
-                  <TableCell>{renderStatusCell(contract.status || 'unknown')}</TableCell>
+                  <TableCell>{renderTypeCell(invoice.type || 'N/A')}</TableCell>
+                  <TableCell>{renderStatusCell(invoice.status || 'unknown')}</TableCell>
                   <TableCell>
-                    <Typography variant="body2">
-                      {formatDate(contract.startDate)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatDate(contract.endDate)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2" fontWeight={500}>
-                      {formatCurrency(contract.totalAmount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
                     <Typography 
-                      variant="body2" 
-                      fontWeight={500}
-                      color={contract.remainingAmount === 0 ? 'success.main' : 'text.primary'}
+                      variant="body2"
+                      color={isOverdue(invoice.dueDate, invoice.status) ? 'error.main' : 'text.primary'}
                     >
-                      {formatCurrency(contract.remainingAmount)}
+                      {formatDate(invoice.dueDate)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {formatDate(invoice.paymentDate)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {invoice.paymentMethod || 'N/A'}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
                     <IconButton
                       size="small"
-                      onClick={(event) => handleMenuOpen(event, contract)}
+                      onClick={(event) => handleMenuOpen(event, invoice)}
                     >
                       <MoreVertIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
-              {paginatedContracts.length === 0 && !loading && (
+              {paginatedInvoices.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                     <Box sx={{ 
                       display: 'flex', 
                       flexDirection: 'column', 
@@ -547,16 +574,16 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                           mb: 2
                         }}
                       >
-                        <ContractIcon sx={{ fontSize: 48, color: theme.palette.primary.main, opacity: 0.7 }} />
+                        <InvoiceIcon sx={{ fontSize: 48, color: theme.palette.primary.main, opacity: 0.7 }} />
                       </Box>
-                      <Typography variant="h6" gutterBottom>No contracts found</Typography>
+                      <Typography variant="h6" gutterBottom>No invoices found</Typography>
                       <Typography variant="body2" color="textSecondary" align="center" sx={{ maxWidth: 500, mb: 3 }}>
-                        {filteredContracts.length !== contracts.length 
-                          ? 'No contracts match your current filter criteria.'
-                          : 'This customer doesn\'t have any contracts yet.'
+                        {filteredInvoices.length !== invoices.length 
+                          ? 'No invoices match your current filter criteria.'
+                          : 'This customer doesn\'t have any invoices yet.'
                         }
                       </Typography>
-                      {filteredContracts.length !== contracts.length ? (
+                      {filteredInvoices.length !== invoices.length ? (
                         <Button 
                           variant="outlined" 
                           onClick={handleClearFilters}
@@ -568,9 +595,9 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                           variant="contained" 
                           color="primary"
                           startIcon={<AddIcon />}
-                          onClick={() => setShowNewContractDialog(true)}
+                          onClick={() => setShowNewInvoiceDialog(true)}
                         >
-                          Add New Contract
+                          Add New Payment
                         </Button>
                       )}
                     </Box>
@@ -583,8 +610,8 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
         
         <TablePagination
           component="div"
-          count={filteredContracts.length || 0}
-          page={Math.min(page, Math.max(0, Math.ceil((filteredContracts.length || 0) / rowsPerPage) - 1))}
+          count={filteredInvoices.length || 0}
+          page={Math.min(page, Math.max(0, Math.ceil((filteredInvoices.length || 0) / rowsPerPage) - 1))}
           onPageChange={(_, newPage) => {
             setPage(newPage);
           }}
@@ -628,8 +655,8 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <MenuItem onClick={() => {
-          if (selectedContract) {
-            navigate(`/contracts/${selectedContract.id}`);
+          if (selectedInvoice) {
+            navigate(`/invoices/${selectedInvoice.id}`);
           }
           handleMenuClose();
         }}>
@@ -638,58 +665,60 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
         </MenuItem>
         
         <MenuItem onClick={() => {
-          if (selectedContract) {
-            navigate(`/contracts/${selectedContract.id}/edit`);
+          if (selectedInvoice) {
+            navigate(`/invoices/${selectedInvoice.id}/edit`);
           }
           handleMenuClose();
         }}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} />
-          Edit Contract
+          Edit Invoice
         </MenuItem>
 
-        <MenuItem onClick={() => {
-          if (selectedContract) {
-            navigate(`/contracts/${selectedContract.id}/invoices`);
-          }
-          handleMenuClose();
-        }}>
-          <InvoiceIcon fontSize="small" sx={{ mr: 1 }} />
-          View Invoices
-        </MenuItem>
+        {selectedInvoice?.status === 'pending' && (
+          <MenuItem onClick={() => {
+            if (selectedInvoice) {
+              handleMarkAsPaid(selectedInvoice.id);
+            }
+            handleMenuClose();
+          }}>
+            <PaymentIcon fontSize="small" sx={{ mr: 1 }} />
+            Mark as Paid
+          </MenuItem>
+        )}
 
         <Divider />
         
         <MenuItem 
           onClick={() => {
-            if (selectedContract) {
-              handleDelete(selectedContract.id);
+            if (selectedInvoice) {
+              handleDelete(selectedInvoice.id);
             }
             handleMenuClose();
           }}
           sx={{ color: 'error.main' }}
         >
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          Delete Contract
+          Delete Invoice
         </MenuItem>
       </Menu>
 
-      {/* New Contract Dialog */}
+      {/* New Invoice Dialog */}
       <Dialog
-        open={showNewContractDialog}
-        onClose={() => setShowNewContractDialog(false)}
+        open={showNewInvoiceDialog}
+        onClose={() => setShowNewInvoiceDialog(false)}
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Create New Contract</DialogTitle>
+        <DialogTitle>Create New Payment</DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mt: 1 }}>
-            Contract creation form will be implemented here.
+            Payment creation form will be implemented here.
           </Alert>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowNewContractDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => setShowNewContractDialog(false)}>
-            Create Contract
+          <Button onClick={() => setShowNewInvoiceDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={() => setShowNewInvoiceDialog(false)}>
+            Create Payment
           </Button>
         </DialogActions>
       </Dialog>
@@ -697,12 +726,12 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteDialogOpen}
-        title="Delete Contract"
-        message="Are you sure you want to delete this contract? This action cannot be undone."
+        title="Delete Invoice"
+        message="Are you sure you want to delete this invoice? This action cannot be undone."
         onConfirm={confirmDelete}
         onCancel={() => {
           setDeleteDialogOpen(false);
-          setContractToDelete(null);
+          setInvoiceToDelete(null);
         }}
         confirmText="Delete"
       />
@@ -727,4 +756,4 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
   );
 };
 
-export default CustomerAccountContracts;
+export default CustomerAccountInvoices;

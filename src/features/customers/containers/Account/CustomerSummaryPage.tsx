@@ -4,9 +4,11 @@ import { useParams } from 'react-router-dom';
 import CustomerAccountSidebar from '../../components/CustomerAccount/CustomerAccountSummarySidebar';
 import CustomerAssetSummary from './../../components/CustomerAccount/CustomerAssetSummary';
 import CustomerBillingAndLogsCards from '../../components/CustomerAccount/CustomerBillingLogCards';
+import { useRecentInvoices } from '../../hooks/useRecentInvoices';
 
 const CustomerSummaryPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { invoices: recentInvoices, loading: invoicesLoading, error: invoicesError } = useRecentInvoices(id || '');
 
   if (!id) {
     return <Box>Customer ID not found</Box>;
@@ -28,15 +30,6 @@ const CustomerSummaryPage: React.FC = () => {
       lastUpdated: '2025-07-10'
     },
     // ...other assets
-  ];
-
-  // Dummy invoice data
-  const recentInvoices = [
-    { id: 'INV-2580', date: 'Jul 01, 2025', amount: '$450.00', status: 'paid' as const },
-    { id: 'INV-2571', date: 'Jun 01, 2025', amount: '$450.00', status: 'paid' as const },
-    { id: 'INV-2562', date: 'May 01, 2025', amount: '$350.56', status: 'paid' as const },
-    { id: 'INV-2553', date: 'Apr 01, 2025', amount: '$350.56', status: 'paid' as const },
-    { id: 'INV-2544', date: 'Mar 01, 2025', amount: '$350.56', status: 'paid' as const },
   ];
 
   // Dummy log entries
@@ -82,8 +75,11 @@ const CustomerSummaryPage: React.FC = () => {
       <CustomerAccountSidebar customerId={id} />
       <Box sx={{ flexGrow: 1, pl: 3 }}>
         <CustomerBillingAndLogsCards 
+          customerId={id}
           recentInvoices={recentInvoices} 
-          recentLogs={recentLogs} 
+          recentLogs={recentLogs}
+          invoicesLoading={invoicesLoading}
+          invoicesError={invoicesError}
         />
         <CustomerAssetSummary assets={assetData} />
       </Box>

@@ -160,5 +160,29 @@ export const customerApi = {
     if (options?.offset) params.append('offset', options.offset.toString());
     const response = await api.get<CustomerLog[]>(`/customers/${id}/logs?${params.toString()}`);
     return response.data;
+  },
+
+  getInvoices: async (
+    id: string,
+    options?: { 
+      status?: string; 
+      type?: string;
+      dateRange?: string;
+      amountRange?: string;
+      limit?: number; 
+      offset?: number 
+    }
+  ): Promise<any[]> => {
+    const params = new URLSearchParams();
+    params.append('customerId', id);
+    if (options?.status) params.append('status', options.status);
+    if (options?.type) params.append('type', options.type);
+    if (options?.dateRange) params.append('dateRange', options.dateRange);
+    if (options?.amountRange) params.append('amountRange', options.amountRange);
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    
+    const response = await api.get<any[]>(`/payments?${params.toString()}`);
+    return response.data;
   }
 };
