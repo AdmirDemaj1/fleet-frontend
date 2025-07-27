@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -12,7 +12,6 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Chip,
   IconButton,
   Menu,
   MenuItem,
@@ -34,99 +33,50 @@ import {
   Visibility,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  ErrorOutline as ErrorIcon,
-  AccessTime as PendingIcon,
   Receipt as InvoiceIcon,
   Payment as PaymentIcon
 } from '@mui/icons-material';
-import dayjs from 'dayjs';
-import { customerApi } from '../../api/customerApi';
-import InvoiceFilters, { InvoiceFilters as InvoiceFiltersType } from './InvoiceFilters';
+
+// Local imports
+import { CustomerAccountInvoicesProps } from '../../types/customerInvoices.types';
+import { 
+  useInvoices, 
+  useInvoicesTable, 
+  useInvoiceDialogStates, 
+  useInvoiceMenuState, 
+  useInvoiceNotification,
+  useInvoiceOperations
+} from '../../hooks/useCustomerInvoices';
+import { formatCurrency, formatDate, isOverdue } from '../../utils/invoiceUtils';
+import { renderInvoiceStatusCell, renderInvoiceTypeCell } from '../../utils/invoiceRenderUtils';
+import { INVOICE_ROWS_PER_PAGE_OPTIONS } from '../../constants/invoiceConstants';
+import { InvoiceFilters } from './InvoiceFilters';
+import { InvoiceFilters as InvoiceFiltersType } from '../../types/invoiceFilters.types';
 import { ConfirmDialog } from '../../../../shared/components/ConfirmDialog';
 
-// Payment/Invoice status configuration
-const PAYMENT_STATUS_CONFIG = {
-  pending: { icon: <PendingIcon fontSize="small" />, color: 'warning' as const, label: 'Pending' },
-  paid: { icon: <CheckCircleIcon fontSize="small" />, color: 'success' as const, label: 'Paid' },
-  overdue: { icon: <ErrorIcon fontSize="small" />, color: 'error' as const, label: 'Overdue' },
-  cancelled: { icon: <ErrorIcon fontSize="small" />, color: 'error' as const, label: 'Cancelled' }
-};
-
-// Payment type configuration
-const PAYMENT_TYPE_CONFIG = {
-  monthly: { label: 'Monthly', color: '#1976d2' },
-  deposit: { label: 'Deposit', color: '#9c27b0' },
-  final: { label: 'Final', color: '#388e3c' },
-  penalty: { label: 'Penalty', color: '#f44336' }
-};
-
-// Invoice/Payment interface (based on backend PaymentDto)
-interface Invoice {
-  id: string;
-  contractId: string;
-  amount: number;
-  dueDate: string | Date;
-  paymentDate?: string | Date;
-  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
-  type: 'monthly' | 'deposit' | 'final' | 'penalty';
-  notes?: string;
-  paymentMethod?: string;
-  transactionReference?: string;
-  createdAt: string | Date;
-}
-
-// Utility functions
-const formatCurrency = (amount: number | null | undefined): string => {
-  if (amount == null || isNaN(amount)) return 'N/A';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(amount);
-};
-
-const formatDate = (date: string | Date | null | undefined): string => {
-  if (!date) return 'N/A';
-  try {
-    return dayjs(date).format('MMM D, YYYY');
-  } catch {
-    return 'Invalid Date';
-  }
-};
-
-const isOverdue = (dueDate: string | Date, status: string): boolean => {
-  if (status === 'paid') return false;
-  return dayjs(dueDate).isBefore(dayjs(), 'day');
-};
-
-type Order = 'asc' | 'desc';
-type OrderBy = 'amount' | 'dueDate' | 'paymentDate' | 'status' | 'type' | 'createdAt';
-
-interface CustomerAccountInvoicesProps {
-  customerId?: string;
-}
+// Export types for external use
+export type { CustomerAccountInvoicesProps };
 
 const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ customerId: propCustomerId }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { id: urlCustomerId } = useParams<{ id: string }>();
-  const customerId = propCustomerId || urlCustomerId;
   
-  // State management
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Custom hooks
+  const { invoices, loading, error, fetchInvoices } = useInvoices(propCustomerId);
+  const { notification, showNotification, hideNotification } = useInvoiceNotification();
+  const { handleDeleteInvoice } = useInvoiceOperations();
+  const { 
+    showNewInvoiceDialog, 
+    deleteDialogOpen, 
+    invoiceToDelete,
+    openNewInvoiceDialog,
+    closeNewInvoiceDialog,
+    openDeleteDialog,
+    closeDeleteDialog 
+  } = useInvoiceDialogStates();
+  const { anchorEl, selectedInvoice, openMenu, closeMenu } = useInvoiceMenuState();
   
-  // Pagination
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  
-  // Sorting
-  const [order, setOrder] = useState<Order>('desc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('dueDate');
-  
-  // Filters
+  // Filters state
   const [filters, setFilters] = useState<InvoiceFiltersType>({
     search: '',
     status: '',
@@ -135,114 +85,20 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
     amountRange: ''
   });
   
-  // Dialogs
-  const [showNewInvoiceDialog, setShowNewInvoiceDialog] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
-  
-  // Menu state
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  
-  // Notification
-  const [notification, setNotification] = useState({
-    open: false,
-    message: '',
-    severity: 'info' as 'success' | 'error' | 'warning' | 'info'
-  });
-
-  // Fetch invoices (payments)
-  const fetchInvoices = useCallback(async () => {
-    if (!customerId) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // This would call the payments API filtered by customer
-      const data = await customerApi.getInvoices(customerId);
-      setInvoices(data);
-    } catch (error) {
-      console.error('Failed to fetch invoices:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load invoices';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [customerId]);
-
-  useEffect(() => {
-    fetchInvoices();
-  }, [fetchInvoices]);
-
-  // Filter invoices
-  const filteredInvoices = useMemo(() => {
-    let filtered = [...invoices].map(invoice => ({
-      ...invoice,
-      status: isOverdue(invoice.dueDate, invoice.status) && invoice.status === 'pending' 
-        ? 'overdue' 
-        : invoice.status
-    }));
-
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(invoice => 
-        invoice.id?.toLowerCase().includes(searchTerm) ||
-        invoice.transactionReference?.toLowerCase().includes(searchTerm) ||
-        invoice.notes?.toLowerCase().includes(searchTerm)
-      );
-    }
-
-    if (filters.status) {
-      filtered = filtered.filter(invoice => 
-        invoice.status?.toLowerCase() === filters.status.toLowerCase()
-      );
-    }
-
-    if (filters.type) {
-      filtered = filtered.filter(invoice => 
-        invoice.type?.toLowerCase() === filters.type.toLowerCase()
-      );
-    }
-
-    return filtered;
-  }, [invoices, filters]);
-
-  // Sort invoices
-  const sortedInvoices = useMemo(() => {
-    return filteredInvoices.slice().sort((a, b) => {
-      let aValue: any = a[orderBy];
-      let bValue: any = b[orderBy];
-
-      if (orderBy === 'dueDate' || orderBy === 'paymentDate' || orderBy === 'createdAt') {
-        aValue = aValue ? dayjs(aValue).valueOf() : 0;
-        bValue = bValue ? dayjs(bValue).valueOf() : 0;
-      }
-
-      // Handle undefined/null values
-      if (aValue == null && bValue == null) return 0;
-      if (aValue == null) return order === 'asc' ? -1 : 1;
-      if (bValue == null) return order === 'asc' ? 1 : -1;
-
-      if (aValue < bValue) return order === 'asc' ? -1 : 1;
-      if (aValue > bValue) return order === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }, [filteredInvoices, order, orderBy]);
-
-  // Paginate invoices
-  const paginatedInvoices = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return sortedInvoices.slice(startIndex, startIndex + rowsPerPage);
-  }, [sortedInvoices, page, rowsPerPage]);
+  // Table state and logic
+  const {
+    page,
+    rowsPerPage,
+    order,
+    orderBy,
+    filteredInvoices,
+    paginatedInvoices,
+    handleRequestSort,
+    handlePageChange,
+    handleRowsPerPageChange
+  } = useInvoicesTable(invoices, filters);
 
   // Event handlers
-  const handleRequestSort = (property: OrderBy) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
   const handleClearFilters = () => {
     setFilters({
       search: '',
@@ -251,104 +107,21 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
       dateRange: '',
       amountRange: ''
     });
-    setPage(0);
-  };
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, invoice: Invoice) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedInvoice(invoice);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedInvoice(null);
   };
 
   const handleDelete = (invoiceId: string) => {
-    setInvoiceToDelete(invoiceId);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (invoiceToDelete) {
-      try {
-        console.log(`Deleting invoice ${invoiceToDelete}`);
-        setNotification({
-          open: true,
-          message: 'Invoice deleted successfully',
-          severity: 'success'
-        });
-        await fetchInvoices();
-        if (paginatedInvoices.length === 1 && page > 0) {
-          setPage(page - 1);
-        }
-      } catch (error) {
-        setNotification({
-          open: true,
-          message: 'Failed to delete invoice',
-          severity: 'error'
-        });
-      }
-      setDeleteDialogOpen(false);
-      setInvoiceToDelete(null);
-    }
+    openDeleteDialog(invoiceId);
   };
 
   const handleMarkAsPaid = async (invoiceId: string) => {
     try {
       // Call API to mark invoice as paid
       console.log(`Marking invoice ${invoiceId} as paid`);
-      setNotification({
-        open: true,
-        message: 'Invoice marked as paid',
-        severity: 'success'
-      });
+      showNotification('Invoice marked as paid', 'success');
       await fetchInvoices();
     } catch (error) {
-      setNotification({
-        open: true,
-        message: 'Failed to mark invoice as paid',
-        severity: 'error'
-      });
+      showNotification('Failed to mark invoice as paid', 'error');
     }
-  };
-
-  // Render functions
-  const renderStatusCell = (status: string) => {
-    const config = PAYMENT_STATUS_CONFIG[status.toLowerCase() as keyof typeof PAYMENT_STATUS_CONFIG] || {
-      icon: <WarningIcon fontSize="small" />,
-      color: 'default' as const,
-      label: 'Unknown'
-    };
-    
-    return (
-      <Chip
-        icon={config.icon}
-        label={config.label}
-        size="small"
-        color={config.color}
-        sx={{ minWidth: 90, fontWeight: 500 }}
-      />
-    );
-  };
-
-  const renderTypeCell = (type: string) => {
-    const config = PAYMENT_TYPE_CONFIG[type?.toLowerCase() as keyof typeof PAYMENT_TYPE_CONFIG];
-    
-    return (
-      <Chip
-        label={config?.label || type}
-        size="small"
-        variant="outlined"
-        sx={{ 
-          borderRadius: 1,
-          bgcolor: alpha(config?.color || theme.palette.primary.main, 0.05),
-          borderColor: config?.color || theme.palette.primary.main,
-          color: config?.color || theme.palette.primary.main,
-          fontWeight: 500
-        }}
-      />
-    );
   };
 
   // Loading state - following customer list pattern
@@ -429,7 +202,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setShowNewInvoiceDialog(true)}
+            onClick={openNewInvoiceDialog}
           >
             New Payment
           </Button>
@@ -527,8 +300,8 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
                       {formatCurrency(invoice.amount)}
                     </Typography>
                   </TableCell>
-                  <TableCell>{renderTypeCell(invoice.type || 'N/A')}</TableCell>
-                  <TableCell>{renderStatusCell(invoice.status || 'unknown')}</TableCell>
+                  <TableCell>{renderInvoiceTypeCell(invoice.type || 'N/A')}</TableCell>
+                  <TableCell>{renderInvoiceStatusCell(invoice.status || 'unknown')}</TableCell>
                   <TableCell>
                     <Typography 
                       variant="body2"
@@ -550,7 +323,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
                   <TableCell align="right">
                     <IconButton
                       size="small"
-                      onClick={(event) => handleMenuOpen(event, invoice)}
+                      onClick={(event) => openMenu(event, invoice)}
                     >
                       <MoreVertIcon fontSize="small" />
                     </IconButton>
@@ -595,7 +368,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
                           variant="contained" 
                           color="primary"
                           startIcon={<AddIcon />}
-                          onClick={() => setShowNewInvoiceDialog(true)}
+                          onClick={openNewInvoiceDialog}
                         >
                           Add New Payment
                         </Button>
@@ -613,15 +386,14 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           count={filteredInvoices.length || 0}
           page={Math.min(page, Math.max(0, Math.ceil((filteredInvoices.length || 0) / rowsPerPage) - 1))}
           onPageChange={(_, newPage) => {
-            setPage(newPage);
+            handlePageChange(newPage);
           }}
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={(e) => {
             const newRowsPerPage = parseInt(e.target.value, 10);
-            setRowsPerPage(newRowsPerPage);
-            setPage(0);
+            handleRowsPerPageChange(newRowsPerPage);
           }}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          rowsPerPageOptions={INVOICE_ROWS_PER_PAGE_OPTIONS}
           labelRowsPerPage="Rows per page:"
           labelDisplayedRows={({ from, to, count }) => {
             if (loading) {
@@ -650,7 +422,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
+        onClose={closeMenu}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
@@ -658,7 +430,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           if (selectedInvoice) {
             navigate(`/invoices/${selectedInvoice.id}`);
           }
-          handleMenuClose();
+          closeMenu();
         }}>
           <Visibility fontSize="small" sx={{ mr: 1 }} />
           View Details
@@ -668,7 +440,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           if (selectedInvoice) {
             navigate(`/invoices/${selectedInvoice.id}/edit`);
           }
-          handleMenuClose();
+          closeMenu();
         }}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} />
           Edit Invoice
@@ -679,7 +451,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
             if (selectedInvoice) {
               handleMarkAsPaid(selectedInvoice.id);
             }
-            handleMenuClose();
+            closeMenu();
           }}>
             <PaymentIcon fontSize="small" sx={{ mr: 1 }} />
             Mark as Paid
@@ -693,7 +465,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
             if (selectedInvoice) {
               handleDelete(selectedInvoice.id);
             }
-            handleMenuClose();
+            closeMenu();
           }}
           sx={{ color: 'error.main' }}
         >
@@ -705,7 +477,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
       {/* New Invoice Dialog */}
       <Dialog
         open={showNewInvoiceDialog}
-        onClose={() => setShowNewInvoiceDialog(false)}
+        onClose={closeNewInvoiceDialog}
         maxWidth="md"
         fullWidth
       >
@@ -716,35 +488,31 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           </Alert>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowNewInvoiceDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => setShowNewInvoiceDialog(false)}>
+          <Button onClick={closeNewInvoiceDialog}>Cancel</Button>
+          <Button variant="contained" onClick={closeNewInvoiceDialog}>
             Create Payment
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
+            <ConfirmDialog
         open={deleteDialogOpen}
+        onConfirm={() => handleDeleteInvoice(invoiceToDelete!)}
+        onCancel={closeDeleteDialog}
         title="Delete Invoice"
-        message="Are you sure you want to delete this invoice? This action cannot be undone."
-        onConfirm={confirmDelete}
-        onCancel={() => {
-          setDeleteDialogOpen(false);
-          setInvoiceToDelete(null);
-        }}
-        confirmText="Delete"
+        message={`Are you sure you want to delete invoice #${invoiceToDelete}?`}
       />
 
       {/* Notification Snackbar */}
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
-        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        onClose={hideNotification}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
         <Alert 
-          onClose={() => setNotification(prev => ({ ...prev, open: false }))} 
+          onClose={hideNotification} 
           severity={notification.severity}
           variant="filled"
           sx={{ width: '100%' }}

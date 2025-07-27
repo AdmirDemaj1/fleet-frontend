@@ -7,37 +7,17 @@ import {
 import { 
   AttachMoney, Event, LocalShipping,
   Domain, CalendarMonth, Person, Business,
-  CheckCircle, Pending, Error, Phone, LocationOn, Tag
+  Phone, LocationOn, Tag
 } from '@mui/icons-material';
-import { useCustomer } from '../../hooks/useCustomer';
 import { CustomerType } from '../../types/customer.types';
-
-interface CustomerAccountSidebarProps {
-  customerId: string;
-}
-
-const statusConfig: Record<string, { color: string, bgcolor: string, icon: React.ReactElement }> = {
-  active: { 
-    color: 'success.main', 
-    bgcolor: '#e6f7ed',
-    icon: <CheckCircle sx={{ fontSize: 12 }} />
-  },
-  inactive: { 
-    color: 'error.main', 
-    bgcolor: '#fce8e8',
-    icon: <Error sx={{ fontSize: 12 }} />
-  },
-  pending: { 
-    color: 'warning.main', 
-    bgcolor: '#fff4e5',
-    icon: <Pending sx={{ fontSize: 12 }} />
-  },
-};
+import { CustomerAccountSidebarProps } from '../../types/customerSidebar.types';
+import { STATUS_CONFIG } from '../../constants/sidebarConstants';
+import { useCustomerSidebar } from '../../hooks/useCustomerSidebar';
 
 const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
   customerId
 }) => {
-  const { customer, loading, error } = useCustomer(customerId);
+  const { summaryData, financialSummary, loading, error } = useCustomerSidebar(customerId);
 
   // Show loading skeleton while fetching data
   if (loading) {
@@ -60,7 +40,7 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
   }
 
   // Show error state
-  if (error || !customer) {
+  if (error || !summaryData) {
     return (
       <Paper
         elevation={3}
@@ -85,55 +65,24 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
     );
   }
 
-  // The API returns the customer data directly, not wrapped in a customer property
-  const customerData = customer?.customer || customer || {};
-  const contracts = (customer as any)?.contracts || [];
-  const collateral = (customer as any)?.collateral || [];
-  
-  // Determine customer status based on available data
-  const status = contracts.length > 0 ? 'active' : 'pending';
-  
-  // Calculate financial summary with safe defaults
-  const totalDue = contracts.reduce((sum: number, contract: any) => sum + (contract?.remainingAmount || 0), 0);
-  const totalContractValue = contracts.reduce((sum: number, contract: any) => sum + (contract?.totalAmount || 0), 0);
-  const progress = totalContractValue > 0 ? Math.max(0, (1 - totalDue / totalContractValue) * 100) : 100;
-  
-  // Get customer display name and info with safe defaults
-  const customerName = customerData?.type === CustomerType.INDIVIDUAL 
-    ? `${(customerData as any)?.firstName || ''} ${(customerData as any)?.lastName || ''}`.trim()
-    : (customerData as any)?.legalName || 'Business Customer';
-  
-  // Get customer initials for avatar with safe defaults
-  const getInitials = (type: CustomerType) => {
-    if (type === CustomerType.INDIVIDUAL) {
-      const firstName = (customerData as any)?.firstName || '';
-      const lastName = (customerData as any)?.lastName || '';
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
-    } else {
-      // For business, use first two letters of legal name
-      const businessName = (customerData as any)?.legalName || 'Business';
-      return businessName.slice(0, 2).toUpperCase();
-    }
-  };
-  
-  const customerInitials = getInitials(customerData?.type || CustomerType.INDIVIDUAL);
-  
-  // Format dates with safe defaults
-  const createdAt = customerData?.createdAt 
-    ? new Date(customerData.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-    : 'Unknown';
-    
-  // Get next bill date (mock for now - could be calculated from contracts)
-  const nextBill = contracts.length > 0 
-    ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-    : 'No active contracts';
-    
-  // Get account types based on customer data
-  const accountTypes = [
-    customerData?.type === CustomerType.INDIVIDUAL ? 'Individual' : 'Business',
-    ...(contracts.length > 0 ? ['Active Contracts'] : ['No Contracts']),
-    ...(collateral.length > 0 ? ['Secured'] : [])
-  ];
+  // Destructure summary data
+  const {
+    customerData,
+    contracts,
+    collateral,
+    status,
+    customerName,
+    customerInitials,
+    createdAt,
+    accountTypes,
+    contactMethodsCount
+  } = summaryData;
+
+  const {
+    totalDue,
+    progress,
+    nextBillDate
+  } = financialSummary || { totalDue: 0, progress: 100, nextBillDate: 'No active contracts' };
   
   return (
     <Paper
@@ -149,7 +98,7 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
         sx={{ 
           height: 6, 
           width: '100%', 
-          bgcolor: statusConfig[status].color 
+          bgcolor: STATUS_CONFIG[status].color 
         }} 
       />
       
@@ -202,17 +151,17 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
           </Avatar>          <Chip
             label={status.charAt(0).toUpperCase() + status.slice(1)}
             size="small"
-            icon={statusConfig[status].icon}
+            icon={STATUS_CONFIG[status].icon}
             sx={{ 
               fontWeight: 'bold', 
               px: 1,
               borderRadius: 1.5,
-              color: statusConfig[status].color,
-              bgcolor: statusConfig[status].bgcolor,
+              color: STATUS_CONFIG[status].color,
+              bgcolor: STATUS_CONFIG[status].bgcolor,
               border: 1,
               borderColor: (theme) => alpha(theme.palette.divider, 0.1),
               '& .MuiChip-icon': {
-                color: statusConfig[status].color,
+                color: STATUS_CONFIG[status].color,
                 marginLeft: 0.5
               }
             }}
@@ -283,7 +232,7 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
             <Event fontSize="small" color="primary" />
             <Typography variant="body2">Next Bill</Typography>
           </Box>
-          <Typography variant="body2" fontWeight={600}>{nextBill}</Typography>
+          <Typography variant="body2" fontWeight={600}>{nextBillDate}</Typography>
         </Box>
       </Box>
       
@@ -354,7 +303,7 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer' }}>
                 <Phone fontSize="small" color="action" />
                 <Typography variant="body2" fontWeight={500}>
-                  {[customerData?.phone, (customerData as any)?.secondaryPhone, customerData?.email].filter(Boolean).length}
+                  {contactMethodsCount}
                 </Typography>
               </Box>
             </Tooltip>

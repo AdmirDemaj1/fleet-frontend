@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -12,7 +12,6 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Chip,
   IconButton,
   Menu,
   MenuItem,
@@ -34,79 +33,47 @@ import {
   Visibility,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  ErrorOutline as ErrorIcon,
-  AccessTime as PendingIcon,
   DescriptionOutlined as ContractIcon,
   Receipt as InvoiceIcon
 } from '@mui/icons-material';
-import dayjs from 'dayjs';
-import { customerApi } from '../../api/customerApi';
-import { ContractSummary } from '../../types/customer.types';
-import { ContractFilters, ContractFilters as ContractFiltersType } from './ContractFilters';
+
+// Local imports
+import { CustomerAccountContractsProps } from '../../types/customerContracts.types';
+import { 
+  useContracts, 
+  useContractsTable, 
+  useDialogStates, 
+  useMenuState, 
+  useNotification 
+} from '../../hooks/useCustomerContracts';
+import { formatCurrency, formatDate } from '../../utils/contractUtils';
+import { renderStatusCell, renderTypeCell } from '../../utils/renderUtils';
+import { ROWS_PER_PAGE_OPTIONS } from '../../constants/contractConstants';
+import { ContractFilters, ContractFiltersType } from './ContractFilters';
 import { ConfirmDialog } from '../../../../shared/components/ConfirmDialog';
 
-// Status configuration
-const CONTRACT_STATUS_CONFIG = {
-  draft: { icon: <PendingIcon fontSize="small" />, color: 'default' as const, label: 'Draft' },
-  active: { icon: <CheckCircleIcon fontSize="small" />, color: 'success' as const, label: 'Active' },
-  pending: { icon: <PendingIcon fontSize="small" />, color: 'warning' as const, label: 'Pending' },
-  completed: { icon: <CheckCircleIcon fontSize="small" />, color: 'info' as const, label: 'Completed' },
-  cancelled: { icon: <ErrorIcon fontSize="small" />, color: 'error' as const, label: 'Cancelled' }
-};
-
-// Contract type configuration
-const CONTRACT_TYPE_CONFIG = {
-  loan: { label: 'Loan', color: '#1976d2' },
-  leasing: { label: 'Leasing', color: '#9c27b0' }
-};
-
-// Utility functions
-const formatCurrency = (amount: number | null | undefined): string => {
-  if (amount == null || isNaN(amount)) return 'N/A';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(amount);
-};
-
-const formatDate = (date: string | Date | null | undefined): string => {
-  if (!date) return 'N/A';
-  try {
-    return dayjs(date).format('MMM D, YYYY');
-  } catch {
-    return 'Invalid Date';
-  }
-};
-
-type Order = 'asc' | 'desc';
-type OrderBy = 'contractNumber' | 'type' | 'status' | 'startDate' | 'endDate' | 'totalAmount' | 'remainingAmount';
-
-interface CustomerAccountContractsProps {
-  customerId?: string;
-}
+// Export types for external use
+export type { CustomerAccountContractsProps };
 
 const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ customerId: propCustomerId }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { id: urlCustomerId } = useParams<{ id: string }>();
-  const customerId = propCustomerId || urlCustomerId;
   
-  // State management
-  const [contracts, setContracts] = useState<ContractSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Custom hooks
+  const { contracts, loading, error, fetchContracts } = useContracts(propCustomerId);
+  const { notification, showNotification, hideNotification } = useNotification();
+  const { 
+    showNewContractDialog, 
+    deleteDialogOpen, 
+    contractToDelete,
+    openNewContractDialog,
+    closeNewContractDialog,
+    openDeleteDialog,
+    closeDeleteDialog 
+  } = useDialogStates();
+  const { anchorEl, selectedContract, openMenu, closeMenu } = useMenuState();
   
-  // Pagination
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  
-  // Sorting
-  const [order, setOrder] = useState<Order>('desc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('startDate');
-  
-  // Filters
+  // Filters state
   const [filters, setFilters] = useState<ContractFiltersType>({
     search: '',
     status: '',
@@ -115,103 +82,20 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
     amountRange: ''
   });
   
-  // Dialogs
-  const [showNewContractDialog, setShowNewContractDialog] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [contractToDelete, setContractToDelete] = useState<string | null>(null);
-  
-  // Menu state
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedContract, setSelectedContract] = useState<ContractSummary | null>(null);
-  
-  // Notification
-  const [notification, setNotification] = useState({
-    open: false,
-    message: '',
-    severity: 'info' as 'success' | 'error' | 'warning' | 'info'
-  });
-
-  // Fetch contracts
-  const fetchContracts = useCallback(async () => {
-    if (!customerId) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const data = await customerApi.getContracts(customerId);
-      setContracts(data);
-    } catch (error) {
-      console.error('Failed to fetch contracts:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load contracts';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [customerId]);
-
-  useEffect(() => {
-    fetchContracts();
-  }, [fetchContracts]);
-
-  // Filter contracts
-  const filteredContracts = useMemo(() => {
-    let filtered = [...contracts];
-
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(contract => 
-        contract.contractNumber?.toLowerCase().includes(searchTerm) ||
-        contract.type?.toLowerCase().includes(searchTerm) ||
-        contract.status?.toLowerCase().includes(searchTerm)
-      );
-    }
-
-    if (filters.status) {
-      filtered = filtered.filter(contract => 
-        contract.status?.toLowerCase() === filters.status.toLowerCase()
-      );
-    }
-
-    if (filters.type) {
-      filtered = filtered.filter(contract => 
-        contract.type?.toLowerCase() === filters.type.toLowerCase()
-      );
-    }
-
-    return filtered;
-  }, [contracts, filters]);
-
-  // Sort contracts
-  const sortedContracts = useMemo(() => {
-    return filteredContracts.slice().sort((a, b) => {
-      let aValue = a[orderBy];
-      let bValue = b[orderBy];
-
-      if (orderBy === 'startDate' || orderBy === 'endDate') {
-        aValue = aValue ? dayjs(aValue).valueOf() : 0;
-        bValue = bValue ? dayjs(bValue).valueOf() : 0;
-      }
-
-      if (aValue < bValue) return order === 'asc' ? -1 : 1;
-      if (aValue > bValue) return order === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }, [filteredContracts, order, orderBy]);
-
-  // Paginate contracts
-  const paginatedContracts = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return sortedContracts.slice(startIndex, startIndex + rowsPerPage);
-  }, [sortedContracts, page, rowsPerPage]);
+  // Table state and logic
+  const {
+    page,
+    rowsPerPage,
+    order,
+    orderBy,
+    filteredContracts,
+    paginatedContracts,
+    handleRequestSort,
+    handlePageChange,
+    handleRowsPerPageChange
+  } = useContractsTable(contracts, filters);
 
   // Event handlers
-  const handleRequestSort = (property: OrderBy) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
   const handleClearFilters = () => {
     setFilters({
       search: '',
@@ -220,85 +104,24 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
       dateRange: '',
       amountRange: ''
     });
-    setPage(0);
-  };
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, contract: ContractSummary) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedContract(contract);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedContract(null);
   };
 
   const handleDelete = (contractId: string) => {
-    setContractToDelete(contractId);
-    setDeleteDialogOpen(true);
+    openDeleteDialog(contractId);
   };
 
   const confirmDelete = async () => {
     if (contractToDelete) {
       try {
         console.log(`Deleting contract ${contractToDelete}`);
-        setNotification({
-          open: true,
-          message: 'Contract deleted successfully',
-          severity: 'success'
-        });
+        showNotification('Contract deleted successfully', 'success');
         await fetchContracts();
-        if (paginatedContracts.length === 1 && page > 0) {
-          setPage(page - 1);
-        }
+        // Note: Page adjustment logic would be handled by the table hook
       } catch (error) {
-        setNotification({
-          open: true,
-          message: 'Failed to delete contract',
-          severity: 'error'
-        });
+        showNotification('Failed to delete contract', 'error');
       }
-      setDeleteDialogOpen(false);
-      setContractToDelete(null);
+      closeDeleteDialog();
     }
-  };
-
-  // Render functions
-  const renderStatusCell = (status: string) => {
-    const config = CONTRACT_STATUS_CONFIG[status.toLowerCase() as keyof typeof CONTRACT_STATUS_CONFIG] || {
-      icon: <WarningIcon fontSize="small" />,
-      color: 'default' as const,
-      label: 'Unknown'
-    };
-    
-    return (
-      <Chip
-        icon={config.icon}
-        label={config.label}
-        size="small"
-        color={config.color}
-        sx={{ minWidth: 90, fontWeight: 500 }}
-      />
-    );
-  };
-
-  const renderTypeCell = (type: string) => {
-    const config = CONTRACT_TYPE_CONFIG[type?.toLowerCase() as keyof typeof CONTRACT_TYPE_CONFIG];
-    
-    return (
-      <Chip
-        label={config?.label || type}
-        size="small"
-        variant="outlined"
-        sx={{ 
-          borderRadius: 1,
-          bgcolor: alpha(config?.color || theme.palette.primary.main, 0.05),
-          borderColor: config?.color || theme.palette.primary.main,
-          color: config?.color || theme.palette.primary.main,
-          fontWeight: 500
-        }}
-      />
-    );
   };
 
   // Loading state - following customer list pattern
@@ -379,7 +202,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setShowNewContractDialog(true)}
+            onClick={openNewContractDialog}
           >
             New Contract
           </Button>
@@ -523,7 +346,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                   <TableCell align="right">
                     <IconButton
                       size="small"
-                      onClick={(event) => handleMenuOpen(event, contract)}
+                      onClick={(event) => openMenu(event, contract)}
                     >
                       <MoreVertIcon fontSize="small" />
                     </IconButton>
@@ -568,7 +391,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                           variant="contained" 
                           color="primary"
                           startIcon={<AddIcon />}
-                          onClick={() => setShowNewContractDialog(true)}
+                          onClick={openNewContractDialog}
                         >
                           Add New Contract
                         </Button>
@@ -586,15 +409,14 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
           count={filteredContracts.length || 0}
           page={Math.min(page, Math.max(0, Math.ceil((filteredContracts.length || 0) / rowsPerPage) - 1))}
           onPageChange={(_, newPage) => {
-            setPage(newPage);
+            handlePageChange(newPage);
           }}
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={(e) => {
             const newRowsPerPage = parseInt(e.target.value, 10);
-            setRowsPerPage(newRowsPerPage);
-            setPage(0);
+            handleRowsPerPageChange(newRowsPerPage);
           }}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
           labelRowsPerPage="Rows per page:"
           labelDisplayedRows={({ from, to, count }) => {
             if (loading) {
@@ -623,7 +445,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
+        onClose={closeMenu}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
@@ -631,7 +453,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
           if (selectedContract) {
             navigate(`/contracts/${selectedContract.id}`);
           }
-          handleMenuClose();
+          closeMenu();
         }}>
           <Visibility fontSize="small" sx={{ mr: 1 }} />
           View Details
@@ -641,7 +463,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
           if (selectedContract) {
             navigate(`/contracts/${selectedContract.id}/edit`);
           }
-          handleMenuClose();
+          closeMenu();
         }}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} />
           Edit Contract
@@ -651,7 +473,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
           if (selectedContract) {
             navigate(`/contracts/${selectedContract.id}/invoices`);
           }
-          handleMenuClose();
+          closeMenu();
         }}>
           <InvoiceIcon fontSize="small" sx={{ mr: 1 }} />
           View Invoices
@@ -664,7 +486,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
             if (selectedContract) {
               handleDelete(selectedContract.id);
             }
-            handleMenuClose();
+            closeMenu();
           }}
           sx={{ color: 'error.main' }}
         >
@@ -676,7 +498,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
       {/* New Contract Dialog */}
       <Dialog
         open={showNewContractDialog}
-        onClose={() => setShowNewContractDialog(false)}
+        onClose={closeNewContractDialog}
         maxWidth="md"
         fullWidth
       >
@@ -687,8 +509,8 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
           </Alert>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowNewContractDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => setShowNewContractDialog(false)}>
+          <Button onClick={closeNewContractDialog}>Cancel</Button>
+          <Button variant="contained" onClick={closeNewContractDialog}>
             Create Contract
           </Button>
         </DialogActions>
@@ -700,10 +522,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
         title="Delete Contract"
         message="Are you sure you want to delete this contract? This action cannot be undone."
         onConfirm={confirmDelete}
-        onCancel={() => {
-          setDeleteDialogOpen(false);
-          setContractToDelete(null);
-        }}
+        onCancel={closeDeleteDialog}
         confirmText="Delete"
       />
 
@@ -711,11 +530,11 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
-        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        onClose={hideNotification}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
         <Alert 
-          onClose={() => setNotification(prev => ({ ...prev, open: false }))} 
+          onClose={hideNotification} 
           severity={notification.severity}
           variant="filled"
           sx={{ width: '100%' }}

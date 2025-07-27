@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   TextField,
@@ -22,62 +22,15 @@ import {
   Search,
   Clear,
   Tune,
-  CheckCircle,
-  AccessTime,
-  ErrorOutline,
-  CalendarMonth,
-  AttachMoney,
-  Category
 } from '@mui/icons-material';
 
-// Contract filter state interface
-export interface ContractFilters {
-  search: string;
-  status: string;
-  type: string;
-  dateRange: string;
-  amountRange: string;
-}
+// Local imports
+import { ContractFiltersProps } from '../../types/contractFilters.types';
+import { useContractFilters, useFilterOptions } from '../../hooks/useContractFilters';
+import { getActiveFilterChips } from '../../utils/filterUtils';
 
-interface ContractFiltersProps {
-  filters: ContractFilters;
-  onFilterChange: (newFilters: ContractFilters) => void;
-  contractsCount?: number;
-}
-
-// Status configuration for chips and dropdowns
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses', icon: null },
-  { value: 'draft', label: 'Draft', icon: <AccessTime fontSize="small" /> },
-  { value: 'active', label: 'Active', icon: <CheckCircle fontSize="small" /> },
-  { value: 'pending', label: 'Pending', icon: <AccessTime fontSize="small" /> },
-  { value: 'completed', label: 'Completed', icon: <CheckCircle fontSize="small" /> },
-  { value: 'cancelled', label: 'Cancelled', icon: <ErrorOutline fontSize="small" /> }
-];
-
-const TYPE_OPTIONS = [
-  { value: '', label: 'All Types' },
-  { value: 'loan', label: 'Loan' },
-  { value: 'leasing', label: 'Leasing' }
-];
-
-const DATE_RANGE_OPTIONS = [
-  { value: '', label: 'Any Time' },
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'This Week' },
-  { value: 'month', label: 'This Month' },
-  { value: 'quarter', label: 'This Quarter' },
-  { value: 'year', label: 'This Year' }
-];
-
-const AMOUNT_RANGE_OPTIONS = [
-  { value: '', label: 'Any Amount' },
-  { value: '0-10000', label: 'Under $10,000' },
-  { value: '10000-50000', label: '$10,000 - $50,000' },
-  { value: '50000-100000', label: '$50,000 - $100,000' },
-  { value: '100000-500000', label: '$100,000 - $500,000' },
-  { value: '500000+', label: 'Over $500,000' }
-];
+// Export types for external use
+export type { ContractFilters as ContractFiltersType, ContractFiltersProps } from '../../types/contractFilters.types';
 
 export const ContractFilters: React.FC<ContractFiltersProps> = ({
   filters,
@@ -85,44 +38,36 @@ export const ContractFilters: React.FC<ContractFiltersProps> = ({
   contractsCount = 0
 }) => {
   const theme = useTheme();
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  
+  // Use custom hooks
+  const {
+    advancedOpen,
+    hasActiveFilters,
+    filterCount,
+    handleFilterChange,
+    handleClearFilters,
+    toggleAdvancedFilters
+  } = useContractFilters(filters, onFilterChange);
 
-  const hasActiveFilters = Object.values(filters).some(value => 
-    value !== undefined && value !== '' && value !== null
+  const {
+    getStatusOption,
+    getTypeOption,
+    getDateRangeOption,
+    getAmountRangeOption,
+    statusOptions,
+    typeOptions,
+    dateRangeOptions,
+    amountRangeOptions
+  } = useFilterOptions();
+
+  // Get active filter chips
+  const activeFilterChips = getActiveFilterChips(
+    filters,
+    getStatusOption,
+    getTypeOption,
+    getDateRangeOption,
+    getAmountRangeOption
   );
-
-  const filterCount = Object.values(filters).filter(value => 
-    value !== undefined && value !== '' && value !== null
-  ).length;
-
-  const handleFilterChange = (key: keyof ContractFilters, value: string) => {
-    onFilterChange({
-      ...filters,
-      [key]: value
-    });
-  };
-
-  const handleClearFilters = () => {
-    onFilterChange({
-      search: '',
-      status: '',
-      type: '',
-      dateRange: '',
-      amountRange: ''
-    });
-  };
-
-  const getStatusOption = (value: string) => 
-    STATUS_OPTIONS.find(option => option.value === value);
-
-  const getTypeOption = (value: string) => 
-    TYPE_OPTIONS.find(option => option.value === value);
-
-  const getDateRangeOption = (value: string) => 
-    DATE_RANGE_OPTIONS.find(option => option.value === value);
-
-  const getAmountRangeOption = (value: string) => 
-    AMOUNT_RANGE_OPTIONS.find(option => option.value === value);
 
   return (
     <Paper 
@@ -194,7 +139,7 @@ export const ContractFilters: React.FC<ContractFiltersProps> = ({
                     }
                   }}
                 >
-                  {STATUS_OPTIONS.map((option) => (
+                  {statusOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         {option.icon && (
@@ -212,7 +157,7 @@ export const ContractFilters: React.FC<ContractFiltersProps> = ({
               <Tooltip title="More filters">
                 <IconButton 
                   color={advancedOpen ? 'primary' : 'default'} 
-                  onClick={() => setAdvancedOpen(!advancedOpen)}
+                  onClick={toggleAdvancedFilters}
                   sx={{ 
                     height: 40, 
                     width: 40,
@@ -246,7 +191,7 @@ export const ContractFilters: React.FC<ContractFiltersProps> = ({
                     onChange={(e) => handleFilterChange('type', e.target.value)}
                     label="Contract Type"
                   >
-                    {TYPE_OPTIONS.map((option) => (
+                    {typeOptions.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
                         {option.label}
                       </MenuItem>
@@ -263,7 +208,7 @@ export const ContractFilters: React.FC<ContractFiltersProps> = ({
                     onChange={(e) => handleFilterChange('dateRange', e.target.value)}
                     label="Date Range"
                   >
-                    {DATE_RANGE_OPTIONS.map((option) => (
+                    {dateRangeOptions.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
                         {option.label}
                       </MenuItem>
@@ -280,7 +225,7 @@ export const ContractFilters: React.FC<ContractFiltersProps> = ({
                     onChange={(e) => handleFilterChange('amountRange', e.target.value)}
                     label="Amount Range"
                   >
-                    {AMOUNT_RANGE_OPTIONS.map((option) => (
+                    {amountRangeOptions.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
                         {option.label}
                       </MenuItem>
@@ -298,55 +243,16 @@ export const ContractFilters: React.FC<ContractFiltersProps> = ({
               Active filters:
             </Typography>
             
-            {filters.search && (
+            {activeFilterChips.map((chip) => (
               <Chip 
-                label={`Search: ${filters.search}`} 
+                key={chip.key}
+                label={chip.label} 
                 size="small"
-                onDelete={() => handleFilterChange('search', '')}
+                onDelete={() => handleFilterChange(chip.key, '')}
                 sx={{ borderRadius: 1.5 }}
-                icon={<Search fontSize="small" />}
+                icon={chip.icon}
               />
-            )}
-            
-            {filters.status && (
-              <Chip 
-                label={`Status: ${getStatusOption(filters.status)?.label}`} 
-                size="small"
-                onDelete={() => handleFilterChange('status', '')}
-                sx={{ borderRadius: 1.5 }}
-                icon={getStatusOption(filters.status)?.icon || <CheckCircle fontSize="small" />}
-              />
-            )}
-            
-            {filters.type && (
-              <Chip 
-                label={`Type: ${getTypeOption(filters.type)?.label}`} 
-                size="small"
-                onDelete={() => handleFilterChange('type', '')}
-                sx={{ borderRadius: 1.5 }}
-                icon={<Category fontSize="small" />}
-              />
-            )}
-            
-            {filters.dateRange && (
-              <Chip 
-                label={`Date: ${getDateRangeOption(filters.dateRange)?.label}`} 
-                size="small"
-                onDelete={() => handleFilterChange('dateRange', '')}
-                sx={{ borderRadius: 1.5 }}
-                icon={<CalendarMonth fontSize="small" />}
-              />
-            )}
-            
-            {filters.amountRange && (
-              <Chip 
-                label={`Amount: ${getAmountRangeOption(filters.amountRange)?.label}`} 
-                size="small"
-                onDelete={() => handleFilterChange('amountRange', '')}
-                sx={{ borderRadius: 1.5 }}
-                icon={<AttachMoney fontSize="small" />}
-              />
-            )}
+            ))}
             
             <Button
               variant="text"
