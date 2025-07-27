@@ -5,8 +5,8 @@ import {
   LinearProgress, alpha, Skeleton
 } from '@mui/material';
 import { 
-  AccountCircle, AttachMoney, Event, LocalShipping,
-  Domain, Link, CalendarMonth, Person, Business,
+  AttachMoney, Event, LocalShipping,
+  Domain, CalendarMonth, Person, Business,
   CheckCircle, Pending, Error, Phone, LocationOn, Tag
 } from '@mui/icons-material';
 import { useCustomer } from '../../hooks/useCustomer';
@@ -16,7 +16,7 @@ interface CustomerAccountSidebarProps {
   customerId: string;
 }
 
-const statusConfig: Record<string, { color: string, bgcolor: string, icon: React.ReactNode }> = {
+const statusConfig: Record<string, { color: string, bgcolor: string, icon: React.ReactElement }> = {
   active: { 
     color: 'success.main', 
     bgcolor: '#e6f7ed',
@@ -38,14 +38,6 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
   customerId
 }) => {
   const { customer, loading, error } = useCustomer(customerId);
-
-  console.log('CustomerAccountSidebar Debug:', { 
-    customerId, 
-    customer, 
-    loading, 
-    error,
-    hasCustomer: !!customer 
-  });
 
   // Show loading skeleton while fetching data
   if (loading) {
@@ -69,7 +61,6 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
 
   // Show error state
   if (error || !customer) {
-    console.error('CustomerAccountSidebar Error:', error);
     return (
       <Paper
         elevation={3}
@@ -95,42 +86,40 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
   }
 
   // The API returns the customer data directly, not wrapped in a customer property
-  const customerData = customer.customer || customer; // Handle both structures
-  const contracts = customer.contracts || customerData.contracts || [];
-  const collateral = customer.collateral || customerData.collateral || [];
+  const customerData = customer?.customer || customer || {};
+  const contracts = (customer as any)?.contracts || [];
+  const collateral = (customer as any)?.collateral || [];
   
   // Determine customer status based on available data
-  const status = contracts.length > 0 ? 'active' : 'pending'; // Use 'pending' for new customers without contracts
+  const status = contracts.length > 0 ? 'active' : 'pending';
   
-  // Calculate financial summary
-  const totalDue = contracts.reduce((sum, contract) => sum + (contract.remainingAmount || 0), 0);
-  const totalContractValue = contracts.reduce((sum, contract) => sum + (contract.totalAmount || 0), 0);
-  const progress = totalContractValue > 0 ? Math.max(0, (1 - totalDue / totalContractValue) * 100) : 100; // 100% if no debt
+  // Calculate financial summary with safe defaults
+  const totalDue = contracts.reduce((sum: number, contract: any) => sum + (contract?.remainingAmount || 0), 0);
+  const totalContractValue = contracts.reduce((sum: number, contract: any) => sum + (contract?.totalAmount || 0), 0);
+  const progress = totalContractValue > 0 ? Math.max(0, (1 - totalDue / totalContractValue) * 100) : 100;
   
-  // Get customer display name and info
-  const customerName = customerData.type === CustomerType.INDIVIDUAL 
-    ? `${customerData.firstName || ''} ${customerData.lastName || ''}`.trim()
-    : customerData.legalName || 'Business Customer';
-    
-  const displayName = customerName || 'Unnamed Customer';
+  // Get customer display name and info with safe defaults
+  const customerName = customerData?.type === CustomerType.INDIVIDUAL 
+    ? `${(customerData as any)?.firstName || ''} ${(customerData as any)?.lastName || ''}`.trim()
+    : (customerData as any)?.legalName || 'Business Customer';
   
-  // Get customer initials for avatar
-  const getInitials = (name: string, type: CustomerType) => {
+  // Get customer initials for avatar with safe defaults
+  const getInitials = (type: CustomerType) => {
     if (type === CustomerType.INDIVIDUAL) {
-      const firstName = customerData.firstName || '';
-      const lastName = customerData.lastName || '';
+      const firstName = (customerData as any)?.firstName || '';
+      const lastName = (customerData as any)?.lastName || '';
       return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'U';
     } else {
       // For business, use first two letters of legal name
-      const businessName = customerData.legalName || 'Business';
+      const businessName = (customerData as any)?.legalName || 'Business';
       return businessName.slice(0, 2).toUpperCase();
     }
   };
   
-  const customerInitials = getInitials(customerName, customerData.type);
+  const customerInitials = getInitials(customerData?.type || CustomerType.INDIVIDUAL);
   
-  // Format dates
-  const createdAt = customerData.createdAt 
+  // Format dates with safe defaults
+  const createdAt = customerData?.createdAt 
     ? new Date(customerData.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     : 'Unknown';
     
@@ -141,19 +130,10 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
     
   // Get account types based on customer data
   const accountTypes = [
-    customerData.type === CustomerType.INDIVIDUAL ? 'Individual' : 'Business',
+    customerData?.type === CustomerType.INDIVIDUAL ? 'Individual' : 'Business',
     ...(contracts.length > 0 ? ['Active Contracts'] : ['No Contracts']),
     ...(collateral.length > 0 ? ['Secured'] : [])
   ];
-  
-  // Additional customer info for display
-  const customerInfo = {
-    id: customerData.id,
-    email: customerData.email,
-    phone: customerData.phone,
-    address: customerData.address,
-    additionalNotes: customerData.additionalNotes
-  };
   
   return (
     <Paper
@@ -162,10 +142,6 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
         width: 280,
         borderRadius: 2,
         overflow: 'hidden',
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          boxShadow: 6,
-        },
       }}
     >
       {/* Status indicator top bar */}
@@ -186,9 +162,9 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Avatar 
+              <Avatar 
             sx={{ 
-              bgcolor: customerData.type === CustomerType.INDIVIDUAL ? 'primary.main' : 'secondary.main',
+              bgcolor: customerData?.type === CustomerType.INDIVIDUAL ? 'primary.main' : 'secondary.main',
               boxShadow: 3,
               width: 48,
               height: 48,
@@ -217,15 +193,13 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
                 {customerInitials}
               </Typography>
             ) : (
-              customerData.type === CustomerType.INDIVIDUAL ? (
+              customerData?.type === CustomerType.INDIVIDUAL ? (
                 <Person sx={{ fontSize: 24, color: 'white' }} />
               ) : (
                 <Business sx={{ fontSize: 24, color: 'white' }} />
               )
             )}
-          </Avatar>
-          
-          <Chip
+          </Avatar>          <Chip
             label={status.charAt(0).toUpperCase() + status.slice(1)}
             size="small"
             icon={statusConfig[status].icon}
@@ -253,7 +227,7 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
           <CalendarMonth sx={{ fontSize: 14 }} /> Created {createdAt}
         </Typography>
         
-        {customerData.email && (
+        {customerData?.email && (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
             {customerData.email}
           </Typography>
@@ -261,14 +235,14 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
         
         {/* Customer Info Section */}
         <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-          {customerData.phone && (
+          {customerData?.phone && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
               <Phone sx={{ fontSize: 12 }} /> {customerData.phone}
             </Typography>
           )}
           
           <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Tag sx={{ fontSize: 12 }} /> ID: {customerData.id?.slice(-8) || 'N/A'}
+            <Tag sx={{ fontSize: 12 }} /> ID: {customerData?.id?.slice(-8) || 'N/A'}
           </Typography>
         </Box>
       </Box>
@@ -380,13 +354,13 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer' }}>
                 <Phone fontSize="small" color="action" />
                 <Typography variant="body2" fontWeight={500}>
-                  {[customerData.phone, customerData.secondaryPhone, customerData.email].filter(Boolean).length}
+                  {[customerData?.phone, (customerData as any)?.secondaryPhone, customerData?.email].filter(Boolean).length}
                 </Typography>
               </Box>
             </Tooltip>
           </ListItem>
           
-          {customerData.address && (
+          {customerData?.address && (
             <ListItem sx={{ py: 0.75, px: 0 }}>
               <ListItemText 
                 primary="Address" 
