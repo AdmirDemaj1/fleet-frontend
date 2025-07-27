@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Card,
   Table,
   TableBody,
   TableCell,
@@ -16,6 +15,8 @@ import {
   Typography,
   Stack,
   Paper,
+  useTheme,
+  alpha,
 } from '@mui/material';
 import {
   Visibility,
@@ -54,15 +55,15 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   onDelete,
 }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const getStatusChip = (status: VehicleStatus) => {
     const statusConfig: Record<VehicleStatus, { color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning', label: string }> = {
       [VehicleStatus.AVAILABLE]: { color: 'success', label: 'Available' },
       [VehicleStatus.LEASED]: { color: 'primary', label: 'Leased' },
       [VehicleStatus.MAINTENANCE]: { color: 'warning', label: 'Maintenance' },
-      [VehicleStatus.COLLATERAL]: { color: 'info', label: 'Collateral' },
       [VehicleStatus.SOLD]: { color: 'secondary', label: 'Sold' },
-      [VehicleStatus.OTHER]: { color: 'default', label: 'Other' },
+      [VehicleStatus.LIQUID_ASSET]: { color: 'info', label: 'Liquid Asset' },
     };
 
     const config = statusConfig[status] || { color: 'default', label: status };
@@ -81,7 +82,17 @@ export const VehicleList: React.FC<VehicleListProps> = ({
   };
 
   return (
-    <Paper elevation={2}>
+    <Paper 
+      elevation={2}
+      sx={{ 
+        borderRadius: 2,
+        overflow: 'hidden',
+        transition: 'box-shadow 0.3s ease-in-out',
+        '&:hover': {
+          boxShadow: theme.shadows[4]
+        }
+      }}
+    >
       <TableContainer>
         <Table>
           <TableHead>
@@ -191,12 +202,41 @@ export const VehicleList: React.FC<VehicleListProps> = ({
       
       <TablePagination
         component="div"
-        count={totalCount}
-        page={page}
+        count={totalCount || 0}
+        page={Math.min(page, Math.max(0, Math.ceil((totalCount || 0) / rowsPerPage) - 1))}
         rowsPerPage={rowsPerPage}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        onPageChange={(_, newPage) => onPageChange(newPage)}
-        onRowsPerPageChange={(e) => onRowsPerPageChange(parseInt(e.target.value, 10))}
+        rowsPerPageOptions={[5, 10, 25, 50, 100]}
+        onPageChange={(_, newPage) => {
+          console.log('Page change requested:', newPage, 'Current total:', totalCount);
+          onPageChange(newPage);
+        }}
+        onRowsPerPageChange={(e) => {
+          const newRowsPerPage = parseInt(e.target.value, 10);
+          console.log('Rows per page change:', newRowsPerPage);
+          onRowsPerPageChange(newRowsPerPage);
+        }}
+        labelRowsPerPage="Rows per page:"
+        labelDisplayedRows={({ from, to, count }) => {
+          const safeCount = count === -1 ? totalCount : count;
+          if (loading) {
+            return 'Loading...';
+          }
+          return `${from}–${to} of ${safeCount !== -1 ? safeCount : `more than ${to}`}`;
+        }}
+        disabled={loading}
+        sx={{
+          borderTop: `1px solid ${theme.palette.divider}`,
+          '& .MuiTablePagination-select': {
+            pr: 1
+          },
+          '& .MuiTablePagination-displayedRows': {
+            fontSize: '0.875rem',
+            color: theme.palette.text.secondary
+          },
+          '&.Mui-disabled': {
+            opacity: 0.6
+          }
+        }}
       />
     </Paper>
   );

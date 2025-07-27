@@ -1,17 +1,16 @@
 import React from 'react';
 import { Box } from '@mui/material';
+import { useParams } from 'react-router-dom';
 import CustomerAccountSidebar from '../../components/CustomerAccount/CustomerAccountSummarySidebar';
 import CustomerAssetSummary from './../../components/CustomerAccount/CustomerAssetSummary';
 import CustomerBillingAndLogsCards from '../../components/CustomerAccount/CustomerBillingLogCards';
 
 const CustomerSummaryPage: React.FC = () => {
-  // Dummy data for testing
-  const customerData = {
-    accountNumber: '362668',
-    status: 'Active' as const,
-    totalDue: '$1250.56',
-    nextBill: '2025-08-11',
-  };
+  const { id } = useParams<{ id: string }>();
+
+  if (!id) {
+    return <Box>Customer ID not found</Box>;
+  }
 
   const assetData = [
     { 
@@ -80,7 +79,7 @@ const CustomerSummaryPage: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <CustomerAccountSidebar {...customerData} />
+      <CustomerAccountSidebar customerId={id} />
       <Box sx={{ flexGrow: 1, pl: 3 }}>
         <CustomerBillingAndLogsCards 
           recentInvoices={recentInvoices} 

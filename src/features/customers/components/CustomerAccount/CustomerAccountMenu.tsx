@@ -38,6 +38,7 @@ const menuItems: MenuItem[] = [
 ];
 
 const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = ({ customerId }) => {
+  
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const theme = useTheme();
@@ -113,11 +114,15 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = ({ customerId })
             />
           ))}
         </Tabs>
-        <Tooltip title="Account Settings">
-          <IconButton color="primary">
+        
+          <IconButton 
+            color="primary"
+            component={Link}
+            to={`/customers/${id}/edit`}
+          >
             <SettingsIcon />
           </IconButton>
-        </Tooltip>
+        
       </Toolbar>
     </AppBar>
   );

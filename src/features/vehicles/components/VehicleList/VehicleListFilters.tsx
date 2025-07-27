@@ -6,22 +6,27 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid,
   InputAdornment,
-  IconButton,
+  Button,
+  Paper,
   Typography,
-  Divider,
   Chip,
-  Stack
+  Collapse,
+  IconButton,
+  Grid,
+  Tooltip,
+  useTheme,
+  alpha
 } from '@mui/material';
-import {
-  Search,
-  FilterList,
-  Clear,
+import { 
+  Search, 
+  Clear, 
+  Tune,
   DirectionsCar,
-  BusinessCenter,
-  CalendarToday,
-  AttachMoney
+  Business,
+  AttachMoney,
+  CalendarMonth,
+  FilterAlt
 } from '@mui/icons-material';
 import { VehicleStatus, VehicleQueryParams } from '../../types/vehicleType';
 
@@ -34,274 +39,413 @@ export const VehicleFilters: React.FC<VehicleFiltersProps> = ({
   filters,
   onFilterChange,
 }) => {
-  const [expanded, setExpanded] = useState(false);
-  
-  const handleStatusChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    onFilterChange({ ...filters, status: event.target.value as VehicleStatus | undefined });
-  };
-  
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onFilterChange({ ...filters, search: event.target.value });
-  };
-  
-  const handleMakeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onFilterChange({ ...filters, make: event.target.value });
-  };
-  
-  const handleModelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onFilterChange({ ...filters, model: event.target.value });
-  };
-  
-  const handleYearChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const yearValue = event.target.value ? Number(event.target.value) : undefined;
-    onFilterChange({ ...filters, year: yearValue });
-  };
-  
-  const handleLiquidAssetChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    const value = event.target.value as string;
-    onFilterChange({ 
-      ...filters, 
-      isLiquidAsset: value === '' ? undefined : value === 'true'
-    });
-  };
-  
-  const handleLegalOwnerChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onFilterChange({ ...filters, legalOwner: event.target.value });
-  };
-  
-  const handleClearAll = () => {
-    onFilterChange({});
-  };
-  
-  const handleClearFilter = (filterName: keyof VehicleQueryParams) => {
-    const newFilters = { ...filters };
-    delete newFilters[filterName];
-    onFilterChange(newFilters);
-  };
+  const theme = useTheme();
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   
   const hasActiveFilters = Object.values(filters).some(value => 
     value !== undefined && value !== '' && value !== null
   );
   
-  const activeFilterCount = Object.keys(filters).filter(key => 
-    filters[key as keyof VehicleQueryParams] !== undefined && 
-    filters[key as keyof VehicleQueryParams] !== '' &&
-    filters[key as keyof VehicleQueryParams] !== null
-  ).length;
-  
+  const filterCount = Object.keys(filters).filter(key => {
+    const value = filters[key as keyof VehicleQueryParams];
+    return value !== undefined && value !== '' && value !== null;
+  }).length;
+
+  const handleSearchChange = (value: string) => {
+    onFilterChange({ ...filters, search: value });
+  };
+
+  const handleStatusChange = (value: VehicleStatus | '') => {
+    const newFilters = { ...filters };
+    if (value === '') {
+      delete newFilters.status;
+    } else {
+      newFilters.status = value;
+    }
+    onFilterChange(newFilters);
+  };
+
+  const handleMakeChange = (value: string) => {
+    const newFilters = { ...filters };
+    if (value === '') {
+      delete newFilters.make;
+    } else {
+      newFilters.make = value;
+    }
+    onFilterChange(newFilters);
+  };
+
+  const handleModelChange = (value: string) => {
+    const newFilters = { ...filters };
+    if (value === '') {
+      delete newFilters.model;
+    } else {
+      newFilters.model = value;
+    }
+    onFilterChange(newFilters);
+  };
+
+  const handleYearChange = (value: string) => {
+    const newFilters = { ...filters };
+    if (value === '') {
+      delete newFilters.year;
+    } else {
+      newFilters.year = parseInt(value);
+    }
+    onFilterChange(newFilters);
+  };
+
+  const handleLegalOwnerChange = (value: string) => {
+    const newFilters = { ...filters };
+    if (value === '') {
+      delete newFilters.legalOwner;
+    } else {
+      newFilters.legalOwner = value;
+    }
+    onFilterChange(newFilters);
+  };
+
+  const handleLiquidAssetChange = (value: string) => {
+    const newFilters = { ...filters };
+    if (value === '') {
+      delete newFilters.isLiquidAsset;
+    } else {
+      newFilters.isLiquidAsset = value === 'true';
+    }
+    onFilterChange(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    onFilterChange({});
+  };
+
+  const handleRemoveFilter = (filterKey: keyof VehicleQueryParams) => {
+    const newFilters = { ...filters };
+    delete newFilters[filterKey];
+    onFilterChange(newFilters);
+  };
+
   return (
-    <Box>
-      <Box sx={{ mb: 2 }}>
+    <Paper 
+      elevation={2} 
+      sx={{ 
+        mb: 3, 
+        borderRadius: 2,
+        overflow: 'hidden',
+        transition: 'box-shadow 0.3s ease-in-out',
+        '&:hover': {
+          boxShadow: theme.shadows[4]
+        }
+      }}
+    >
+      <Box sx={{ p: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={8}>
             <TextField
-              fullWidth
+              id="vehicle-search-field"
               placeholder="Search vehicles by license plate, VIN, make, model..."
               value={filters.search || ''}
-              onChange={handleSearchChange}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              fullWidth
               variant="outlined"
-              size="small"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
                     <Search color="action" />
                   </InputAdornment>
                 ),
-                endAdornment: filters.search ? (
+                endAdornment: filters.search && (
                   <InputAdornment position="end">
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleClearFilter('search')}
-                      edge="end"
-                    >
-                      <Clear fontSize="small" />
-                    </IconButton>
+                    <Tooltip title="Clear search">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleSearchChange('')}
+                        edge="end"
+                      >
+                        <Clear fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </InputAdornment>
-                ) : null
+                ),
+                sx: {
+                  borderRadius: 2,
+                  transition: 'all 0.2s',
+                  '&.Mui-focused': {
+                    boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.25)}`
+                  }
+                }
               }}
             />
           </Grid>
+          
           <Grid item xs={12} md={4}>
-            <FormControl size="small" fullWidth>
-              <InputLabel id="status-filter-label">Status</InputLabel>
-              <Select
-                labelId="status-filter-label"
-                id="status-filter"
-                value={filters.status || ''}
-                label="Status"
-                onChange={handleStatusChange}
-                displayEmpty
-              >
-                <MenuItem value="">
-                  <em>All Statuses</em>
-                </MenuItem>
-                {Object.values(VehicleStatus).map((status) => (
-                  <MenuItem key={status} value={status}>{status}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={2} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
-            <IconButton 
-              color={expanded ? 'primary' : 'default'}
-              onClick={() => setExpanded(!expanded)}
-              sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}
-            >
-              <FilterList />
-            </IconButton>
-            {hasActiveFilters && (
-              <IconButton 
-                color="error" 
-                onClick={handleClearAll}
-                sx={{ ml: 1, border: 1, borderColor: 'divider', borderRadius: 1 }}
-              >
-                <Clear />
-              </IconButton>
-            )}
-          </Grid>
-        </Grid>
-      </Box>
-      
-      {hasActiveFilters && (
-        <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-            Active filters:
-          </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            {filters.search && (
-              <Chip 
-                label={`Search: ${filters.search}`} 
-                size="small" 
-                onDelete={() => handleClearFilter('search')}
-                icon={<Search fontSize="small" />}
-              />
-            )}
-            {filters.status && (
-              <Chip 
-                label={`Status: ${filters.status}`} 
-                size="small"
-                onDelete={() => handleClearFilter('status')}
-                icon={<DirectionsCar fontSize="small" />}
-              />
-            )}
-            {filters.make && (
-              <Chip 
-                label={`Make: ${filters.make}`} 
-                size="small"
-                onDelete={() => handleClearFilter('make')}
-                icon={<DirectionsCar fontSize="small" />}
-              />
-            )}
-            {filters.model && (
-              <Chip 
-                label={`Model: ${filters.model}`} 
-                size="small"
-                onDelete={() => handleClearFilter('model')}
-                icon={<DirectionsCar fontSize="small" />}
-              />
-            )}
-            {filters.year && (
-              <Chip 
-                label={`Year: ${filters.year}`} 
-                size="small"
-                onDelete={() => handleClearFilter('year')}
-                icon={<CalendarToday fontSize="small" />}
-              />
-            )}
-            {filters.legalOwner && (
-              <Chip 
-                label={`Owner: ${filters.legalOwner}`} 
-                size="small"
-                onDelete={() => handleClearFilter('legalOwner')}
-                icon={<BusinessCenter fontSize="small" />}
-              />
-            )}
-            {filters.isLiquidAsset !== undefined && (
-              <Chip 
-                label={`Liquid Asset: ${filters.isLiquidAsset ? 'Yes' : 'No'}`} 
-                size="small"
-                onDelete={() => handleClearFilter('isLiquidAsset')}
-                icon={<AttachMoney fontSize="small" />}
-              />
-            )}
-          </Stack>
-        </Box>
-      )}
-      
-      {expanded && (
-        <Box sx={{ mt: 2 }}>
-          <Divider sx={{ mb: 2 }} />
-          <Typography variant="subtitle2" gutterBottom>
-            Advanced Filters
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="Make"
-                value={filters.make || ''}
-                onChange={handleMakeChange}
-                variant="outlined"
-                size="small"
-                placeholder="e.g. Toyota, BMW"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="Model"
-                value={filters.model || ''}
-                onChange={handleModelChange}
-                variant="outlined"
-                size="small"
-                placeholder="e.g. Corolla, X5"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <TextField
-                fullWidth
-                label="Year"
-                type="number"
-                value={filters.year || ''}
-                onChange={handleYearChange}
-                variant="outlined"
-                size="small"
-                placeholder="e.g. 2023"
-                InputProps={{ inputProps: { min: 1900, max: new Date().getFullYear() + 1 } }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl size="small" fullWidth>
-                <InputLabel id="liquid-asset-filter-label">Liquid Asset</InputLabel>
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+              <FormControl sx={{ minWidth: 140 }}>
+                <InputLabel id="vehicle-status-label" size="small">Vehicle Status</InputLabel>
                 <Select
-                  labelId="liquid-asset-filter-label"
-                  id="liquid-asset-filter"
-                  value={filters.isLiquidAsset === undefined ? '' : String(filters.isLiquidAsset)}
-                  label="Liquid Asset"
-                  onChange={handleLiquidAssetChange}
+                  labelId="vehicle-status-label"
+                  value={filters.status || ''}
+                  onChange={(e) => handleStatusChange(e.target.value as VehicleStatus | '')}
+                  label="Vehicle Status"
+                  size="small"
+                  sx={{ 
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      transition: 'all 0.2s'
+                    }
+                  }}
                 >
-                  <MenuItem value="">
-                    <em>All</em>
+                  <MenuItem value="">All Status</MenuItem>
+                  <MenuItem value={VehicleStatus.AVAILABLE}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <DirectionsCar fontSize="small" sx={{ mr: 1, color: theme.palette.success.main }} />
+                      Available
+                    </Box>
                   </MenuItem>
-                  <MenuItem value="true">Yes</MenuItem>
-                  <MenuItem value="false">No</MenuItem>
+                  <MenuItem value={VehicleStatus.LEASED}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Business fontSize="small" sx={{ mr: 1, color: theme.palette.primary.main }} />
+                      Leased
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value={VehicleStatus.MAINTENANCE}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <FilterAlt fontSize="small" sx={{ mr: 1, color: theme.palette.warning.main }} />
+                      Maintenance
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value={VehicleStatus.SOLD}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <AttachMoney fontSize="small" sx={{ mr: 1, color: theme.palette.secondary.main }} />
+                      Sold
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value={VehicleStatus.LIQUID_ASSET}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <AttachMoney fontSize="small" sx={{ mr: 1, color: theme.palette.info.main }} />
+                      Liquid Asset
+                    </Box>
+                  </MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <TextField
-                fullWidth
-                label="Legal Owner"
-                value={filters.legalOwner || ''}
-                onChange={handleLegalOwnerChange}
-                variant="outlined"
-                size="small"
-                placeholder="e.g. Company name"
-              />
-            </Grid>
+
+              <Tooltip title={advancedOpen ? "Hide advanced filters" : "Show advanced filters"}>
+                <IconButton 
+                  onClick={() => setAdvancedOpen(!advancedOpen)}
+                  color={hasActiveFilters ? "primary" : "default"}
+                  sx={{ 
+                    borderRadius: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                    position: 'relative'
+                  }}
+                >
+                  <Tune fontSize="small" />
+                  {filterCount > 0 && (
+                    <Chip 
+                      size="small" 
+                      label={filterCount} 
+                      color="primary"
+                      sx={{ 
+                        position: 'absolute', 
+                        top: -8, 
+                        right: -8, 
+                        minWidth: 20,
+                        height: 20,
+                        fontSize: '0.75rem'
+                      }}
+                    />
+                  )}
+                </IconButton>
+              </Tooltip>
+            </Box>
           </Grid>
-        </Box>
-      )}
-    </Box>
+        </Grid>
+
+        {/* Advanced Filters */}
+        <Collapse in={advancedOpen}>
+          <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ color: theme.palette.text.secondary, mb: 2 }}>
+              Advanced Filters
+            </Typography>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  label="Make"
+                  value={filters.make || ''}
+                  onChange={(e) => handleMakeChange(e.target.value)}
+                  fullWidth
+                  size="small"
+                  placeholder="e.g. Toyota, BMW"
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': { 
+                      borderRadius: 2 
+                    }
+                  }}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  label="Model"
+                  value={filters.model || ''}
+                  onChange={(e) => handleModelChange(e.target.value)}
+                  fullWidth
+                  size="small"
+                  placeholder="e.g. Corolla, X5"
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': { 
+                      borderRadius: 2 
+                    }
+                  }}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField
+                  label="Year"
+                  type="number"
+                  value={filters.year || ''}
+                  onChange={(e) => handleYearChange(e.target.value)}
+                  fullWidth
+                  size="small"
+                  inputProps={{ min: 1900, max: new Date().getFullYear() + 1 }}
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': { 
+                      borderRadius: 2 
+                    }
+                  }}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Liquid Asset</InputLabel>
+                  <Select
+                    value={filters.isLiquidAsset === undefined ? '' : filters.isLiquidAsset.toString()}
+                    onChange={(e) => handleLiquidAssetChange(e.target.value)}
+                    label="Liquid Asset"
+                    sx={{ borderRadius: 2 }}
+                  >
+                    <MenuItem value="">All</MenuItem>
+                    <MenuItem value="true">Yes</MenuItem>
+                    <MenuItem value="false">No</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={2}>
+                <TextField
+                  label="Legal Owner"
+                  value={filters.legalOwner || ''}
+                  onChange={(e) => handleLegalOwnerChange(e.target.value)}
+                  fullWidth
+                  size="small"
+                  placeholder="Owner name"
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': { 
+                      borderRadius: 2 
+                    }
+                  }}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        </Collapse>
+
+        {/* Active Filters */}
+        {hasActiveFilters && (
+          <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography variant="caption" sx={{ color: theme.palette.text.secondary, mr: 1 }}>
+                Active Filters:
+              </Typography>
+              
+              {filters.search && (
+                <Chip
+                  label={`Search: "${filters.search}"`}
+                  onDelete={() => handleRemoveFilter('search')}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                />
+              )}
+              
+              {filters.status && (
+                <Chip
+                  label={`Status: ${filters.status}`}
+                  onDelete={() => handleRemoveFilter('status')}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                />
+              )}
+              
+              {filters.make && (
+                <Chip
+                  label={`Make: ${filters.make}`}
+                  onDelete={() => handleRemoveFilter('make')}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                />
+              )}
+              
+              {filters.model && (
+                <Chip
+                  label={`Model: ${filters.model}`}
+                  onDelete={() => handleRemoveFilter('model')}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                />
+              )}
+              
+              {filters.year && (
+                <Chip
+                  label={`Year: ${filters.year}`}
+                  onDelete={() => handleRemoveFilter('year')}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                />
+              )}
+              
+              {filters.legalOwner && (
+                <Chip
+                  label={`Owner: ${filters.legalOwner}`}
+                  onDelete={() => handleRemoveFilter('legalOwner')}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                />
+              )}
+              
+              {filters.isLiquidAsset !== undefined && (
+                <Chip
+                  label={`Liquid Asset: ${filters.isLiquidAsset ? 'Yes' : 'No'}`}
+                  onDelete={() => handleRemoveFilter('isLiquidAsset')}
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                />
+              )}
+              
+              <Button
+                size="small"
+                onClick={handleClearFilters}
+                sx={{ 
+                  ml: 1,
+                  textTransform: 'none',
+                  borderRadius: 2
+                }}
+              >
+                Clear All
+              </Button>
+            </Box>
+          </Box>
+        )}
+      </Box>
+    </Paper>
   );
 };

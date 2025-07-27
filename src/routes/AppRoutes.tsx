@@ -5,7 +5,7 @@ import { CustomersPage } from '../features/customers/containers/CustomersPage';
 import { CreateCustomerPage } from '../features/customers/containers/CreateCustomerPage';
 import { VehiclesPage } from '../features/vehicles/containers/VehiclesPage';
 import AuditPage from '../features/logs/containers/AuditPage';
-import { EditCustomerPage } from '../features/customers/containers/EditCustomerPage';
+import {EditCustomerPage}  from '../features/customers/containers/Account/EditCustomerPage';
 import CustomerAccountPage from '../features/customers/containers/CustomerAccountPage';
 import CustomerSummaryPage from '../features/customers/containers/Account/CustomerSummaryPage';
 import CustomerContractsPage from '../features/customers/containers/Account/CustomerContractsPage';
@@ -28,8 +28,9 @@ export const AppRoutes: React.FC = () => {
             <Route path="invoices" element={<div>Customer Invoices</div>} />
             <Route path="vehicles" element={<div>Customer Vehicles</div>} />
             <Route path="logs" element={< CustomerLogsPage/>} />
+            <Route path="edit" element={<EditCustomerPage />} />
           </Route>
-          <Route path=":id/edit" element={<EditCustomerPage />} />
+          
         </Route>
 
         <Route path="vehicles">

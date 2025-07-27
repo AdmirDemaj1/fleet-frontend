@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Paper, Typography, CircularProgress, Alert } from '@mui/material';
-import { CustomerForm } from '../components/CustomerForm';
-import { useCustomer } from '../hooks/useCustomer';
-import { useUpdateCustomer } from '../hooks/useUpdateCustomer';
-import { CreateCustomerDto, CustomerType } from '../types/customer.types';
+import { CustomerForm } from '../../components/CustomerForm';
+import { useCustomer } from '../../hooks/useCustomer';
+import { useUpdateCustomer } from '../../hooks/useUpdateCustomer';
+import { CreateCustomerDto, CustomerType } from '../../types/customer.types';
 
 export const EditCustomerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,7 +42,25 @@ export const EditCustomerPage: React.FC = () => {
 
   // Prepare initial data based on customer type
   const initialData: Partial<CreateCustomerDto> = {};
+  
+  // Safely access customer data
   const customerData = customer.customer;
+  
+  if (!customerData) {
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Alert severity="error">Customer data not found</Alert>
+      </Box>
+    );
+  }
+  
+  if (!customerData.type) {
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Alert severity="error">Customer type is missing</Alert>
+      </Box>
+    );
+  }
   
   if (customerData.type === CustomerType.INDIVIDUAL) {
     initialData.individualDetails = {

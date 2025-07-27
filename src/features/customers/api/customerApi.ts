@@ -18,24 +18,86 @@ export const customerApi = {
     if (filters?.search) params.append('search', filters.search);
     if (filters?.limit) params.append('limit', filters.limit.toString());
     if (filters?.offset) params.append('offset', filters.offset.toString());
+    if (filters?.hasVehicles !== undefined) params.append('hasVehicles', filters.hasVehicles.toString());
+    if (filters?.hasContracts !== undefined) params.append('hasContracts', filters.hasContracts.toString());
+    if (filters?.hasCollaterals !== undefined) params.append('hasCollaterals', filters.hasCollaterals.toString());
     
-    const response = await api.get<Customer[]>(`${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`);
+    console.log('API Request URL:', `${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`);
+    console.log('Filters being sent:', filters);
     
-    // The API returns an array directly, not an object with a data property
-    const processedCustomers = response.data.map(customer => ({
-      ...customer,
-      // Convert string dates to Date objects if needed
-      createdAt: customer.createdAt,
-      updatedAt: customer.updatedAt
-    }));
-    
-    // Get total from headers if available, otherwise use array length
-    const total = parseInt(response.headers['x-total-count'] || '0', 10) || processedCustomers.length;
-    
-    return {
-      data: processedCustomers,
-      total: total
-    };
+    try {
+      const response = await api.get<Customer[]>(`${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`);
+      
+      console.log('API Response:', response);
+      console.log('Response Headers:', response.headers);
+      
+      // The API returns an array directly, not an object with a data property
+      const processedCustomers = response.data.map(customer => ({
+        ...customer,
+        // Convert string dates to Date objects if needed
+        createdAt: customer.createdAt,
+        updatedAt: customer.updatedAt
+      }));
+      
+      // Try multiple ways to get the total count
+      let total = 0;
+      
+      // Method 1: Check x-total-count header (common standard)
+      if (response.headers['x-total-count']) {
+        total = parseInt(response.headers['x-total-count'], 10);
+      }
+      // Method 2: Check total-count header
+      else if (response.headers['total-count']) {
+        total = parseInt(response.headers['total-count'], 10);
+      }
+      // Method 3: Check if response has pagination info
+      else if (response.headers['content-range']) {
+        // Parse Content-Range header like "items 0-9/100"
+        const match = response.headers['content-range'].match(/\/(\d+)$/);
+        if (match) {
+          total = parseInt(match[1], 10);
+        }
+      }
+      // Method 4: If we have limit/offset and got a full page, we need to get the total count
+      else if (filters?.limit && filters?.offset !== undefined) {
+        // Make a separate request to get the total count without limit/offset
+        try {
+          const countParams = new URLSearchParams();
+          if (filters?.type) countParams.append('type', filters.type);
+          if (filters?.search) countParams.append('search', filters.search);
+          if (filters?.hasVehicles !== undefined) countParams.append('hasVehicles', filters.hasVehicles.toString());
+          if (filters?.hasContracts !== undefined) countParams.append('hasContracts', filters.hasContracts.toString());
+          if (filters?.hasCollaterals !== undefined) countParams.append('hasCollaterals', filters.hasCollaterals.toString());
+          
+          const countResponse = await api.get<Customer[]>(`${API_ENDPOINTS.CUSTOMERS}?${countParams.toString()}`);
+          total = countResponse.data.length;
+          console.log('Got total count from separate request:', total);
+        } catch (countError) {
+          console.warn('Failed to get count, using fallback estimation:', countError);
+          // Fallback estimation
+          if (processedCustomers.length === filters.limit) {
+            total = (filters.offset || 0) + processedCustomers.length + 1;
+          } else {
+            total = (filters.offset || 0) + processedCustomers.length;
+          }
+        }
+      }
+      // Method 5: Fallback to array length (no pagination)
+      else {
+        total = processedCustomers.length;
+      }
+      
+      console.log('Calculated total:', total);
+      console.log('Processed customers count:', processedCustomers.length);
+      
+      return {
+        data: processedCustomers,
+        total: total
+      };
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
   },
 
   getById: async (id: string): Promise<CustomerDetailed> => {
