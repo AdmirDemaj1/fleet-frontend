@@ -10,7 +10,7 @@ import CustomerAccountPage from '../features/customers/containers/CustomerAccoun
 import CustomerSummaryPage from '../features/customers/containers/Account/CustomerSummaryPage';
 import CustomerContractsPage from '../features/customers/containers/Account/CustomerContractsPage';
 import CustomerLogsPage from '../features/customers/containers/Account/CustomerLogsPage';
-import createCustomerPage from '../features/customers/containers/CreateCustomerPage';
+import { CustomerInvoicesPage } from '../features/customers/containers';
 import CreateVehiclePage from '../features/vehicles/containers/CreateVehiclePage';
 export const AppRoutes: React.FC = () => {
   return (
@@ -25,7 +25,7 @@ export const AppRoutes: React.FC = () => {
             <Route index element={<Navigate to="summary" replace />} />
             <Route path="summary" element={<CustomerSummaryPage/>} />
             <Route path="contracts" element={<CustomerContractsPage />} />
-            <Route path="invoices" element={<div>Customer Invoices</div>} />
+            <Route path="invoices" element={<CustomerInvoicesPage />} />
             <Route path="vehicles" element={<div>Customer Vehicles</div>} />
             <Route path="logs" element={< CustomerLogsPage/>} />
             <Route path="edit" element={<EditCustomerPage />} />

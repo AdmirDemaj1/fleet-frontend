@@ -15,7 +15,6 @@ import {
   useTheme
 } from '@mui/material';
 import {
-  Edit,
   MoreVert,
   Email as EmailIcon,
   Phone as PhoneIcon,
