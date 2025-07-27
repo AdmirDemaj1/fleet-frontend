@@ -4,7 +4,7 @@ export enum CustomerType {
   }
 
   export interface CustomerAccountMenuProps {
-    customerId: string;
+    customerId?: string; // Optional since we get it from URL params
   }
   
   export interface BaseCustomer {
