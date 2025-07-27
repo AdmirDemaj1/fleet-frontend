@@ -50,7 +50,8 @@ import {
 import { formatCurrency, formatDate, isOverdue } from '../../utils/invoiceUtils';
 import { renderInvoiceStatusCell, renderInvoiceTypeCell } from '../../utils/invoiceRenderUtils';
 import { INVOICE_ROWS_PER_PAGE_OPTIONS } from '../../constants/invoiceConstants';
-import InvoiceFilters, { InvoiceFilters as InvoiceFiltersType } from './InvoiceFilters';
+import { InvoiceFilters } from './InvoiceFilters';
+import { InvoiceFilters as InvoiceFiltersType } from '../../types/invoiceFilters.types';
 import { ConfirmDialog } from '../../../../shared/components/ConfirmDialog';
 
 // Export types for external use

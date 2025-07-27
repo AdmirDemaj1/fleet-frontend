@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   TextField,
@@ -15,7 +15,6 @@ import {
   IconButton,
   Grid,
   Tooltip,
-  useTheme,
   alpha
 } from '@mui/material';
 import {
@@ -23,107 +22,37 @@ import {
   Clear,
   Tune,
   CheckCircle,
-  AccessTime,
-  ErrorOutline,
   CalendarMonth,
   AttachMoney,
   Category
 } from '@mui/icons-material';
-
-// Invoice filter state interface
-export interface InvoiceFilters {
-  search: string;
-  status: string;
-  type: string;
-  dateRange: string;
-  amountRange: string;
-}
-
-interface InvoiceFiltersProps {
-  filters: InvoiceFilters;
-  onFilterChange: (newFilters: InvoiceFilters) => void;
-  invoicesCount?: number;
-}
-
-// Status configuration for chips and dropdowns
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses', icon: null },
-  { value: 'pending', label: 'Pending', icon: <AccessTime fontSize="small" /> },
-  { value: 'paid', label: 'Paid', icon: <CheckCircle fontSize="small" /> },
-  { value: 'overdue', label: 'Overdue', icon: <ErrorOutline fontSize="small" /> },
-  { value: 'cancelled', label: 'Cancelled', icon: <ErrorOutline fontSize="small" /> }
-];
-
-const TYPE_OPTIONS = [
-  { value: '', label: 'All Types' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'deposit', label: 'Deposit' },
-  { value: 'final', label: 'Final' },
-  { value: 'penalty', label: 'Penalty' }
-];
-
-const DATE_RANGE_OPTIONS = [
-  { value: '', label: 'Any Time' },
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'This Week' },
-  { value: 'month', label: 'This Month' },
-  { value: 'quarter', label: 'This Quarter' },
-  { value: 'year', label: 'This Year' }
-];
-
-const AMOUNT_RANGE_OPTIONS = [
-  { value: '', label: 'Any Amount' },
-  { value: '0-100', label: 'Under $100' },
-  { value: '100-500', label: '$100 - $500' },
-  { value: '500-1000', label: '$500 - $1,000' },
-  { value: '1000-5000', label: '$1,000 - $5,000' },
-  { value: '5000+', label: 'Over $5,000' }
-];
+import { InvoiceFiltersProps } from '../../types/invoiceFilters.types';
+import { 
+  STATUS_OPTIONS, 
+  TYPE_OPTIONS, 
+  DATE_RANGE_OPTIONS, 
+  AMOUNT_RANGE_OPTIONS 
+} from '../../constants/invoiceFiltersConstants';
+import { useInvoiceFilters } from '../../hooks/useInvoiceFilters';
 
 export const InvoiceFilters: React.FC<InvoiceFiltersProps> = ({
   filters,
   onFilterChange,
   invoicesCount = 0
 }) => {
-  const theme = useTheme();
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const {
+    theme,
+    filterState,
+    handleFilterChange,
+    handleClearFilters,
+    toggleAdvancedFilters,
+    getStatusOption,
+    getTypeOption,
+    getDateRangeOption,
+    getAmountRangeOption
+  } = useInvoiceFilters(filters, onFilterChange);
 
-  const hasActiveFilters = Object.values(filters).some(value => 
-    value !== undefined && value !== '' && value !== null
-  );
-
-  const filterCount = Object.values(filters).filter(value => 
-    value !== undefined && value !== '' && value !== null
-  ).length;
-
-  const handleFilterChange = (key: keyof InvoiceFilters, value: string) => {
-    onFilterChange({
-      ...filters,
-      [key]: value
-    });
-  };
-
-  const handleClearFilters = () => {
-    onFilterChange({
-      search: '',
-      status: '',
-      type: '',
-      dateRange: '',
-      amountRange: ''
-    });
-  };
-
-  const getStatusOption = (value: string) => 
-    STATUS_OPTIONS.find(option => option.value === value);
-
-  const getTypeOption = (value: string) => 
-    TYPE_OPTIONS.find(option => option.value === value);
-
-  const getDateRangeOption = (value: string) => 
-    DATE_RANGE_OPTIONS.find(option => option.value === value);
-
-  const getAmountRangeOption = (value: string) => 
-    AMOUNT_RANGE_OPTIONS.find(option => option.value === value);
+  const { advancedOpen, hasActiveFilters, filterCount } = filterState;
 
   return (
     <Paper 
@@ -213,7 +142,7 @@ export const InvoiceFilters: React.FC<InvoiceFiltersProps> = ({
               <Tooltip title="More filters">
                 <IconButton 
                   color={advancedOpen ? 'primary' : 'default'} 
-                  onClick={() => setAdvancedOpen(!advancedOpen)}
+                  onClick={toggleAdvancedFilters}
                   sx={{ 
                     height: 40, 
                     width: 40,
