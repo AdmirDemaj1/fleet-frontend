@@ -12,48 +12,18 @@ import {
   ListItemText, 
   ListItemIcon, 
   IconButton,
-  useTheme,
   alpha,
   Skeleton,
   Alert
 } from '@mui/material';
 import {
   Receipt as ReceiptIcon,
-  CheckCircle as PaidIcon,
-  Error as OverdueIcon,
-  Schedule as PendingIcon,
   ArrowForward as ArrowForwardIcon,
-  Info as InfoIcon,
-  Warning as WarningIcon,
-  Assignment as LogIcon,
-  Error as ErrorIcon
+  Assignment as LogIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-
-interface Invoice {
-  id: string;
-  date: string;
-  amount: string;
-  status: 'paid' | 'pending' | 'overdue';
-}
-
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  message: string;
-  severity: 'info' | 'warning' | 'error';
-  assetName?: string;
-}
-
-interface CustomerBillingAndLogsCardsProps {
-  customerId: string;
-  recentInvoices: Invoice[];
-  recentLogs: LogEntry[];
-  onInvoicesClick?: () => void;
-  onLogsClick?: () => void;
-  invoicesLoading?: boolean;
-  invoicesError?: string | null;
-}
+import { CustomerBillingAndLogsCardsProps } from '../../types/customerBillingCards.types';
+import { CARD_CONSTANTS } from '../../constants/billingCardsConstants';
+import { useBillingCards } from '../../hooks/useBillingCards';
 
 const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = ({ 
   customerId,
@@ -64,63 +34,15 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
   invoicesLoading = false,
   invoicesError = null
 }) => {
-  const theme = useTheme();
-  const navigate = useNavigate();
-
-  const handleInvoicesClick = () => {
-    if (onInvoicesClick) {
-      onInvoicesClick();
-    } else {
-      navigate(`/customers/${customerId}/invoices`);
-    }
-  };
-
-  const handleLogsClick = () => {
-    if (onLogsClick) {
-      onLogsClick();
-    } else {
-      navigate(`/customers/${customerId}/logs`);
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch(status) {
-      case 'paid':
-        return <PaidIcon fontSize="small" sx={{ color: theme.palette.success.main }}/>;
-      case 'overdue':
-        return <OverdueIcon fontSize="small" sx={{ color: theme.palette.error.main }}/>;
-      case 'pending':
-        return <PendingIcon fontSize="small" sx={{ color: theme.palette.warning.main }}/>;
-      default:
-        return <PendingIcon fontSize="small" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'paid':
-        return 'success';
-      case 'overdue':
-        return 'error';
-      case 'pending':
-        return 'warning';
-      default:
-        return 'default';
-    }
-  };
-
-  const getSeverityIcon = (severity: string) => {
-    switch(severity) {
-      case 'info':
-        return <InfoIcon fontSize="small" sx={{ color: theme.palette.info.main }}/>;
-      case 'warning':
-        return <WarningIcon fontSize="small" sx={{ color: theme.palette.warning.main }}/>;
-      case 'error':
-        return <ErrorIcon fontSize="small" sx={{ color: theme.palette.error.main }}/>;
-      default:
-        return <InfoIcon fontSize="small" />;
-    }
-  };
+  const {
+    theme,
+    handleInvoicesClick,
+    handleLogsClick,
+    getInvoiceStatusIcon,
+    getInvoiceStatusColor,
+    getLogSeverityIcon,
+    formatInvoiceNumber
+  } = useBillingCards(customerId, onInvoicesClick, onLogsClick);
 
   return (
     <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -138,7 +60,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
           <CardContent sx={{ flexGrow: 1, p: 0 }}>
             <Box sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <ReceiptIcon sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 20 }} />
+                <ReceiptIcon sx={{ color: theme.palette.primary.main, mr: 1, fontSize: CARD_CONSTANTS.ICON_SIZE }} />
                 <Typography variant="subtitle1" fontWeight="medium">Recent Invoices</Typography>
               </Box>
               <IconButton 
@@ -154,10 +76,10 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
             
             <Divider />
             
-            <List sx={{ p: 0, maxHeight: '300px', overflow: 'auto' }} dense>
+            <List sx={{ p: 0, maxHeight: CARD_CONSTANTS.MAX_HEIGHT, overflow: 'auto' }} dense>
               {invoicesLoading ? (
                 // Loading skeleton
-                [...Array(3)].map((_, index) => (
+                [...Array(CARD_CONSTANTS.SKELETON_COUNT)].map((_, index) => (
                   <ListItem key={index} sx={{ py: 0.75, px: 1.5 }}>
                     <ListItemIcon sx={{ minWidth: 32 }}>
                       <Skeleton variant="circular" width={20} height={20} />
@@ -191,7 +113,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                       }}
                     >
                       <ListItemIcon sx={{ minWidth: 32 }}>
-                        {getStatusIcon(invoice.status)}
+                        {getInvoiceStatusIcon(invoice.status)}
                       </ListItemIcon>
                       <ListItemText 
                         primary={
@@ -206,7 +128,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                             }}
                             title={`Full ID: ${invoice.id}`}
                           >
-                            INV-{invoice.id.split('-')[0].toUpperCase()}
+                            {formatInvoiceNumber(invoice.id)}
                           </Typography>
                         }
                         secondary={
@@ -223,9 +145,9 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                         <Chip 
                           label={invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)} 
                           size="small"
-                          color={getStatusColor(invoice.status) as any}
+                          color={getInvoiceStatusColor(invoice.status) as any}
                           variant="outlined"
-                          sx={{ height: 20, '& .MuiChip-label': { px: 0.8, py: 0 } }}
+                          sx={{ height: CARD_CONSTANTS.CHIP_HEIGHT, '& .MuiChip-label': { px: 0.8, py: 0 } }}
                         />
                       </Box>
                     </ListItem>
@@ -256,7 +178,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
           <CardContent sx={{ flexGrow: 1, p: 0 }}>
             <Box sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <LogIcon sx={{ color: theme.palette.primary.main, mr: 1, fontSize: 20 }} />
+                <LogIcon sx={{ color: theme.palette.primary.main, mr: 1, fontSize: CARD_CONSTANTS.ICON_SIZE }} />
                 <Typography variant="subtitle1" fontWeight="medium">Recent Activity</Typography>
               </Box>
               <IconButton 
@@ -272,7 +194,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
             
             <Divider />
             
-            <List sx={{ p: 0, maxHeight: '300px', overflow: 'auto' }} dense>
+            <List sx={{ p: 0, maxHeight: CARD_CONSTANTS.MAX_HEIGHT, overflow: 'auto' }} dense>
               {recentLogs.length > 0 ? (
                 recentLogs.map((log, index) => (
                   <React.Fragment key={log.id}>
@@ -284,7 +206,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                       }}
                     >
                       <ListItemIcon sx={{ minWidth: 32 }}>
-                        {getSeverityIcon(log.severity)}
+                        {getLogSeverityIcon(log.severity)}
                       </ListItemIcon>
                       <ListItemText 
                         primary={

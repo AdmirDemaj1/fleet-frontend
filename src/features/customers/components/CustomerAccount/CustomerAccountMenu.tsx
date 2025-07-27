@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback } from 'react';
-import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   Box,
   Tabs,
@@ -7,120 +7,27 @@ import {
   Typography,
   AppBar,
   Toolbar,
-  useTheme,
-  useMediaQuery,
   IconButton,
   Tooltip,
   alpha
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
-  Description as DescriptionIcon,
-  Receipt as ReceiptIcon,
-  LocalShipping as LocalShippingIcon,
-  History as HistoryIcon,
-  Settings as SettingsIcon,
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
-import { CustomerAccountMenuProps } from '../../types/customer.types';
-import { useCustomer } from '../../hooks/useCustomer';
-import { CustomerType } from '../../types/customer.types';
-
-interface MenuItem {
-  text: string;
-  path: string;
-  icon: React.ReactNode;
-  description?: string;
-}
-
-const menuItems: MenuItem[] = [
-  { 
-    text: 'Summary', 
-    path: 'summary', 
-    icon: <DashboardIcon />,
-    description: 'Customer overview and account details'
-  },
-  { 
-    text: 'Contracts', 
-    path: 'contracts', 
-    icon: <DescriptionIcon />,
-    description: 'Active and historical contracts'
-  },
-  { 
-    text: 'Invoices', 
-    path: 'invoices', 
-    icon: <ReceiptIcon />,
-    description: 'Payments and billing history'
-  },
-  { 
-    text: 'Vehicles', 
-    path: 'vehicles', 
-    icon: <LocalShippingIcon />,
-    description: 'Fleet vehicles and assets'
-  },
-  { 
-    text: 'Logs', 
-    path: 'logs', 
-    icon: <HistoryIcon />,
-    description: 'Activity and audit logs'
-  },
-  { 
-    text: 'Settings', 
-    path: 'edit', 
-    icon: <SettingsIcon />,
-    description: 'Edit customer information'
-  },
-];
+import { CustomerAccountMenuProps } from '../../types/customerMenu.types';
+import { useCustomerMenu } from '../../hooks/useCustomerMenu';
 
 const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
-  const location = useLocation();
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
-
-  // Fetch customer data to get the name
-  const { customer } = useCustomer(id || '');
-
-  // Get customer display name
-  const getCustomerName = useMemo(() => {
-    if (!customer) return 'Customer';
-    
-    const customerData = customer?.customer || customer;
-    
-    if (customerData?.type === CustomerType.INDIVIDUAL) {
-      const firstName = (customerData as any)?.firstName || '';
-      const lastName = (customerData as any)?.lastName || '';
-      const fullName = `${firstName} ${lastName}`.trim();
-      return fullName || 'Customer';
-    } else {
-      const businessName = (customerData as any)?.legalName;
-      return businessName || 'Business Customer';
-    }
-  }, [customer]);
-
-  // Get current active tab based on pathname
-  const getCurrentTab = useMemo(() => {
-    const pathname = location.pathname;
-    const currentItem = menuItems.find(item => pathname.includes(item.path));
-    return currentItem ? menuItems.indexOf(currentItem) : 0;
-  }, [location.pathname]);
-
-  const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
-    const selectedItem = menuItems[newValue];
-    if (selectedItem && id) {
-      // Prevent navigation if already on the selected tab
-      const currentPath = location.pathname;
-      const targetPath = `/customers/${id}/${selectedItem.path}`;
-      if (currentPath !== targetPath) {
-        navigate(targetPath);
-      }
-    }
-  }, [id, navigate, location.pathname]);
-
-  const handleBackClick = useCallback(() => {
-    navigate('/customers');
-  }, [navigate]);
+  const {
+    id,
+    customerName,
+    currentTab,
+    isSmallScreen,
+    theme,
+    handleTabChange,
+    handleBackClick,
+    menuItems
+  } = useCustomerMenu();
 
   if (!id) {
     // Fallback UI for missing customer ID
@@ -139,7 +46,7 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" color="error" sx={{ ml: 2 }}>
-            {getCustomerName} not found
+            {customerName} not found
           </Typography>
         </Toolbar>
       </AppBar>
@@ -193,7 +100,7 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
                 margin: 0
               }}
             >
-              {getCustomerName}'s Account
+              {customerName}'s Account
             </Typography>
           )}
         </Box>
@@ -208,7 +115,7 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
           height: '100%'
         }}>
           <Tabs
-            value={getCurrentTab}
+            value={currentTab}
             onChange={handleTabChange}
             variant={isSmallScreen ? "scrollable" : "standard"}
             scrollButtons="auto"
