@@ -3,6 +3,7 @@ import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import { theme as lightTheme } from '../../theme';
 import {  darkTheme } from '../../themedark';
 import CssBaseline from '@mui/material/CssBaseline';
+import { frostedGlassTheme } from '../../themeFrostedGlass';
 
 type ThemeMode = 'light' | 'dark';
 

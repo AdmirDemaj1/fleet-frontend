@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   Box, 
   Card, 
@@ -21,14 +21,14 @@ import {
   ArrowForward as ArrowForwardIcon,
   Assignment as LogIcon
 } from '@mui/icons-material';
-import { CustomerBillingAndLogsCardsProps } from '../../types/customerBillingCards.types';
+import { CustomerBillingAndLogsCardsProps, LogEntry } from '../../types/customerBillingCards.types';
 import { CARD_CONSTANTS } from '../../constants/billingCardsConstants';
 import { useBillingCards } from '../../hooks/useBillingCards';
+import { useCustomerLogs } from '../../hooks/useCustomerLogs';
 
 const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = ({ 
   customerId,
   recentInvoices, 
-  recentLogs,
   onInvoicesClick,
   onLogsClick,
   invoicesLoading = false,
@@ -43,6 +43,47 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
     getLogSeverityIcon,
     formatInvoiceNumber
   } = useBillingCards(customerId, onInvoicesClick, onLogsClick);
+
+  // Fetch customer logs
+  const { logs, loading: logsLoading, error: logsError } = useCustomerLogs(customerId);
+
+  // Transform and get the 5 most recent logs
+  const recentLogs: LogEntry[] = useMemo(() => {
+    if (!logs || logs.length === 0) return [];
+    
+    // Helper function to determine log severity based on event type
+    const getSeverityFromEventType = (eventType: string): 'info' | 'warning' | 'error' => {
+      const lowerEventType = eventType.toLowerCase();
+      
+      if (lowerEventType.includes('error') || lowerEventType.includes('fail') || lowerEventType.includes('delete')) {
+        return 'error';
+      }
+      if (lowerEventType.includes('warning') || lowerEventType.includes('warn') || lowerEventType.includes('timeout')) {
+        return 'warning';
+      }
+      return 'info';
+    };
+    
+    return logs
+      .slice(0, 5) // Get the 5 most recent logs
+      .map((log) => ({
+        id: log.id,
+        timestamp: new Date(log.createdAt || log.actionTimestamp).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        message: log.eventType ? 
+          `${log.eventType.replace(/([A-Z])/g, ' $1').trim()}` : 
+          (log.newValues ? 'Record updated' : 'System event'),
+        severity: log.eventType ? getSeverityFromEventType(log.eventType) : 'info',
+        assetName: log.entityType === 'vehicle' ? log.entityId : undefined,
+        // Include user information
+        performedBy: log.performedByName || log.userId || 'System'
+      }));
+  }, [logs]);
 
   return (
     <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -195,7 +236,28 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
             <Divider />
             
             <List sx={{ p: 0, maxHeight: CARD_CONSTANTS.MAX_HEIGHT, overflow: 'auto' }} dense>
-              {recentLogs.length > 0 ? (
+              {logsLoading ? (
+                // Loading skeleton for logs
+                [...Array(CARD_CONSTANTS.SKELETON_COUNT)].map((_, index) => (
+                  <ListItem key={index} sx={{ py: 0.75, px: 1.5 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <Skeleton variant="circular" width={20} height={20} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={<Skeleton variant="text" width="80%" height={20} />}
+                      secondary={<Skeleton variant="text" width="60%" height={16} />}
+                      sx={{ my: 0 }}
+                    />
+                  </ListItem>
+                ))
+              ) : logsError ? (
+                // Error state for logs
+                <Box sx={{ py: 2, px: 1.5 }}>
+                  <Alert severity="error" sx={{ fontSize: '0.75rem' }}>
+                    {logsError}
+                  </Alert>
+                </Box>
+              ) : recentLogs.length > 0 ? (
                 recentLogs.map((log, index) => (
                   <React.Fragment key={log.id}>
                     <ListItem 
@@ -217,6 +279,9 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                         secondary={
                           <Typography variant="caption" component="div" sx={{ display: 'flex', flexWrap: 'wrap' }}>
                             <span>{log.timestamp}</span>
+                            {log.performedBy && (
+                              <span style={{ marginLeft: '4px' }}>• by {log.performedBy}</span>
+                            )}
                             {log.assetName && (
                               <span style={{ marginLeft: '4px' }}>• {log.assetName}</span>
                             )}

@@ -50,12 +50,8 @@ export const DashboardLayout: React.FC = () => {
       <CssBaseline />
       
       {/* Header */}
-      <Header
-        onSidebarToggle={handleSidebarToggle}
-        sidebarCollapsed={sidebarCollapsed}
-        isMobile={isMobile}
-      />
-      
+      <Header />
+
       {/* Sidebar */}
       <Sidebar
         open={sidebarOpen}

@@ -100,20 +100,13 @@ export enum CustomerType {
     active: boolean;
   }
   
-  export interface CustomerLog {
-    id: string;
-    type: string;
-    description: string;
-    createdAt: Date;
-    performedBy?: string;
-    metadata?: Record<string, any>;
-  }
+
   
   export interface CustomerDetailed {
     customer: Customer;
     contracts: ContractSummary[];
     collateral: CollateralSummary[];
-    logs: CustomerLog[];
+    
   }
   
   export interface CustomerFilters {

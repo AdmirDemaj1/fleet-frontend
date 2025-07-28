@@ -8,8 +8,8 @@ import {
   CustomerFilters,
   ContractSummary,
   CollateralSummary,
-  CustomerLog
 } from '../types/customer.types';
+import { CustomerLog } from '../types/customerLogs.types';
 
 export const customerApi = {
   getAll: async (filters?: CustomerFilters): Promise<{ data: Customer[]; total: number }> => {

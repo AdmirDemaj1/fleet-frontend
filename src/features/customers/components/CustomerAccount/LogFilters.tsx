@@ -32,8 +32,7 @@ interface LogFiltersProps {
 
 export const LogFilters: React.FC<LogFiltersProps> = ({ 
   filters, 
-  onFilterChange,
-  logsCount 
+  onFilterChange 
 }) => {
   const {
     filterState,

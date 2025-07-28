@@ -8,8 +8,6 @@ import {
   Box,
   Menu,
   MenuItem,
-  Breadcrumbs,
-  Link,
   useTheme,
   alpha,
   Stack,
@@ -18,34 +16,21 @@ import {
   ListItemText
 } from '@mui/material';
 import { 
-  Menu as MenuIcon, 
   Logout, 
   Settings,
   Person,
-  Search,
   Help,
-  KeyboardArrowDown,
-  Home,
-  NavigateNext,
-  BusinessCenter
+  KeyboardArrowDown
 } from '@mui/icons-material';
 import { ThemeToggle } from '../Layout/ThemeToggle';
-import { useLocation } from 'react-router-dom';
 
 interface HeaderProps {
-  onSidebarToggle: () => void;
-  sidebarCollapsed: boolean;
-  isMobile: boolean;
+  // No props needed since we removed sidebar functionality
 }
 
-export const Header: React.FC<HeaderProps> = ({ 
-  onSidebarToggle, 
-  sidebarCollapsed, 
-  isMobile 
-}) => {
+export const Header: React.FC<HeaderProps> = () => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const theme = useTheme();
-  const location = useLocation();
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -58,57 +43,6 @@ export const Header: React.FC<HeaderProps> = ({
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     window.location.href = '/login';
-  };
-
-  // Generate breadcrumbs based on current route
-  const generateBreadcrumbs = () => {
-    const pathnames = location.pathname.split('/').filter((x) => x);
-    const breadcrumbs = [
-      <Link 
-        key="home" 
-        color="inherit" 
-        href="/" 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          textDecoration: 'none',
-          '&:hover': { textDecoration: 'underline' }
-        }}
-      >
-        <Home sx={{ mr: 0.5, fontSize: 18 }} />
-        Dashboard
-      </Link>
-    ];
-
-    pathnames.forEach((value, index) => {
-      const to = `/${pathnames.slice(0, index + 1).join('/')}`;
-      const isLast = index === pathnames.length - 1;
-      const label = value.charAt(0).toUpperCase() + value.slice(1);
-
-      if (isLast) {
-        breadcrumbs.push(
-          <Typography key={to} color="text.primary" sx={{ fontWeight: 600 }}>
-            {label}
-          </Typography>
-        );
-      } else {
-        breadcrumbs.push(
-          <Link 
-            key={to} 
-            color="inherit" 
-            href={to}
-            sx={{ 
-              textDecoration: 'none',
-              '&:hover': { textDecoration: 'underline' }
-            }}
-          >
-            {label}
-          </Link>
-        );
-      }
-    });
-
-    return breadcrumbs;
   };
 
   return (
@@ -127,101 +61,31 @@ export const Header: React.FC<HeaderProps> = ({
       elevation={0}
     >
       <Toolbar sx={{ minHeight: 64, px: { xs: 2, sm: 3 } }}>
-        {/* Menu/Toggle Button */}
-        <IconButton
-          color="inherit"
-          aria-label="toggle sidebar"
-          onClick={onSidebarToggle}
-          sx={{ 
-            mr: 2,
-            borderRadius: 1.5,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-              transform: 'scale(1.05)',
-            }
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-
-        {/* Logo - show when sidebar is collapsed on desktop or always on mobile */}
-        {(sidebarCollapsed || isMobile) && (
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            mr: 3
-          }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 36,
-                height: 36,
-                borderRadius: 1.5,
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                mr: 1.5,
-              }}
-            >
-              <BusinessCenter 
-                sx={{ 
-                  fontSize: 20, 
-                  color: theme.palette.primary.main,
-                }} 
-              />
-            </Box>
-            <Typography 
-              variant="h6" 
-              sx={{
-                color: theme.palette.primary.main,
-                fontWeight: 700,
-                fontSize: '1rem',
-                display: { xs: 'none', sm: 'block' }
-              }}
-            >
-              Fleet Manager
-            </Typography>
-          </Box>
-        )}
-        
-        {/* Breadcrumbs */}
-        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-          <Breadcrumbs
-            separator={<NavigateNext fontSize="small" />}
-            aria-label="breadcrumb"
+        {/* Logo/App Name */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          mr: 3
+        }}>
+          <Typography 
+            variant="h6" 
             sx={{
-              '& .MuiBreadcrumbs-separator': {
-                color: theme.palette.text.disabled,
-              },
-              '& .MuiBreadcrumbs-li': {
-                display: 'flex',
-                alignItems: 'center',
-              }
+              color: theme.palette.primary.main,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+              fontSize: '1rem',
             }}
           >
-            {generateBreadcrumbs()}
-          </Breadcrumbs>
+            Antigone Financial
+          </Typography>
         </Box>
+        
+        {/* Spacer to push right content to the end */}
+        <Box sx={{ flexGrow: 1 }} />
 
         {/* Right side actions */}
         <Stack direction="row" spacing={1} alignItems="center">
-          {/* Search button */}
-          <IconButton
-            size="medium"
-            aria-label="search"
-            sx={{
-              borderRadius: 1.5,
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                transform: 'scale(1.05)',
-              }
-            }}
-          >
-            <Search fontSize="small" />
-          </IconButton>
-
           {/* Theme toggle */}
           <ThemeToggle />
 
