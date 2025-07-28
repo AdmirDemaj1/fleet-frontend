@@ -103,7 +103,8 @@ const SidebarMenuItem: React.FC<{
   onNavigate: (path: string) => void;
   onClose: () => void;
   level?: number;
-}> = React.memo(({ item, collapsed, isSelected, onNavigate, onClose, level = 0 }) => {
+  isMobile: boolean;
+}> = React.memo(({ item, collapsed, isSelected, onNavigate, onClose, level = 0, isMobile }) => {
   const [open, setOpen] = useState(false);
   const theme = useTheme();
   const location = useLocation();
@@ -121,48 +122,67 @@ const SidebarMenuItem: React.FC<{
   }, [hasChildren, item.path, item.disabled, onNavigate, onClose]);
 
   const menuItemStyles = useMemo(() => ({
-    minHeight: 48,
-    borderRadius: 2,
-    mx: 1,
-    my: 0.5,
-    pl: level > 0 ? 4 : 2.5,
-    pr: 2,
+    minHeight: collapsed && !isMobile ? 52 : 48,
+    borderRadius: collapsed && !isMobile ? 2.5 : 2,
+    mx: collapsed && !isMobile ? 1.5 : 1,
+    my: collapsed && !isMobile ? 1 : 0.5,
+    pl: level > 0 ? 4 : (collapsed && !isMobile ? 0 : 2.5),
+    pr: collapsed && !isMobile ? 0 : 2,
     position: 'relative',
     overflow: 'hidden',
+    justifyContent: collapsed && !isMobile ? 'center' : 'flex-start',
     transition: theme.transitions.create([
       'background-color', 
       'transform', 
       'box-shadow',
-      'border-color'
+      'border-color',
+      'min-height',
+      'margin',
+      'padding'
     ], {
       duration: theme.transitions.duration.shorter,
     }),
     
     // Active state
     ...(isSelected && {
-      bgcolor: alpha(theme.palette.primary.main, 0.08),
+      bgcolor: collapsed && !isMobile 
+        ? alpha(theme.palette.primary.main, 0.15)
+        : alpha(theme.palette.primary.main, 0.08),
       color: theme.palette.primary.main,
       fontWeight: 600,
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        left: 0,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        width: 3,
-        height: '60%',
-        bgcolor: theme.palette.primary.main,
-        borderRadius: '0 2px 2px 0',
-      },
+      boxShadow: collapsed && !isMobile 
+        ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`
+        : 'none',
+      ...(!collapsed && {
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 3,
+          height: '60%',
+          bgcolor: theme.palette.primary.main,
+          borderRadius: '0 2px 2px 0',
+        },
+      }),
     }),
     
     // Hover state
     '&:hover': {
       bgcolor: isSelected 
-        ? alpha(theme.palette.primary.main, 0.12)
-        : alpha(theme.palette.action.hover, 0.08),
-      transform: level === 0 ? 'translateX(2px)' : 'none',
-      boxShadow: level === 0 ? `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}` : 'none',
+        ? (collapsed && !isMobile 
+            ? alpha(theme.palette.primary.main, 0.2)
+            : alpha(theme.palette.primary.main, 0.12))
+        : (collapsed && !isMobile 
+            ? alpha(theme.palette.action.hover, 0.15)
+            : alpha(theme.palette.action.hover, 0.08)),
+      transform: collapsed && !isMobile 
+        ? 'scale(1.05)' 
+        : (level === 0 ? 'translateX(2px)' : 'none'),
+      boxShadow: collapsed && !isMobile 
+        ? `0 6px 20px ${alpha(theme.palette.primary.main, 0.2)}`
+        : (level === 0 ? `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}` : 'none'),
     },
     
     // Disabled state
@@ -175,23 +195,26 @@ const SidebarMenuItem: React.FC<{
         boxShadow: 'none',
       },
     }),
-  }), [theme, isSelected, level, item.disabled]);
+  }), [theme, isSelected, level, item.disabled, collapsed, isMobile]);
 
   const iconStyles = useMemo(() => ({
-    minWidth: collapsed ? 0 : 40,
-    mr: collapsed ? 0 : 1.5,
+    minWidth: collapsed && !isMobile ? 0 : 40,
+    mr: collapsed && !isMobile ? 0 : 1.5,
     justifyContent: 'center',
     color: isSelected ? theme.palette.primary.main : theme.palette.text.secondary,
     transition: theme.transitions.create(['color', 'transform'], {
       duration: theme.transitions.duration.shorter,
     }),
     '& svg': {
-      fontSize: 22,
+      fontSize: collapsed && !isMobile ? 26 : 22,
       ...(isSelected && {
         transform: 'scale(1.1)',
       }),
+      ...(collapsed && !isMobile && {
+        filter: `drop-shadow(0 2px 4px ${alpha(theme.palette.primary.main, 0.3)})`,
+      }),
     },
-  }), [theme, isSelected, collapsed]);
+  }), [theme, isSelected, collapsed, isMobile]);
 
   const buttonContent = (
     <ListItemButton
@@ -204,8 +227,8 @@ const SidebarMenuItem: React.FC<{
         {item.icon}
       </ListItemIcon>
       
-      <Fade in={!collapsed} timeout={200}>
-        <Box sx={{ display: collapsed ? 'none' : 'flex', alignItems: 'center', flex: 1 }}>
+      <Fade in={!collapsed || isMobile} timeout={200}>
+        <Box sx={{ display: (collapsed && !isMobile) ? 'none' : 'flex', alignItems: 'center', flex: 1 }}>
           <ListItemText 
             primary={item.text}
             primaryTypographyProps={{ 
@@ -237,7 +260,7 @@ const SidebarMenuItem: React.FC<{
           
           {hasChildren && (
             <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
-              <Zoom in={!collapsed} timeout={150}>
+              <Zoom in={!collapsed || isMobile} timeout={150}>
                 <Box>
                   {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
                 </Box>
@@ -249,7 +272,7 @@ const SidebarMenuItem: React.FC<{
     </ListItemButton>
   );
 
-  if (collapsed && !hasChildren) {
+  if (collapsed && !isMobile && !hasChildren) {
     return (
       <ListItem disablePadding>
         <Tooltip 
@@ -271,7 +294,7 @@ const SidebarMenuItem: React.FC<{
     <ListItem disablePadding>
       <Box sx={{ width: '100%' }}>
         {buttonContent}
-        {hasChildren && !collapsed && (
+        {hasChildren && (!collapsed || isMobile) && (
           <Collapse in={open} timeout={300} unmountOnExit>
             <List component="div" disablePadding sx={{ mt: 0.5 }}>
               {item.children?.map((child) => {
@@ -285,6 +308,7 @@ const SidebarMenuItem: React.FC<{
                     onNavigate={onNavigate}
                     onClose={onClose}
                     level={level + 1}
+                    isMobile={isMobile}
                   />
                 );
               })}
@@ -321,15 +345,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Enhanced logo section with better animations
   const LogoSection = useMemo(() => (
     <Box sx={{ 
-      p: collapsed && !isMobile ? 1.5 : 3, 
+      p: collapsed && !isMobile ? 2 : 3, 
       display: 'flex', 
       alignItems: 'center',
-      justifyContent: collapsed && !isMobile ? 'center' : 'flex-start',
+      justifyContent: 'center',
       borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-      minHeight: 72,
+      minHeight: collapsed && !isMobile ? 64 : 72,
       position: 'relative',
-      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
-      transition: theme.transitions.create(['padding', 'justify-content'], {
+      background: collapsed && !isMobile 
+        ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.primary.main, 0.12)} 100%)`
+        : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+      transition: theme.transitions.create(['padding', 'justify-content', 'min-height', 'background'], {
         duration: theme.transitions.duration.standard,
       }),
     }}>
@@ -339,23 +365,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: collapsed && !isMobile ? 40 : 48,
-            height: collapsed && !isMobile ? 40 : 48,
-            borderRadius: 2.5,
+            width: collapsed && !isMobile ? 44 : 48,
+            height: collapsed && !isMobile ? 44 : 48,
+            borderRadius: collapsed && !isMobile ? 3 : 2.5,
             background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+            boxShadow: collapsed && !isMobile 
+              ? `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`
+              : `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
             mr: (!collapsed || isMobile) ? 2 : 0,
-            transition: theme.transitions.create(['width', 'height', 'margin'], {
+            position: 'relative',
+            transition: theme.transitions.create(['width', 'height', 'margin', 'border-radius', 'box-shadow'], {
               duration: theme.transitions.duration.standard,
             }),
+            '&:hover': collapsed && !isMobile ? {
+              transform: 'scale(1.1)',
+              boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.5)}`,
+            } : {},
           }}
         >
           <BusinessCenter 
             sx={{ 
-              fontSize: collapsed && !isMobile ? 22 : 26, 
+              fontSize: collapsed && !isMobile ? 24 : 26, 
               color: 'white',
               filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-              transition: theme.transitions.create('font-size', {
+              transition: theme.transitions.create(['font-size', 'transform'], {
                 duration: theme.transitions.duration.standard,
               }),
             }} 
@@ -406,10 +439,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       flex: 1, 
       overflowY: 'auto',
       overflowX: 'hidden',
-      py: 2,
+      py: collapsed && !isMobile ? 3 : 2,
+      px: collapsed && !isMobile ? 0.5 : 0,
       position: 'relative',
       '&::-webkit-scrollbar': {
-        width: 6,
+        width: collapsed && !isMobile ? 4 : 6,
       },
       '&::-webkit-scrollbar-track': {
         backgroundColor: alpha(theme.palette.background.paper, 0.1),
@@ -426,7 +460,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       scrollbarWidth: 'thin',
       scrollbarColor: `${alpha(theme.palette.primary.main, 0.2)} ${alpha(theme.palette.background.paper, 0.1)}`,
     }}>
-      <List sx={{ px: 1 }}>
+      <List sx={{ px: collapsed && !isMobile ? 0 : 1 }}>
         {menuItems.map((item) => {
           const isSelected = item.path ? (
             location.pathname === item.path || 
@@ -441,6 +475,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               isSelected={isSelected}
               onNavigate={handleNavigate}
               onClose={onClose}
+              isMobile={isMobile}
             />
           );
         })}
@@ -452,14 +487,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const CollapseToggleSection = useMemo(() => (
     !isMobile && (
       <Box sx={{ 
-        p: 2, 
+        p: collapsed ? 1.5 : 2, 
         borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-        background: alpha(theme.palette.background.paper, 0.5),
+        background: collapsed 
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.15)} 100%)`
+          : alpha(theme.palette.background.paper, 0.5),
         backdropFilter: 'blur(10px)',
+        transition: theme.transitions.create(['padding', 'background'], {
+          duration: theme.transitions.duration.standard,
+        }),
       }}>
         <Stack 
           direction="row" 
-          justifyContent={collapsed ? 'center' : 'space-between'} 
+          justifyContent="center"
           alignItems="center"
         >
           {!collapsed && (
@@ -471,6 +511,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   fontWeight: 500,
                   fontSize: '0.7rem',
                   letterSpacing: 0.5,
+                  mr: 2,
                 }}
               >
                 NAVIGATION
@@ -487,16 +528,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={onToggleCollapse}
               size="small"
               sx={{ 
-                width: 36,
-                height: 36,
-                bgcolor: alpha(theme.palette.primary.main, 0.08),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                width: collapsed ? 44 : 36,
+                height: collapsed ? 44 : 36,
+                bgcolor: collapsed 
+                  ? alpha(theme.palette.primary.main, 0.15)
+                  : alpha(theme.palette.primary.main, 0.08),
+                border: `1px solid ${alpha(theme.palette.primary.main, collapsed ? 0.3 : 0.2)}`,
                 color: theme.palette.primary.main,
+                borderRadius: collapsed ? 3 : 2,
+                boxShadow: collapsed 
+                  ? `0 6px 20px ${alpha(theme.palette.primary.main, 0.3)}`
+                  : 'none',
                 '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.12),
-                  borderColor: alpha(theme.palette.primary.main, 0.3),
-                  transform: 'scale(1.05)',
-                  boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  bgcolor: collapsed 
+                    ? alpha(theme.palette.primary.main, 0.2)
+                    : alpha(theme.palette.primary.main, 0.12),
+                  borderColor: alpha(theme.palette.primary.main, 0.4),
+                  transform: collapsed ? 'scale(1.1)' : 'scale(1.05)',
+                  boxShadow: collapsed 
+                    ? `0 8px 25px ${alpha(theme.palette.primary.main, 0.4)}`
+                    : `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
                 },
                 transition: theme.transitions.create(['all'], {
                   duration: theme.transitions.duration.shorter,
@@ -504,7 +555,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
             >
               {collapsed ? (
-                <KeyboardDoubleArrowRight fontSize="small" />
+                <KeyboardDoubleArrowRight fontSize={collapsed ? "medium" : "small"} />
               ) : (
                 <KeyboardDoubleArrowLeft fontSize="small" />
               )}
@@ -537,7 +588,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       width: currentWidth,
       backgroundColor: theme.palette.background.paper,
       borderRight: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-      transition: theme.transitions.create(['width', 'transform'], {
+      transition: theme.transitions.create(['width', 'transform', 'box-shadow'], {
         easing: theme.transitions.easing.sharp,
         duration: theme.transitions.duration.standard,
       }),
@@ -547,12 +598,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       } : {
         top: 64,
         height: 'calc(100vh - 64px)',
-        boxShadow: theme.palette.mode === 'dark' 
-          ? `4px 0 16px ${alpha('#000', 0.3)}` 
-          : `4px 0 16px ${alpha('#000', 0.08)}`,
+        boxShadow: collapsed 
+          ? `6px 0 20px ${alpha(theme.palette.primary.main, 0.08)}, 2px 0 8px ${alpha('#000', 0.06)}`
+          : (theme.palette.mode === 'dark' 
+              ? `4px 0 16px ${alpha('#000', 0.3)}` 
+              : `4px 0 16px ${alpha('#000', 0.08)}`),
+        '&:hover': collapsed ? {
+          boxShadow: `8px 0 25px ${alpha(theme.palette.primary.main, 0.12)}, 4px 0 12px ${alpha('#000', 0.08)}`,
+        } : {},
       }),
     }
-  }), [theme, currentWidth, isMobile]);
+  }), [theme, currentWidth, isMobile, collapsed]);
 
   return (
     <>

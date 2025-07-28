@@ -19,7 +19,7 @@ export const DashboardLayout: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobile);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Default to collapsed
 
   // Handle responsive changes
   useEffect(() => {
@@ -43,11 +43,7 @@ export const DashboardLayout: React.FC = () => {
     setSidebarOpen(false);
   };
 
-  // Calculate content margins based on sidebar state
-  const getContentMargin = () => {
-    if (isMobile) return 0;
-    return sidebarCollapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH;
-  };
+
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -78,6 +74,7 @@ export const DashboardLayout: React.FC = () => {
           flexGrow: 1,
           minHeight: '100vh',
           marginTop: `${HEADER_HEIGHT}px`,
+          marginLeft: { xs: 0 },
           backgroundColor: theme.palette.background.default,
           transition: theme.transitions.create(['margin'], {
             easing: theme.transitions.easing.sharp,

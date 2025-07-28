@@ -8,7 +8,6 @@ import {
   AppBar,
   Toolbar,
   IconButton,
-  Tooltip,
   alpha
 } from '@mui/material';
 import {
@@ -67,52 +66,18 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
         sx={{
           display: 'flex',
           alignItems: 'center',
-          minHeight: { xs: 56, sm: 64 },
-          px: { xs: 1, sm: 2 },
+          justifyContent: 'center',
+          minHeight: { xs: 52, sm: 64 },
+          px: { xs: 0.5, sm: 1.5 },
         }}
       >
-        {/* Left section */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 'fit-content' }}>
-          <Tooltip title="Back to Customers" arrow>
-            <IconButton 
-              color="primary" 
-              onClick={handleBackClick}
-              size={isSmallScreen ? 'small' : 'medium'}
-              sx={{ 
-                '&:hover': { 
-                  backgroundColor: alpha(theme.palette.primary.main, 0.1) 
-                } 
-              }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-          </Tooltip>
-          
-          {!isSmallScreen && (
-            <Typography 
-              variant="h6" 
-              color="primary" 
-              sx={{ 
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                lineHeight: 1,
-                margin: 0
-              }}
-            >
-              {customerName}'s Account
-            </Typography>
-          )}
-        </Box>
-
-        {/* Center section - Navigation Tabs */}
+        {/* Navigation Tabs - Full Width Centered */}
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'center',
           alignItems: 'center',
-          flexGrow: 1,
-          px: 2,
-          height: '100%'
+          width: '100%',
+          height: '100%',
         }}>
           <Tabs
             value={currentTab}
@@ -120,18 +85,29 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
             variant={isSmallScreen ? "scrollable" : "standard"}
             scrollButtons="auto"
             allowScrollButtonsMobile
+            centered={!isSmallScreen}
             aria-label="Customer account navigation"
             sx={{
+              width: '100%',
+              '& .MuiTabs-flexContainer': {
+                justifyContent: 'center',
+              },
               '& .MuiTabs-indicator': {
                 backgroundColor: theme.palette.primary.main,
                 height: 3,
                 borderRadius: '3px 3px 0 0',
               },
+              '& .MuiTabs-scrollButtons': {
+                width: isSmallScreen ? 24 : 32,
+              },
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 500,
-                fontSize: isSmallScreen ? '0.875rem' : '1rem',
-                minWidth: isSmallScreen ? 'auto' : 120,
+                fontSize: isSmallScreen ? '0.75rem' : '0.875rem',
+                minWidth: isSmallScreen ? 60 : 100,
+                maxWidth: isSmallScreen ? 120 : 160,
+                minHeight: isSmallScreen ? 48 : 64,
+                px: isSmallScreen ? 1 : 1.5,
                 color: theme.palette.text.secondary,
                 transition: 'all 0.2s ease-in-out',
                 '&.Mui-selected': {
@@ -156,15 +132,27 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
                   <Box sx={{ 
                     display: 'flex', 
                     alignItems: 'center', 
+                    justifyContent: 'center',
                     gap: isSmallScreen ? 0.5 : 1,
-                    flexDirection: isSmallScreen ? 'column' : 'row'
+                    flexDirection: isSmallScreen ? 'column' : 'row',
+                    width: '100%',
                   }}>
-                    <Box sx={{ fontSize: isSmallScreen ? 18 : 20 }}>
+                    <Box sx={{ 
+                      fontSize: isSmallScreen ? 18 : 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
                       {item.icon}
                     </Box>
                     <Typography 
                       variant={isSmallScreen ? "caption" : "body2"}
-                      sx={{ lineHeight: 1 }}
+                      sx={{ 
+                        lineHeight: 1,
+                        textAlign: 'center',
+                        fontSize: isSmallScreen ? '0.75rem' : '0.875rem',
+                        fontWeight: 500,
+                      }}
                     >
                       {item.text}
                     </Typography>
