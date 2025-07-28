@@ -4,7 +4,8 @@ export { VehicleFilters } from './VehicleFilters';
 export { default as CustomerAccountContracts } from './CustomerAccountContracts';
 export { default as CustomerAccountInvoices } from './CustomerAccountInvoices';
 export { default as CustomerAccountVehicles } from './CustomerAccountVehicles';
-
+export { CustomerAccountLogs } from '../CustomerAccount/CustomerAccountLogs';
+export { LogFilters } from './LogFilters';
 // Types - Contract Filters
 export type {
   ContractFilters as ContractFiltersType,

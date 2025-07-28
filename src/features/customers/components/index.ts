@@ -9,3 +9,11 @@ export { CustomerLogs } from './CustomerDetails/CustomerLogs';
 export { ContractFilters } from './CustomerAccount/ContractFilters';
 export { InvoiceFilters } from './CustomerAccount/InvoiceFilters';
 export { default as CustomerAccountInvoices } from './CustomerAccount/CustomerAccountInvoices';
+
+// Vehicle components
+export { VehicleFilters } from './CustomerAccount/VehicleFilters';
+export { default as CustomerAccountVehicles } from './CustomerAccount/CustomerAccountVehicles';
+
+// Log components
+export { LogFilters } from './CustomerAccount/LogFilters';
+export { default as CustomerAccountLogs } from './CustomerAccount/CustomerAccountLogs';

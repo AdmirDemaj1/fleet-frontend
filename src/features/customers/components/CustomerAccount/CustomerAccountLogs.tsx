@@ -1,529 +1,681 @@
-import React, { useState, useMemo } from 'react';
-import { useGetAuditLogsQuery } from '../../../logs/api/auditapi';
-import AuditLogList from '../../../logs/components/AuditLogList/AuditLogList';
+import React, { useState } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
-  Paper,
   Typography,
-  TextField,
-  InputAdornment,
-  IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  Stack,
-  Grid,
-  Pagination,
-  CircularProgress,
   Button,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  IconButton,
+  Menu,
+  MenuItem,
+  Divider,
+  Skeleton,
+  TableSortLabel,
   alpha,
   useTheme,
-  SelectChangeEvent,
-  Tooltip
+  Alert,
+  Snackbar,
+  Avatar,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
+  Card,
+  CardContent
 } from '@mui/material';
 import {
-  Search,
-  Clear,
-  Refresh,
-  CalendarToday,
-  Sort,
+  MoreVert as MoreVertIcon,
+  Visibility as VisibilityIcon,
+  Download as DownloadIcon,
   History as HistoryIcon,
-  FilterList as FilterListIcon,
-  Download as DownloadIcon
+  Close as CloseIcon
 } from '@mui/icons-material';
-import { format, startOfDay, endOfDay, subDays } from 'date-fns';
-import { useDebounce } from '../../../../shared/hooks/useDebounce';
 
-interface CustomerAccountLogsProps {
-  customerId: string;
-}
+// Local imports
+import { CustomerAccountLogsProps } from '../../types/customerLogs.types';
+import { 
+  useCustomerLogs, 
+  useLogsTable, 
+  useLogMenuState, 
+  useLogNotification
+} from '../../hooks/useCustomerLogs';
+import { formatLogTimestamp, formatLogDescription } from '../../utils/logUtils';
+import { getLogEventTypeIcon, getLogEntityTypeIcon } from '../../utils/logRenderUtils';
+import { LOG_ROWS_PER_PAGE_OPTIONS } from '../../constants/logConstants';
+import { LogFilters } from './LogFilters';
+import { LogFilters as LogFiltersType } from '../../types/logFilters.types';
 
-const eventTypeOptions = [
-  { value: 'create', label: 'Create' },
-  { value: 'update', label: 'Update' },
-  { value: 'delete', label: 'Delete' }
-];
+// Export types for external use
+export type { CustomerAccountLogsProps };
 
-const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId }) => {
+const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId: propCustomerId }) => {
   const theme = useTheme();
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dateRange, setDateRange] = useState<'7days' | '30days' | 'all'>('30days');
-  const [startDate, setStartDate] = useState<Date | null>(subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date | null>(new Date());
-  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-  const [showFilters, setShowFilters] = useState(false);
+  
+  // Custom hooks
+  const { logs, loading, error, fetchLogs } = useCustomerLogs(propCustomerId);
+  const { notification, showNotification, hideNotification } = useLogNotification();
+  const { anchorEl, selectedLog, openMenu, closeMenu } = useLogMenuState();
+  
+  // Filters state
+  const [filters, setFilters] = useState<LogFiltersType>({
+    search: '',
+    eventType: '',
+    entityType: '',
+    startDate: '',
+    endDate: ''
+  });
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
-
-  // Calculate date range for the query
-  const getDateRangeFilter = () => {
-    if (dateRange === '7days') {
-      return { 
-        startDate: format(startOfDay(subDays(new Date(), 7)), 'yyyy-MM-dd\'T\'HH:mm:ss'),
-        endDate: format(endOfDay(new Date()), 'yyyy-MM-dd\'T\'HH:mm:ss')
-      };
-    } else if (dateRange === '30days') {
-      return { 
-        startDate: format(startOfDay(subDays(new Date(), 30)), 'yyyy-MM-dd\'T\'HH:mm:ss'),
-        endDate: format(endOfDay(new Date()), 'yyyy-MM-dd\'T\'HH:mm:ss')
-      };
-    } else if (dateRange === 'all') {
-      return {};
-    }
-    return {};
-  };
-
-  const dateRangeFilter = getDateRangeFilter();
-
-  const filters = useMemo(() => ({
-    entityId: customerId,
-    entityType: 'customer',
-    search: debouncedSearchTerm,
-    limit: rowsPerPage,
-    offset: (page - 1) * rowsPerPage,
-    sortOrder,
-    ...(selectedEventTypes.length > 0 ? { eventTypes: selectedEventTypes } : {}),
-    ...dateRangeFilter
-  }), [
-    customerId,
-    debouncedSearchTerm,
-    rowsPerPage,
-    page,
-    sortOrder,
-    selectedEventTypes,
-    dateRangeFilter
-  ]);
-
+  // Dialog state
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedLogForDetail, setSelectedLogForDetail] = useState<any>(null);
+  
+  // Table state and logic
   const {
-    data: response,
-    isLoading,
-    error,
-    refetch
-  } = useGetAuditLogsQuery(filters);
+    page,
+    rowsPerPage,
+    order,
+    orderBy,
+    filteredLogs,
+    paginatedLogs,
+    handleRequestSort,
+    handlePageChange,
+    handleRowsPerPageChange
+  } = useLogsTable(logs, filters);
 
-  const logs = response?.data || [];
-  const total = response?.total || 0;
-
-  const handleChangePage = (_event: React.ChangeEvent<unknown>, newPage: number) => {
-    setPage(newPage);
+  // Event handlers
+  const handleClearFilters = () => {
+    setFilters({
+      search: '',
+      eventType: '',
+      entityType: '',
+      startDate: '',
+      endDate: ''
+    });
   };
 
-  const handleChangeRowsPerPage = (event: SelectChangeEvent<number>) => {
-    setRowsPerPage(Number(event.target.value));
-    setPage(1);
-  };
-
-  const handleDateRangeChange = (range: '7days' | '30days' | 'all') => {
-    setDateRange(range);
-    if (range === '7days') {
-      setStartDate(startOfDay(subDays(new Date(), 7)));
-      setEndDate(endOfDay(new Date()));
-    } else if (range === '30days') {
-      setStartDate(startOfDay(subDays(new Date(), 30)));
-      setEndDate(endOfDay(new Date()));
+  const handleExportLogs = async () => {
+    try {
+      // Call API to export logs
+      console.log('Exporting logs...');
+      showNotification('Logs exported successfully', 'success');
+    } catch (error) {
+      showNotification('Failed to export logs', 'error');
     }
   };
 
-  const handleEventTypeToggle = (eventType: string) => {
-    setSelectedEventTypes(prev => 
-      prev.includes(eventType)
-        ? prev.filter(type => type !== eventType)
-        : [...prev, eventType]
-    );
+  const handleViewDetails = (log: any) => {
+    setSelectedLogForDetail(log);
+    setDetailDialogOpen(true);
   };
 
-  const handleResetFilters = () => {
-    setSearchTerm('');
-    setDateRange('30days');
-    setSelectedEventTypes([]);
-    setSortOrder('desc');
-    setShowFilters(false);
+  const handleCloseDetailDialog = () => {
+    setDetailDialogOpen(false);
+    setSelectedLogForDetail(null);
   };
 
-  const hasActiveFilters = searchTerm || 
-    selectedEventTypes.length > 0 ||
-    dateRange !== '30days' ||
-    sortOrder !== 'desc';
-
-  // Mock export function (you can replace with actual implementation)
-  const handleExport = () => {
-    console.log('Exporting logs...');
-    // Implement actual export functionality
-  };
-
-  return (
-    <Box sx={{ p: 0 }}>
-      {/* Header Card */}
-      <Card 
-        elevation={0} 
+  // Loading state - following customer list pattern
+  if (loading && logs.length === 0) {
+    return (
+      <Paper 
+        elevation={2}
         sx={{ 
-          mb: 3, 
           borderRadius: 2,
-          transition: 'all 0.2s ease-in-out',
+          overflow: 'hidden',
+          transition: 'box-shadow 0.3s ease-in-out',
           '&:hover': {
-            boxShadow: theme.shadows[2]
+            boxShadow: theme.shadows[4]
           }
         }}
       >
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <HistoryIcon 
-                color="primary" 
-                sx={{ mr: 1.5, fontSize: 28 }} 
-              />
-              <Typography variant="h5" color="primary" fontWeight="bold">
-                Account Activity
-              </Typography>
+        <Box sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Skeleton variant="text" width={200} height={32} />
+            <Skeleton variant="rectangular" width={100} height={36} sx={{ borderRadius: 1 }} />
+          </Box>
+          <Divider sx={{ mb: 2 }} />
+          <Box sx={{ display: 'flex', mb: 1.5 }}>
+            {['20%', '15%', '35%', '15%', '15%'].map((width, i) => (
+              <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
+            ))}
+          </Box>
+          {[...Array(5)].map((_, index) => (
+            <Box key={index} sx={{ 
+              py: 2, 
+              display: 'flex', 
+              alignItems: 'center',
+              borderBottom: index < 4 ? `1px solid ${theme.palette.divider}` : 'none'
+            }}>
+              {['20%', '15%', '35%', '15%', '15%'].map((width, i) => (
+                <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
+              ))}
             </Box>
-            
-            <Box>
-              <Tooltip title="Toggle filters">
-                <Button
-                  variant="outlined"
-                  startIcon={<FilterListIcon />}
-                  onClick={() => setShowFilters(!showFilters)}
+          ))}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Skeleton variant="rectangular" width={300} height={36} sx={{ borderRadius: 1 }} />
+          </Box>
+        </Box>
+      </Paper>
+    );
+  }
+
+  // Error state
+  if (error && !logs.length) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button
+          variant="contained"
+          onClick={fetchLogs}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h5" fontWeight={600} sx={{ mb: 0.5 }}>
+            Activity Logs
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            View customer activity and system events
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportLogs}
+          >
+            Export
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Filters */}
+      <Box sx={{ mb: 3 }}>
+        <LogFilters
+          filters={filters}
+          onFilterChange={setFilters}
+          logsCount={filteredLogs.length}
+        />
+      </Box>
+
+      {/* Table */}
+      <Paper 
+        elevation={2}
+        sx={{ 
+          borderRadius: 2,
+          overflow: 'hidden',
+          transition: 'box-shadow 0.3s ease-in-out',
+          '&:hover': {
+            boxShadow: theme.shadows[4]
+          }
+        }}
+      >
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>
+                  <TableSortLabel
+                    active={orderBy === 'timestamp'}
+                    direction={orderBy === 'timestamp' ? order : 'asc'}
+                    onClick={() => handleRequestSort('timestamp')}
+                  >
+                    Event & Time
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={orderBy === 'entityType'}
+                    direction={orderBy === 'entityType' ? order : 'asc'}
+                    onClick={() => handleRequestSort('entityType')}
+                  >
+                    Entity
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>Changes</TableCell>
+                <TableCell>User & Metadata</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedLogs.map((log) => (
+                <TableRow 
+                  key={log.id} 
+                  hover
                   sx={{ 
-                    borderRadius: 2,
-                    mr: 1,
-                    borderColor: 'divider',
+                    transition: 'all 0.2s',
                     '&:hover': {
-                      borderColor: 'primary.main',
-                      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04)
+                      backgroundColor: alpha(theme.palette.primary.main, 0.02)
                     }
                   }}
                 >
-                  Filters {hasActiveFilters && `(${selectedEventTypes.length + (searchTerm ? 1 : 0) + (dateRange !== '30days' ? 1 : 0) + (sortOrder !== 'desc' ? 1 : 0)})`}
-                </Button>
-              </Tooltip>
-              
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleExport}
-                sx={{ 
-                  borderRadius: 2,
-                  borderColor: 'divider',
-                  '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04)
-                  }
-                }}
-              >
-                Export
-              </Button>
-            </Box>
-          </Box>
-          
-          <Typography variant="body2" color="text.secondary" paragraph>
-            View all activity and changes related to this customer account. Filter by type, date, or search for specific events.
-          </Typography>
-        </CardContent>
-      </Card>
-
-      {/* Search & Filters */}
-      <Paper 
-        elevation={0} 
-        variant="outlined" 
-        sx={{ 
-          p: 2, 
-          mb: 3, 
-          borderRadius: 2,
-          display: showFilters || hasActiveFilters ? 'block' : 'none',
-          transition: 'all 0.2s ease-in-out',
-          '&:hover': {
-            boxShadow: theme.shadows[1]
-          }
-        }}
-      >
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              placeholder="Search account logs..."
-              variant="outlined"
-              size="small"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search color="action" />
-                  </InputAdornment>
-                ),
-                endAdornment: searchTerm ? (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearchTerm('')}>
-                      <Clear fontSize="small" />
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Avatar sx={{ width: 32, height: 32 }}>
+                        {getLogEventTypeIcon(log.eventType)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="body2" fontWeight="medium">
+                          {log.eventType ? 
+                            log.eventType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
+                            'Unknown Event'
+                          }
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {log.actionTimestamp ? 
+                            formatLogTimestamp(log.actionTimestamp.toString()) : 
+                            log.createdAt ? 
+                            formatLogTimestamp(log.createdAt.toString()) :
+                            'No timestamp'
+                          }
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      {getLogEntityTypeIcon(log.entityType)}
+                      <Chip
+                        label={log.entityType ? 
+                          log.entityType.charAt(0).toUpperCase() + log.entityType.slice(1) : 
+                          'Unknown'
+                        }
+                        size="small"
+                        variant="outlined"
+                      />
+                    </Box>
+                    {log.entityId && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        ID: {log.entityId.slice(0, 8)}...
+                      </Typography>
+                    )}
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Box sx={{ maxWidth: 300 }}>
+                      {log.eventType === 'entity_created' && log.newValues && (
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium" color="success.main">
+                            Created new {log.entityType}
+                          </Typography>
+                          {log.newValues.legalName && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Name: {log.newValues.legalName}
+                            </Typography>
+                          )}
+                          {log.newValues.email && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Email: {log.newValues.email}
+                            </Typography>
+                          )}
+                          {log.newValues.type && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Type: {log.newValues.type}
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                      
+                      {log.eventType === 'entity_updated' && (
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium" color="warning.main">
+                            Updated {log.entityType}
+                          </Typography>
+                          {log.oldValues && log.newValues && (
+                            <Box sx={{ mt: 0.5 }}>
+                              {Object.keys(log.newValues).slice(0, 3).map((key) => (
+                                <Typography key={key} variant="caption" display="block" color="text.secondary">
+                                  {key}: {log.oldValues?.[key]} → {log.newValues?.[key]}
+                                </Typography>
+                              ))}
+                              {Object.keys(log.newValues).length > 3 && (
+                                <Typography variant="caption" color="text.secondary">
+                                  +{Object.keys(log.newValues).length - 3} more changes
+                                </Typography>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+                      
+                      {log.eventType === 'entity_deleted' && (
+                        <Typography variant="body2" fontWeight="medium" color="error.main">
+                          Deleted {log.entityType}
+                        </Typography>
+                      )}
+                      
+                      {!['entity_created', 'entity_updated', 'entity_deleted'].includes(log.eventType || '') && (
+                        <Typography variant="body2">
+                          {formatLogDescription(log)}
+                        </Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Box>
+                      <Typography variant="body2" fontWeight="medium">
+                        {log.userId || 'System'}
+                      </Typography>
+                      {log.metadata && (
+                        <Box sx={{ mt: 0.5 }}>
+                          {log.metadata.customerType && (
+                            <Chip
+                              label={`Customer: ${log.metadata.customerType}`}
+                              size="small"
+                              variant="outlined"
+                              sx={{ mr: 0.5, mb: 0.5 }}
+                            />
+                          )}
+                          {log.metadata.customerId && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Customer ID: {log.metadata.customerId.slice(0, 8)}...
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  </TableCell>
+                  
+                  <TableCell align="right">
+                    <IconButton
+                      size="small"
+                      onClick={(event) => openMenu(event, log)}
+                    >
+                      <MoreVertIcon fontSize="small" />
                     </IconButton>
-                  </InputAdornment>
-                ) : null,
-                sx: {
-                  borderRadius: 2,
-                }
-              }}
-            />
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Stack direction="row" spacing={1}>
-              <FormControl size="small" sx={{ minWidth: 120 }}>
-                <InputLabel id="date-range-label">Date Range</InputLabel>
-                <Select
-                  labelId="date-range-label"
-                  value={dateRange}
-                  onChange={(e) => handleDateRangeChange(e.target.value as any)}
-                  label="Date Range"
-                  startAdornment={
-                    <CalendarToday fontSize="small" sx={{ mr: 1, opacity: 0.7 }} />
-                  }
-                  sx={{ borderRadius: 2 }}
-                >
-                  <MenuItem value="7days">Last 7 Days</MenuItem>
-                  <MenuItem value="30days">Last 30 Days</MenuItem>
-                  <MenuItem value="all">All Time</MenuItem>
-                </Select>
-              </FormControl>
-
-              <FormControl size="small" sx={{ minWidth: 120 }}>
-                <InputLabel id="sort-order-label">Sort</InputLabel>
-                <Select
-                  labelId="sort-order-label"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                  label="Sort"
-                  startAdornment={
-                    <Sort fontSize="small" sx={{ mr: 1, opacity: 0.7 }} />
-                  }
-                  sx={{ borderRadius: 2 }}
-                >
-                  <MenuItem value="desc">Newest First</MenuItem>
-                  <MenuItem value="asc">Oldest First</MenuItem>
-                </Select>
-              </FormControl>
-            </Stack>
-          </Grid>
-
-          <Grid item xs={12} md={2} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Tooltip title="Refresh">
-              <IconButton 
-                onClick={() => refetch()} 
-                color="primary"
-                sx={{ 
-                  border: `1px solid ${theme.palette.divider}`,
-                  borderRadius: 2
-                }}
-              >
-                <Refresh />
-              </IconButton>
-            </Tooltip>
-          </Grid>
-        </Grid>
-
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" gutterBottom>
-            Event Types:
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-            {eventTypeOptions.map(option => (
-              <Chip
-                key={option.value}
-                label={option.label}
-                clickable
-                color={selectedEventTypes.includes(option.value) ? 'primary' : 'default'}
-                variant={selectedEventTypes.includes(option.value) ? 'filled' : 'outlined'}
-                onClick={() => handleEventTypeToggle(option.value)}
-                sx={{ borderRadius: 1.5 }}
-              />
-            ))}
-          </Box>
-        </Box>
-
-        {hasActiveFilters && (
-          <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-            <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
-              <Typography variant="body2" color="textSecondary">
-                Active filters:
-              </Typography>
-              
-              {searchTerm && (
-                <Chip 
-                  label={`Search: ${searchTerm}`} 
-                  size="small" 
-                  onDelete={() => setSearchTerm('')}
-                  sx={{ borderRadius: 1.5 }}
-                />
-              )}
-              
-              {dateRange !== '30days' && (
-                <Chip 
-                  label={`Date: ${dateRange === '7days' ? 'Last 7 Days' : 'All Time'}`} 
-                  size="small" 
-                  onDelete={() => handleDateRangeChange('30days')}
-                  sx={{ borderRadius: 1.5 }}
-                />
-              )}
-              
-              {selectedEventTypes.map(type => (
-                <Chip 
-                  key={type}
-                  label={`Event: ${type.charAt(0).toUpperCase() + type.slice(1)}`} 
-                  size="small" 
-                  onDelete={() => handleEventTypeToggle(type)}
-                  sx={{ borderRadius: 1.5 }}
-                />
+                  </TableCell>
+                </TableRow>
               ))}
-              
-              {sortOrder !== 'desc' && (
-                <Chip 
-                  label={`Sort: Oldest First`} 
-                  size="small" 
-                  onDelete={() => setSortOrder('desc')}
-                  sx={{ borderRadius: 1.5 }}
-                />
+              {paginatedLogs.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center',
+                      p: 3
+                    }}>
+                      <Box 
+                        sx={{ 
+                          bgcolor: alpha(theme.palette.primary.main, 0.05),
+                          borderRadius: '50%',
+                          p: 2,
+                          mb: 2
+                        }}
+                      >
+                        <HistoryIcon sx={{ fontSize: 48, color: theme.palette.primary.main, opacity: 0.7 }} />
+                      </Box>
+                      <Typography variant="h6" gutterBottom>No logs found</Typography>
+                      <Typography variant="body2" color="textSecondary" align="center" sx={{ maxWidth: 500, mb: 3 }}>
+                        {filteredLogs.length !== logs.length 
+                          ? 'No logs match your current filter criteria.'
+                          : 'This customer doesn\'t have any activity logs yet.'
+                        }
+                      </Typography>
+                      {filteredLogs.length !== logs.length && (
+                        <Button 
+                          variant="outlined" 
+                          onClick={handleClearFilters}
+                        >
+                          Clear Filters
+                        </Button>
+                      )}
+                    </Box>
+                  </TableCell>
+                </TableRow>
               )}
-              
-              <Button 
-                size="small" 
-                color="inherit" 
-                onClick={handleResetFilters}
-                startIcon={<Clear />}
-                sx={{ ml: 'auto' }}
-              >
-                Clear All
-              </Button>
-            </Stack>
-          </Box>
-        )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        
+        <TablePagination
+          component="div"
+          count={filteredLogs.length || 0}
+          page={Math.min(page, Math.max(0, Math.ceil((filteredLogs.length || 0) / rowsPerPage) - 1))}
+          onPageChange={(_, newPage) => {
+            handlePageChange(newPage);
+          }}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            const newRowsPerPage = parseInt(e.target.value, 10);
+            handleRowsPerPageChange(newRowsPerPage);
+          }}
+          rowsPerPageOptions={LOG_ROWS_PER_PAGE_OPTIONS}
+          labelRowsPerPage="Rows per page:"
+          labelDisplayedRows={({ from, to, count }) => {
+            if (loading) {
+              return 'Loading...';
+            }
+            return `${from}–${to} of ${count !== -1 ? count : `more than ${to}`}`;
+          }}
+          disabled={loading}
+          sx={{
+            borderTop: `1px solid ${theme.palette.divider}`,
+            '& .MuiTablePagination-select': {
+              pr: 1
+            },
+            '& .MuiTablePagination-displayedRows': {
+              fontSize: '0.875rem',
+              color: theme.palette.text.secondary
+            },
+            '&.Mui-disabled': {
+              opacity: 0.6
+            }
+          }}
+        />
       </Paper>
 
-      {/* Main Content */}
-      <Paper 
-        elevation={0} 
-        variant="outlined" 
-        sx={{ 
-          width: '100%',
-          borderRadius: 2,
-          overflow: 'hidden',
-          borderColor: theme.palette.divider,
-          transition: 'all 0.2s ease-in-out',
-          '&:hover': {
-            boxShadow: theme.shadows[2]
-          }
-        }}
+      {/* Action Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={closeMenu}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        {isLoading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" height={300}>
-            <CircularProgress />
+        <MenuItem onClick={() => {
+          if (selectedLog) {
+            handleViewDetails(selectedLog);
+          }
+          closeMenu();
+        }}>
+          <VisibilityIcon fontSize="small" sx={{ mr: 1 }} />
+          View Details
+        </MenuItem>
+        
+        <MenuItem onClick={() => {
+          if (selectedLog) {
+            // Export specific log
+            console.log('Export log:', selectedLog.id);
+            showNotification('Log exported successfully', 'success');
+          }
+          closeMenu();
+        }}>
+          <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
+          Export Log
+        </MenuItem>
+      </Menu>
+
+      {/* Log Detail Dialog */}
+      <Dialog
+        open={detailDialogOpen}
+        onClose={handleCloseDetailDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Avatar sx={{ width: 32, height: 32 }}>
+                {selectedLogForDetail && getLogEventTypeIcon(selectedLogForDetail.eventType)}
+              </Avatar>
+              <Box>
+                <Typography variant="h6">
+                  {selectedLogForDetail?.eventType?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Log Details'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {selectedLogForDetail?.actionTimestamp ? 
+                    formatLogTimestamp(selectedLogForDetail.actionTimestamp) : 
+                    'No timestamp'
+                  }
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton onClick={handleCloseDetailDialog}>
+              <CloseIcon />
+            </IconButton>
           </Box>
-        ) : error ? (
-          <Box 
-            sx={{ 
-              p: 3, 
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.error.main, 0.05),
-              textAlign: 'center'
+        </DialogTitle>
+        
+        <DialogContent>
+          {selectedLogForDetail && (
+            <Grid container spacing={2}>
+              {/* Basic Information */}
+              <Grid item xs={12}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>Basic Information</Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Event Type</Typography>
+                        <Typography variant="body1">{selectedLogForDetail.eventType}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Entity Type</Typography>
+                        <Typography variant="body1">{selectedLogForDetail.entityType}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Entity ID</Typography>
+                        <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
+                          {selectedLogForDetail.entityId}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">User ID</Typography>
+                        <Typography variant="body1">{selectedLogForDetail.userId}</Typography>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Metadata */}
+              {selectedLogForDetail.metadata && (
+                <Grid item xs={12}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>Metadata</Typography>
+                      <Box sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                        <pre>{JSON.stringify(selectedLogForDetail.metadata, null, 2)}</pre>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
+
+              {/* Old Values */}
+              {selectedLogForDetail.oldValues && (
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="error.main">Previous Values</Typography>
+                      <Box sx={{ fontFamily: 'monospace', fontSize: '0.875rem', maxHeight: 300, overflow: 'auto' }}>
+                        <pre>{JSON.stringify(selectedLogForDetail.oldValues, null, 2)}</pre>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
+
+              {/* New Values */}
+              {selectedLogForDetail.newValues && (
+                <Grid item xs={12} md={selectedLogForDetail.oldValues ? 6 : 12}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="success.main">
+                        {selectedLogForDetail.oldValues ? 'New Values' : 'Created Values'}
+                      </Typography>
+                      <Box sx={{ fontFamily: 'monospace', fontSize: '0.875rem', maxHeight: 300, overflow: 'auto' }}>
+                        <pre>{JSON.stringify(selectedLogForDetail.newValues, null, 2)}</pre>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
+
+              {/* Timestamps */}
+              <Grid item xs={12}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>Timestamps</Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Action Timestamp</Typography>
+                        <Typography variant="body1">{selectedLogForDetail.actionTimestamp}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Created At</Typography>
+                        <Typography variant="body1">{selectedLogForDetail.createdAt}</Typography>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        
+        <DialogActions>
+          <Button onClick={handleCloseDetailDialog}>Close</Button>
+          <Button 
+            variant="outlined" 
+            startIcon={<DownloadIcon />}
+            onClick={() => {
+              // Export this specific log
+              console.log('Export log:', selectedLogForDetail?.id);
+              showNotification('Log exported successfully', 'success');
             }}
           >
-            <Typography color="error" variant="h6" gutterBottom>
-              Error Loading Account Logs
-            </Typography>
-            <Typography color="error.dark">
-              {('message' in error) ? error.message : 'An unexpected error occurred while loading the account logs.'}
-            </Typography>
-            <Button 
-              variant="outlined" 
-              color="error" 
-              onClick={() => refetch()} 
-              sx={{ mt: 2, borderRadius: 2 }}
-              startIcon={<Refresh />}
-            >
-              Retry
-            </Button>
-          </Box>
-        ) : logs.length === 0 ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 5 }}>
-            <HistoryIcon sx={{ fontSize: 48, color: alpha(theme.palette.text.secondary, 0.2), mb: 2 }} />
-            <Typography color="text.secondary" align="center">
-              No logs found for this customer
-            </Typography>
-            <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1, mb: 2, maxWidth: 500 }}>
-              Try adjusting your search criteria or filters to find relevant account activity.
-            </Typography>
-            <Button 
-              variant="outlined" 
-              onClick={handleResetFilters}
-              sx={{ borderRadius: 2 }}
-            >
-              Reset Filters
-            </Button>
-          </Box>
-        ) : (
-          <AuditLogList logs={logs} />
-        )}
-      </Paper>
+            Export
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* Pagination Section */}
-      {logs.length > 0 && !isLoading && (
-        <Paper 
-          sx={{ 
-            p: 2, 
-            mt: 2, 
-            borderRadius: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center' 
-          }}
-          elevation={0}
-          variant="outlined"
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={hideNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={hideNotification} 
+          severity={notification.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
         >
-          <Box>
-            <Typography variant="body2" color="text.secondary">
-              Showing {(page - 1) * rowsPerPage + 1} - {Math.min(page * rowsPerPage, total)} of {total} log entries
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <FormControl variant="outlined" size="small" sx={{ minWidth: 100, mr: 2 }}>
-              <InputLabel id="rows-per-page-label">Per Page</InputLabel>
-              <Select
-                labelId="rows-per-page-label"
-                id="rows-per-page"
-                value={rowsPerPage}
-                onChange={handleChangeRowsPerPage}
-                label="Per Page"
-                sx={{ borderRadius: 2 }}
-              >
-                <MenuItem value={5}>5</MenuItem>
-                <MenuItem value={10}>10</MenuItem>
-                <MenuItem value={25}>25</MenuItem>
-                <MenuItem value={50}>50</MenuItem>
-              </Select>
-            </FormControl>
-            
-            <Pagination
-              count={Math.ceil(total / rowsPerPage)}
-              page={page}
-              onChange={handleChangePage}
-              color="primary"
-              size="medium"
-              shape="rounded"
-              sx={{
-                '& .MuiPaginationItem-root': {
-                  borderRadius: 1
-                }
-              }}
-            />
-          </Box>
-        </Paper>
-      )}
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
