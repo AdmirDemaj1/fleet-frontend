@@ -1,25 +1,8 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
-import { Box, Container, Paper } from '@mui/material';
-import CustomerAccountLogs from '../../components/CustomerAccount/CustomerAccountLogs';
-import CustomerAccountMenu from '../../components/CustomerAccount/CustomerAccountMenu';
+import { CustomerAccountLogs } from '../../components';
 
 const CustomerLogsPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-
-  if (!id) {
-    return <div>Customer ID is required</div>;
-  }
-
-  return (
-    <Container maxWidth="lg">
-     
-      
-     
-        <CustomerAccountLogs customerId={id} />
-      
-    </Container>
-  );
+  return <CustomerAccountLogs />;
 };
 
 export default CustomerLogsPage;

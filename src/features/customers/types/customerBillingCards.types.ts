@@ -11,12 +11,12 @@ export interface LogEntry {
   message: string;
   severity: 'info' | 'warning' | 'error';
   assetName?: string;
+  performedBy?: string;
 }
 
 export interface CustomerBillingAndLogsCardsProps {
   customerId: string;
   recentInvoices: Invoice[];
-  recentLogs: LogEntry[];
   onInvoicesClick?: () => void;
   onLogsClick?: () => void;
   invoicesLoading?: boolean;

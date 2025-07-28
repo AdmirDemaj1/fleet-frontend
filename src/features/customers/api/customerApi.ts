@@ -8,8 +8,8 @@ import {
   CustomerFilters,
   ContractSummary,
   CollateralSummary,
-  CustomerLog
 } from '../types/customer.types';
+import { CustomerLog } from '../types/customerLogs.types';
 
 export const customerApi = {
   getAll: async (filters?: CustomerFilters): Promise<{ data: Customer[]; total: number }> => {
@@ -158,7 +158,7 @@ export const customerApi = {
     if (options?.type) params.append('type', options.type);
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.offset) params.append('offset', options.offset.toString());
-    const response = await api.get<CustomerLog[]>(`/customers/${id}/logs?${params.toString()}`);
+    const response = await api.get<CustomerLog[]>(`/audit/customer/${id}?${params.toString()}`);
     return response.data;
   },
 

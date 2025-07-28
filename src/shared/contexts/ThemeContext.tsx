@@ -1,8 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import { theme as lightTheme } from '../../theme';
-import { darktheme as darkTheme } from '../../themedark';
+import {  darkTheme } from '../../themedark';
 import CssBaseline from '@mui/material/CssBaseline';
+import { frostedGlassTheme } from '../../themeFrostedGlass';
 
 type ThemeMode = 'light' | 'dark';
 

@@ -8,8 +8,6 @@ import {
   Box,
   Menu,
   MenuItem,
-  Breadcrumbs,
-  Link,
   useTheme,
   alpha,
   Stack,
@@ -18,29 +16,21 @@ import {
   ListItemText
 } from '@mui/material';
 import { 
-  Menu as MenuIcon, 
   Logout, 
   Settings,
   Person,
-  Search,
   Help,
-  KeyboardArrowDown,
-  Home,
-  NavigateNext
+  KeyboardArrowDown
 } from '@mui/icons-material';
 import { ThemeToggle } from '../Layout/ThemeToggle';
-import { useLocation } from 'react-router-dom';
 
 interface HeaderProps {
-  onMenuClick: () => void;
-  collapsed: boolean;
-  onToggleCollapse: () => void;
+  // No props needed since we removed sidebar functionality
 }
 
-export const Header: React.FC<HeaderProps> = ({ onMenuClick, collapsed, onToggleCollapse }) => {
+export const Header: React.FC<HeaderProps> = () => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const theme = useTheme();
-  const location = useLocation();
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -51,185 +41,94 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, collapsed, onToggle
   };
 
   const handleLogout = () => {
-    // Implement logout logic
     localStorage.removeItem('authToken');
     window.location.href = '/login';
-  };
-
-  // Generate breadcrumbs based on current route
-  const generateBreadcrumbs = () => {
-    const pathnames = location.pathname.split('/').filter((x) => x);
-    const breadcrumbs = [
-      <Link key="home" color="inherit" href="/" sx={{ display: 'flex', alignItems: 'center' }}>
-        <Home sx={{ mr: 0.5, fontSize: 18 }} />
-        Dashboard
-      </Link>
-    ];
-
-    pathnames.forEach((value, index) => {
-      const to = `/${pathnames.slice(0, index + 1).join('/')}`;
-      const isLast = index === pathnames.length - 1;
-      const label = value.charAt(0).toUpperCase() + value.slice(1);
-
-      if (isLast) {
-        breadcrumbs.push(
-          <Typography key={to} color="text.primary" sx={{ fontWeight: 600 }}>
-            {label}
-          </Typography>
-        );
-      } else {
-        breadcrumbs.push(
-          <Link key={to} color="inherit" href={to}>
-            {label}
-          </Link>
-        );
-      }
-    });
-
-    return breadcrumbs;
   };
 
   return (
     <AppBar
       position="fixed"
       sx={{
-        zIndex: (theme) => theme.zIndex.drawer + 1,
+        zIndex: theme.zIndex.drawer + 1,
         backgroundColor: theme.palette.background.paper,
         color: theme.palette.text.primary,
-        backdropFilter: 'blur(20px)',
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.1)}`,
+        backdropFilter: 'blur(10px)',
+        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+        boxShadow: theme.palette.mode === 'dark' 
+          ? `0 1px 3px ${alpha('#000', 0.3)}` 
+          : `0 1px 3px ${alpha('#000', 0.1)}`,
       }}
       elevation={0}
     >
-      <Toolbar 
-        sx={{ 
-          minHeight: { xs: 64, sm: 72 },
-          px: { xs: 2, sm: 3 },
-        }}
-      >
-        {/* Mobile menu button */}
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          edge="start"
-          onClick={onMenuClick}
-          sx={{ 
-            mr: 2, 
-            display: { sm: 'none' },
-            borderRadius: 2,
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-            }
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-
-        {/* Desktop collapse toggle */}
-        <IconButton
-          color="inherit"
-          aria-label="toggle sidebar"
-          onClick={onToggleCollapse}
-          sx={{ 
-            mr: 2, 
-            display: { xs: 'none', sm: 'flex' },
-            borderRadius: 2,
-            transition: 'all 0.2s ease-in-out',
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-              transform: 'scale(1.05)',
-            }
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-        
-        {/* Breadcrumbs */}
-        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-          <Breadcrumbs
-            separator={<NavigateNext fontSize="small" />}
-            aria-label="breadcrumb"
+      <Toolbar sx={{ minHeight: 64, px: { xs: 2, sm: 3 } }}>
+        {/* Logo/App Name */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          mr: 3
+        }}>
+          <Typography 
+            variant="h6" 
             sx={{
-              '& .MuiBreadcrumbs-separator': {
-                color: theme.palette.text.disabled,
-              },
-              '& .MuiBreadcrumbs-li': {
-                display: 'flex',
-                alignItems: 'center',
-              }
+              color: theme.palette.primary.main,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+              fontSize: '1rem',
             }}
           >
-            {generateBreadcrumbs()}
-          </Breadcrumbs>
+            Antigone Financial
+          </Typography>
         </Box>
+        
+        {/* Spacer to push right content to the end */}
+        <Box sx={{ flexGrow: 1 }} />
 
         {/* Right side actions */}
         <Stack direction="row" spacing={1} alignItems="center">
-          {/* Search button */}
-          <IconButton
-            size="medium"
-            aria-label="search"
-            sx={{
-              borderRadius: 2,
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                transform: 'scale(1.05)',
-              }
-            }}
-          >
-            <Search fontSize="small" />
-          </IconButton>
-
           {/* Theme toggle */}
           <ThemeToggle />
 
           {/* User menu */}
-          <Box sx={{ ml: 1 }}>
-            <IconButton
-              size="medium"
-              aria-label="account menu"
-              aria-controls="user-menu"
-              aria-haspopup="true"
-              onClick={handleMenu}
-              sx={{
-                borderRadius: 2,
-                border: `2px solid transparent`,
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  borderColor: alpha(theme.palette.primary.main, 0.3),
-                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                }
-              }}
-            >
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <Avatar 
-                  sx={{ 
-                    width: 32, 
-                    height: 32,
-                    bgcolor: theme.palette.primary.main,
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  JD
-                </Avatar>
-                <KeyboardArrowDown 
-                  fontSize="small" 
-                  sx={{ 
-                    display: { xs: 'none', md: 'block' },
-                    transition: 'transform 0.2s ease-in-out',
-                    transform: Boolean(anchorEl) ? 'rotate(180deg)' : 'rotate(0deg)',
-                  }} 
-                />
-              </Stack>
-            </IconButton>
-          </Box>
+          <IconButton
+            size="medium"
+            aria-label="account menu"
+            onClick={handleMenu}
+            sx={{
+              borderRadius: 1.5,
+              border: `1px solid transparent`,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: alpha(theme.palette.primary.main, 0.2),
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+              }
+            }}
+          >
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Avatar 
+                sx={{ 
+                  width: 28, 
+                  height: 28,
+                  bgcolor: theme.palette.primary.main,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                }}
+              >
+                JD
+              </Avatar>
+              <KeyboardArrowDown 
+                fontSize="small" 
+                sx={{ 
+                  display: { xs: 'none', md: 'block' },
+                  transition: 'transform 0.2s ease',
+                  transform: Boolean(anchorEl) ? 'rotate(180deg)' : 'rotate(0deg)',
+                }} 
+              />
+            </Stack>
+          </IconButton>
 
           {/* User Menu */}
           <Menu
-            id="user-menu"
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={handleClose}

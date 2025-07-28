@@ -12,6 +12,7 @@ import CustomerContractsPage from '../features/customers/containers/Account/Cust
 import CustomerLogsPage from '../features/customers/containers/Account/CustomerLogsPage';
 import { CustomerInvoicesPage } from '../features/customers/containers';
 import CreateVehiclePage from '../features/vehicles/containers/CreateVehiclePage';
+import  CustomerVehiclesPage  from '../features/customers/containers/Account/CustomerVehiclesPage';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -26,7 +27,7 @@ export const AppRoutes: React.FC = () => {
             <Route path="summary" element={<CustomerSummaryPage/>} />
             <Route path="contracts" element={<CustomerContractsPage />} />
             <Route path="invoices" element={<CustomerInvoicesPage />} />
-            <Route path="vehicles" element={<div>Customer Vehicles</div>} />
+            <Route path="vehicles" element={<CustomerVehiclesPage />} />
             <Route path="logs" element={< CustomerLogsPage/>} />
             <Route path="edit" element={<EditCustomerPage />} />
           </Route>

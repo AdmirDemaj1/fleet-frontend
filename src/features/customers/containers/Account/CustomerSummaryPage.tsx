@@ -32,44 +32,6 @@ const CustomerSummaryPage: React.FC = () => {
     // ...other assets
   ];
 
-  // Dummy log entries
-  const recentLogs = [
-    { 
-      id: 'LOG-9821', 
-      timestamp: 'Jul 14, 2025 13:45', 
-      message: 'Login attempt from new IP address', 
-      severity: 'warning' as const,
-      assetName: 'ford focus' 
-    },
-    { 
-      id: 'LOG-9815', 
-      timestamp: 'Jul 14, 2025 10:22', 
-      message: 'Configuration updated', 
-      severity: 'info' as const,
-      assetName: 'another-asset.example.com' 
-    },
-    { 
-      id: 'LOG-9802', 
-      timestamp: 'Jul 13, 2025 16:10', 
-      message: 'System restarted successfully', 
-      severity: 'info' as const,
-      assetName: 'ford focus' 
-    },
-    { 
-      id: 'LOG-9788', 
-      timestamp: 'Jul 12, 2025 22:45', 
-      message: 'Connection timeout detected', 
-      severity: 'error' as const,
-      assetName: 'another-asset.example.com' 
-    },
-    { 
-      id: 'LOG-9774', 
-      timestamp: 'Jul 12, 2025 15:17', 
-      message: 'Security update installed', 
-      severity: 'info' as const 
-    },
-  ];
-
   return (
     <Box sx={{ display: 'flex' }}>
       <CustomerAccountSidebar customerId={id} />
@@ -77,7 +39,6 @@ const CustomerSummaryPage: React.FC = () => {
         <CustomerBillingAndLogsCards 
           customerId={id}
           recentInvoices={recentInvoices} 
-          recentLogs={recentLogs}
           invoicesLoading={invoicesLoading}
           invoicesError={invoicesError}
         />
