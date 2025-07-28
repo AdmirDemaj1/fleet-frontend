@@ -12,8 +12,6 @@ import {
   TableRow,
   TablePagination,
   IconButton,
-  Menu,
-  MenuItem,
   Divider,
   Skeleton,
   TableSortLabel,
@@ -23,20 +21,13 @@ import {
   Snackbar,
   Avatar,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Grid,
-  Card,
-  CardContent
+  Collapse
 } from '@mui/material';
 import {
-  MoreVert as MoreVertIcon,
-  Visibility as VisibilityIcon,
-  Download as DownloadIcon,
   History as HistoryIcon,
-  Close as CloseIcon
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 
 // Local imports
@@ -44,7 +35,6 @@ import { CustomerAccountLogsProps } from '../../types/customerLogs.types';
 import { 
   useCustomerLogs, 
   useLogsTable, 
-  useLogMenuState, 
   useLogNotification
 } from '../../hooks/useCustomerLogs';
 import { formatLogTimestamp, formatLogDescription } from '../../utils/logUtils';
@@ -61,8 +51,7 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId: p
   
   // Custom hooks
   const { logs, loading, error, fetchLogs } = useCustomerLogs(propCustomerId);
-  const { notification, showNotification, hideNotification } = useLogNotification();
-  const { anchorEl, selectedLog, openMenu, closeMenu } = useLogMenuState();
+  const { notification, hideNotification } = useLogNotification();
   
   // Filters state
   const [filters, setFilters] = useState<LogFiltersType>({
@@ -73,9 +62,8 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId: p
     endDate: ''
   });
 
-  // Dialog state
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [selectedLogForDetail, setSelectedLogForDetail] = useState<any>(null);
+  // Expanded rows state
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   
   // Table state and logic
   const {
@@ -101,24 +89,14 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId: p
     });
   };
 
-  const handleExportLogs = async () => {
-    try {
-      // Call API to export logs
-      console.log('Exporting logs...');
-      showNotification('Logs exported successfully', 'success');
-    } catch (error) {
-      showNotification('Failed to export logs', 'error');
+  const handleToggleExpanded = (logId: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(logId)) {
+      newExpandedRows.delete(logId);
+    } else {
+      newExpandedRows.add(logId);
     }
-  };
-
-  const handleViewDetails = (log: any) => {
-    setSelectedLogForDetail(log);
-    setDetailDialogOpen(true);
-  };
-
-  const handleCloseDetailDialog = () => {
-    setDetailDialogOpen(false);
-    setSelectedLogForDetail(null);
+    setExpandedRows(newExpandedRows);
   };
 
   // Loading state - following customer list pattern
@@ -195,15 +173,6 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId: p
             View customer activity and system events
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={handleExportLogs}
-          >
-            Export
-          </Button>
-        </Box>
       </Box>
 
       {/* Filters */}
@@ -231,6 +200,7 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId: p
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell width="40px"></TableCell>
                 <TableCell>
                   <TableSortLabel
                     active={orderBy === 'timestamp'}
@@ -251,159 +221,289 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId: p
                 </TableCell>
                 <TableCell>Changes</TableCell>
                 <TableCell>User & Metadata</TableCell>
-                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {paginatedLogs.map((log) => (
-                <TableRow 
-                  key={log.id} 
-                  hover
-                  sx={{ 
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.02)
-                    }
-                  }}
-                >
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Avatar sx={{ width: 32, height: 32 }}>
-                        {getLogEventTypeIcon(log.eventType)}
-                      </Avatar>
+                <React.Fragment key={log.id}>
+                  <TableRow 
+                    hover
+                    sx={{ 
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.02)
+                      }
+                    }}
+                  >
+                    <TableCell>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleToggleExpanded(log.id)}
+                      >
+                        {expandedRows.has(log.id) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      </IconButton>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Avatar sx={{ width: 32, height: 32 }}>
+                          {getLogEventTypeIcon(log.eventType)}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {log.eventType ? 
+                              log.eventType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
+                              'Unknown Event'
+                            }
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {log.actionTimestamp ? 
+                              formatLogTimestamp(log.actionTimestamp.toString()) : 
+                              log.createdAt ? 
+                              formatLogTimestamp(log.createdAt.toString()) :
+                              'No timestamp'
+                            }
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        {getLogEntityTypeIcon(log.entityType)}
+                        <Chip
+                          label={log.entityType ? 
+                            log.entityType.charAt(0).toUpperCase() + log.entityType.slice(1) : 
+                            'Unknown'
+                          }
+                          size="small"
+                          variant="outlined"
+                        />
+                      </Box>
+                      {log.entityId && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          ID: {log.entityId.slice(0, 8)}...
+                        </Typography>
+                      )}
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box sx={{ maxWidth: 300 }}>
+                        {log.eventType === 'entity_created' && log.newValues && (
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium" color="success.main">
+                              Created new {log.entityType}
+                            </Typography>
+                            {log.newValues.legalName && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                Name: {log.newValues.legalName}
+                              </Typography>
+                            )}
+                            {log.newValues.email && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                Email: {log.newValues.email}
+                              </Typography>
+                            )}
+                            {log.newValues.type && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                Type: {log.newValues.type}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+                        
+                        {log.eventType === 'entity_updated' && (
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium" color="warning.main">
+                              Updated {log.entityType}
+                            </Typography>
+                            {log.oldValues && log.newValues && (
+                              <Box sx={{ mt: 0.5 }}>
+                                {Object.keys(log.newValues).slice(0, 3).map((key) => (
+                                  <Typography key={key} variant="caption" display="block" color="text.secondary">
+                                    {key}: {log.oldValues?.[key]} → {log.newValues?.[key]}
+                                  </Typography>
+                                ))}
+                                {Object.keys(log.newValues).length > 3 && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    +{Object.keys(log.newValues).length - 3} more changes
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
+                          </Box>
+                        )}
+                        
+                        {log.eventType === 'entity_deleted' && (
+                          <Typography variant="body2" fontWeight="medium" color="error.main">
+                            Deleted {log.entityType}
+                          </Typography>
+                        )}
+                        
+                        {!['entity_created', 'entity_updated', 'entity_deleted'].includes(log.eventType || '') && (
+                          <Typography variant="body2">
+                            {formatLogDescription(log)}
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    
+                    <TableCell>
                       <Box>
                         <Typography variant="body2" fontWeight="medium">
-                          {log.eventType ? 
-                            log.eventType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
-                            'Unknown Event'
-                          }
+                          {log.userId || 'System'}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {log.actionTimestamp ? 
-                            formatLogTimestamp(log.actionTimestamp.toString()) : 
-                            log.createdAt ? 
-                            formatLogTimestamp(log.createdAt.toString()) :
-                            'No timestamp'
-                          }
-                        </Typography>
+                        {log.metadata && (
+                          <Box sx={{ mt: 0.5 }}>
+                            {log.metadata.customerType && (
+                              <Chip
+                                label={`Customer: ${log.metadata.customerType}`}
+                                size="small"
+                                variant="outlined"
+                                sx={{ mr: 0.5, mb: 0.5 }}
+                              />
+                            )}
+                            {log.metadata.customerId && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                Customer ID: {log.metadata.customerId.slice(0, 8)}...
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
                       </Box>
-                    </Box>
-                  </TableCell>
+                    </TableCell>
+                  </TableRow>
                   
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      {getLogEntityTypeIcon(log.entityType)}
-                      <Chip
-                        label={log.entityType ? 
-                          log.entityType.charAt(0).toUpperCase() + log.entityType.slice(1) : 
-                          'Unknown'
-                        }
-                        size="small"
-                        variant="outlined"
-                      />
-                    </Box>
-                    {log.entityId && (
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        ID: {log.entityId.slice(0, 8)}...
-                      </Typography>
-                    )}
-                  </TableCell>
-                  
-                  <TableCell>
-                    <Box sx={{ maxWidth: 300 }}>
-                      {log.eventType === 'entity_created' && log.newValues && (
-                        <Box>
-                          <Typography variant="body2" fontWeight="medium" color="success.main">
-                            Created new {log.entityType}
-                          </Typography>
-                          {log.newValues.legalName && (
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              Name: {log.newValues.legalName}
+                  {/* Expanded Row */}
+                  <TableRow>
+                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
+                      <Collapse in={expandedRows.has(log.id)} timeout="auto" unmountOnExit>
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: alpha(theme.palette.grey[50], 0.5),
+                          borderLeft: `3px solid ${theme.palette.primary.main}`
+                        }}>
+                          {/* Basic Information */}
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                              Basic Information
                             </Typography>
-                          )}
-                          {log.newValues.email && (
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              Email: {log.newValues.email}
-                            </Typography>
-                          )}
-                          {log.newValues.type && (
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              Type: {log.newValues.type}
-                            </Typography>
-                          )}
-                        </Box>
-                      )}
-                      
-                      {log.eventType === 'entity_updated' && (
-                        <Box>
-                          <Typography variant="body2" fontWeight="medium" color="warning.main">
-                            Updated {log.entityType}
-                          </Typography>
-                          {log.oldValues && log.newValues && (
-                            <Box sx={{ mt: 0.5 }}>
-                              {Object.keys(log.newValues).slice(0, 3).map((key) => (
-                                <Typography key={key} variant="caption" display="block" color="text.secondary">
-                                  {key}: {log.oldValues?.[key]} → {log.newValues?.[key]}
+                            <Grid container spacing={1}>
+                              <Grid item xs={3}>
+                                <Typography variant="caption" color="text.secondary">Event Type</Typography>
+                                <Typography variant="body2">{log.eventType}</Typography>
+                              </Grid>
+                              <Grid item xs={3}>
+                                <Typography variant="caption" color="text.secondary">Entity Type</Typography>
+                                <Typography variant="body2">{log.entityType}</Typography>
+                              </Grid>
+                              <Grid item xs={3}>
+                                <Typography variant="caption" color="text.secondary">Entity ID</Typography>
+                                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                                  {log.entityId}
                                 </Typography>
-                              ))}
-                              {Object.keys(log.newValues).length > 3 && (
-                                <Typography variant="caption" color="text.secondary">
-                                  +{Object.keys(log.newValues).length - 3} more changes
-                                </Typography>
-                              )}
+                              </Grid>
+                              <Grid item xs={3}>
+                                <Typography variant="caption" color="text.secondary">User ID</Typography>
+                                <Typography variant="body2">{log.userId}</Typography>
+                              </Grid>
+                            </Grid>
+                          </Box>
+
+                          {/* Timestamps */}
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                              Timestamps
+                            </Typography>
+                            <Grid container spacing={1}>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Action Timestamp</Typography>
+                                <Typography variant="body2">{log.actionTimestamp}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Created At</Typography>
+                                <Typography variant="body2">{log.createdAt}</Typography>
+                              </Grid>
+                            </Grid>
+                          </Box>
+
+                          {/* Metadata */}
+                          {log.metadata && (
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                Metadata
+                              </Typography>
+                              <Box sx={{ 
+                                fontFamily: 'monospace', 
+                                fontSize: '0.75rem',
+                                bgcolor: theme.palette.background.paper,
+                                p: 1,
+                                borderRadius: 1,
+                                border: `1px solid ${theme.palette.divider}`,
+                                maxHeight: 200,
+                                overflow: 'auto'
+                              }}>
+                                <pre style={{ margin: 0 }}>{JSON.stringify(log.metadata, null, 2)}</pre>
+                              </Box>
+                            </Box>
+                          )}
+
+                          {/* Value Changes */}
+                          {(log.oldValues || log.newValues) && (
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                Value Changes
+                              </Typography>
+                              <Grid container spacing={1}>
+                                {/* Previous Values */}
+                                {log.oldValues && (
+                                  <Grid item xs={log.newValues ? 6 : 12}>
+                                    <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
+                                      Previous Values
+                                    </Typography>
+                                    <Box sx={{ 
+                                      fontFamily: 'monospace', 
+                                      fontSize: '0.75rem',
+                                      bgcolor: alpha(theme.palette.error.main, 0.05),
+                                      p: 1,
+                                      borderRadius: 1,
+                                      border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                                      maxHeight: 200,
+                                      overflow: 'auto'
+                                    }}>
+                                      <pre style={{ margin: 0 }}>{JSON.stringify(log.oldValues, null, 2)}</pre>
+                                    </Box>
+                                  </Grid>
+                                )}
+
+                                {/* New Values */}
+                                {log.newValues && (
+                                  <Grid item xs={log.oldValues ? 6 : 12}>
+                                    <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
+                                      {log.oldValues ? 'New Values' : 'Created Values'}
+                                    </Typography>
+                                    <Box sx={{ 
+                                      fontFamily: 'monospace', 
+                                      fontSize: '0.75rem',
+                                      bgcolor: alpha(theme.palette.success.main, 0.05),
+                                      p: 1,
+                                      borderRadius: 1,
+                                      border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                                      maxHeight: 200,
+                                      overflow: 'auto'
+                                    }}>
+                                      <pre style={{ margin: 0 }}>{JSON.stringify(log.newValues, null, 2)}</pre>
+                                    </Box>
+                                  </Grid>
+                                )}
+                              </Grid>
                             </Box>
                           )}
                         </Box>
-                      )}
-                      
-                      {log.eventType === 'entity_deleted' && (
-                        <Typography variant="body2" fontWeight="medium" color="error.main">
-                          Deleted {log.entityType}
-                        </Typography>
-                      )}
-                      
-                      {!['entity_created', 'entity_updated', 'entity_deleted'].includes(log.eventType || '') && (
-                        <Typography variant="body2">
-                          {formatLogDescription(log)}
-                        </Typography>
-                      )}
-                    </Box>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <Box>
-                      <Typography variant="body2" fontWeight="medium">
-                        {log.userId || 'System'}
-                      </Typography>
-                      {log.metadata && (
-                        <Box sx={{ mt: 0.5 }}>
-                          {log.metadata.customerType && (
-                            <Chip
-                              label={`Customer: ${log.metadata.customerType}`}
-                              size="small"
-                              variant="outlined"
-                              sx={{ mr: 0.5, mb: 0.5 }}
-                            />
-                          )}
-                          {log.metadata.customerId && (
-                            <Typography variant="caption" display="block" color="text.secondary">
-                              Customer ID: {log.metadata.customerId.slice(0, 8)}...
-                            </Typography>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  </TableCell>
-                  
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={(event) => openMenu(event, log)}
-                    >
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
               ))}
               {paginatedLogs.length === 0 && !loading && (
                 <TableRow>
@@ -483,182 +583,6 @@ const CustomerAccountLogs: React.FC<CustomerAccountLogsProps> = ({ customerId: p
           }}
         />
       </Paper>
-
-      {/* Action Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={closeMenu}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      >
-        <MenuItem onClick={() => {
-          if (selectedLog) {
-            handleViewDetails(selectedLog);
-          }
-          closeMenu();
-        }}>
-          <VisibilityIcon fontSize="small" sx={{ mr: 1 }} />
-          View Details
-        </MenuItem>
-        
-        <MenuItem onClick={() => {
-          if (selectedLog) {
-            // Export specific log
-            console.log('Export log:', selectedLog.id);
-            showNotification('Log exported successfully', 'success');
-          }
-          closeMenu();
-        }}>
-          <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
-          Export Log
-        </MenuItem>
-      </Menu>
-
-      {/* Log Detail Dialog */}
-      <Dialog
-        open={detailDialogOpen}
-        onClose={handleCloseDetailDialog}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Avatar sx={{ width: 32, height: 32 }}>
-                {selectedLogForDetail && getLogEventTypeIcon(selectedLogForDetail.eventType)}
-              </Avatar>
-              <Box>
-                <Typography variant="h6">
-                  {selectedLogForDetail?.eventType?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Log Details'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {selectedLogForDetail?.actionTimestamp ? 
-                    formatLogTimestamp(selectedLogForDetail.actionTimestamp) : 
-                    'No timestamp'
-                  }
-                </Typography>
-              </Box>
-            </Box>
-            <IconButton onClick={handleCloseDetailDialog}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        
-        <DialogContent>
-          {selectedLogForDetail && (
-            <Grid container spacing={2}>
-              {/* Basic Information */}
-              <Grid item xs={12}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>Basic Information</Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Event Type</Typography>
-                        <Typography variant="body1">{selectedLogForDetail.eventType}</Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Entity Type</Typography>
-                        <Typography variant="body1">{selectedLogForDetail.entityType}</Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Entity ID</Typography>
-                        <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
-                          {selectedLogForDetail.entityId}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">User ID</Typography>
-                        <Typography variant="body1">{selectedLogForDetail.userId}</Typography>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {/* Metadata */}
-              {selectedLogForDetail.metadata && (
-                <Grid item xs={12}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>Metadata</Typography>
-                      <Box sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                        <pre>{JSON.stringify(selectedLogForDetail.metadata, null, 2)}</pre>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* Old Values */}
-              {selectedLogForDetail.oldValues && (
-                <Grid item xs={12} md={6}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom color="error.main">Previous Values</Typography>
-                      <Box sx={{ fontFamily: 'monospace', fontSize: '0.875rem', maxHeight: 300, overflow: 'auto' }}>
-                        <pre>{JSON.stringify(selectedLogForDetail.oldValues, null, 2)}</pre>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* New Values */}
-              {selectedLogForDetail.newValues && (
-                <Grid item xs={12} md={selectedLogForDetail.oldValues ? 6 : 12}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom color="success.main">
-                        {selectedLogForDetail.oldValues ? 'New Values' : 'Created Values'}
-                      </Typography>
-                      <Box sx={{ fontFamily: 'monospace', fontSize: '0.875rem', maxHeight: 300, overflow: 'auto' }}>
-                        <pre>{JSON.stringify(selectedLogForDetail.newValues, null, 2)}</pre>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              )}
-
-              {/* Timestamps */}
-              <Grid item xs={12}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>Timestamps</Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Action Timestamp</Typography>
-                        <Typography variant="body1">{selectedLogForDetail.actionTimestamp}</Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Created At</Typography>
-                        <Typography variant="body1">{selectedLogForDetail.createdAt}</Typography>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          )}
-        </DialogContent>
-        
-        <DialogActions>
-          <Button onClick={handleCloseDetailDialog}>Close</Button>
-          <Button 
-            variant="outlined" 
-            startIcon={<DownloadIcon />}
-            onClick={() => {
-              // Export this specific log
-              console.log('Export log:', selectedLogForDetail?.id);
-              showNotification('Log exported successfully', 'success');
-            }}
-          >
-            Export
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Notification Snackbar */}
       <Snackbar
