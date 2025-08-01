@@ -7,19 +7,57 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon
+  ListItemIcon,
+  Skeleton
 } from '@mui/material';
 import { Circle } from '@mui/icons-material';
-import { PieChartData } from '../types/dashboard.types';
+import { PieChartProps } from '../types/dashboard.types';
 import { useTheme } from '@mui/material/styles';
 
-interface PieChartProps {
-  title: string;
-  data: PieChartData;
-}
-
-export const PieChart: React.FC<PieChartProps> = ({ title, data }) => {
+export const PieChart: React.FC<PieChartProps> = ({ title, data, loading = false }) => {
   const theme = useTheme();
+  
+  if (loading) {
+    return (
+      <Card 
+        sx={{ 
+          height: '100%',
+          background: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
+          boxShadow: theme.shadows[2]
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          <Skeleton variant="text" width="60%" height={32} sx={{ mb: 3 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Box sx={{ flex: '0 0 200px' }}>
+              <Skeleton variant="circular" width={200} height={200} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <List dense>
+                {[...Array(4)].map((_, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <Skeleton variant="circular" width={12} height={12} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Skeleton variant="text" width="40%" />
+                          <Skeleton variant="text" width="30%" />
+                        </Box>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const total = data.data.reduce((sum, value) => sum + value, 0);
 
   // Calculate angles for each segment
@@ -70,11 +108,10 @@ export const PieChart: React.FC<PieChartProps> = ({ title, data }) => {
           component="h3" 
           gutterBottom 
           sx={{ 
-            fontWeight: 600,
-            background: 'linear-gradient(45deg, #0f172a 30%, #3b82f6 90%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
+            fontWeight: 700,
+            color: theme.palette.text.primary,
+            mb: 3,
+            fontSize: '1.25rem'
           }}
         >
           {title}

@@ -50,3 +50,33 @@ export interface ActivityItem {
   timestamp: Date | string;
   status?: 'success' | 'warning' | 'error' | 'info';
 }
+
+// Component Props
+export interface MetricCardProps {
+  metric: DashboardMetric;
+  loading?: boolean;
+}
+
+export interface PieChartProps {
+  title: string;
+  data: PieChartData;
+  loading?: boolean;
+}
+
+export interface LineChartProps {
+  title: string;
+  data: LineChartData;
+  loading?: boolean;
+}
+
+export interface BarChartProps {
+  title: string;
+  data: BarChartData;
+  loading?: boolean;
+}
+
+export interface ActivityFeedProps {
+  title?: string;
+  activities: ActivityItem[];
+  loading?: boolean;
+}

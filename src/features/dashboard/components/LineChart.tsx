@@ -4,18 +4,42 @@ import {
   CardContent,
   Typography,
   Box,
-  Chip
+  Chip,
+  Skeleton
 } from '@mui/material';
-import { LineChartData } from '../types/dashboard.types';
+import { LineChartProps } from '../types/dashboard.types';
 import { useTheme } from '@mui/material/styles';
 
-interface LineChartProps {
-  title: string;
-  data: LineChartData;
-}
-
-export const LineChart: React.FC<LineChartProps> = ({ title, data }) => {
+export const LineChart: React.FC<LineChartProps> = ({ title, data, loading = false }) => {
   const theme = useTheme();
+  
+  if (loading) {
+    return (
+      <Card 
+        sx={{ 
+          height: '100%',
+          background: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
+          boxShadow: theme.shadows[2]
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Skeleton variant="text" width="60%" height={32} />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Skeleton variant="rounded" width={80} height={24} />
+              <Skeleton variant="rounded" width={80} height={24} />
+            </Box>
+          </Box>
+          
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <Skeleton variant="rectangular" width={600} height={200} />
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const { labels, datasets } = data;
   
   // Find min and max values across all datasets
@@ -58,11 +82,9 @@ export const LineChart: React.FC<LineChartProps> = ({ title, data }) => {
             variant="h6" 
             component="h3"
             sx={{ 
-              fontWeight: 600,
-              background: 'linear-gradient(45deg, #0f172a 30%, #3b82f6 90%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
+              fontWeight: 700,
+              color: theme.palette.text.primary,
+              fontSize: '1.25rem'
             }}
           >
             {title}

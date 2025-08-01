@@ -3,18 +3,35 @@ import {
   Card,
   CardContent,
   Typography,
-  Box
+  Box,
+  Skeleton
 } from '@mui/material';
-import { BarChartData } from '../types/dashboard.types';
+import { BarChartProps } from '../types/dashboard.types';
 import { useTheme } from '@mui/material/styles';
 
-interface BarChartProps {
-  title: string;
-  data: BarChartData;
-}
-
-export const BarChart: React.FC<BarChartProps> = ({ title, data }) => {
+export const BarChart: React.FC<BarChartProps> = ({ title, data, loading = false }) => {
   const theme = useTheme();
+  
+  if (loading) {
+    return (
+      <Card 
+        sx={{ 
+          height: '100%',
+          background: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
+          boxShadow: theme.shadows[2]
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          <Skeleton variant="text" width="60%" height={32} sx={{ mb: 3 }} />
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <Skeleton variant="rectangular" width={400} height={250} />
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const { labels, data: values, colors } = data;
   
   const maxValue = Math.max(...values);
@@ -40,11 +57,10 @@ export const BarChart: React.FC<BarChartProps> = ({ title, data }) => {
           component="h3" 
           gutterBottom
           sx={{ 
-            fontWeight: 600,
-            background: 'linear-gradient(45deg, #0f172a 30%, #3b82f6 90%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
+            fontWeight: 700,
+            color: theme.palette.text.primary,
+            mb: 3,
+            fontSize: '1.25rem'
           }}
         >
           {title}

@@ -9,7 +9,8 @@ import {
   ListItemAvatar,
   ListItemText,
   Avatar,
-  Chip
+  Chip,
+  Skeleton
 } from '@mui/material';
 import {
   Description,
@@ -21,13 +22,8 @@ import {
   Error,
   Info
 } from '@mui/icons-material';
-import { ActivityItem } from '../types/dashboard.types';
+import { ActivityFeedProps } from '../types/dashboard.types';
 import { useTheme } from '@mui/material/styles';
-
-interface ActivityFeedProps {
-  title: string;
-  activities: ActivityItem[];
-}
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -82,8 +78,67 @@ const formatTimeAgo = (timestamp: Date | string) => {
   }
 };
 
-export const ActivityFeed: React.FC<ActivityFeedProps> = ({ title, activities }) => {
+export const ActivityFeed: React.FC<ActivityFeedProps> = ({ title, activities, loading = false }) => {
   const theme = useTheme();
+  
+  if (loading) {
+    return (
+      <Card 
+        sx={{ 
+          height: '100%',
+          background: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
+          boxShadow: theme.shadows[2]
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          {title && (
+            <Skeleton variant="text" width="40%" height={32} sx={{ mb: 3 }} />
+          )}
+          
+          <List sx={{ pt: 0 }}>
+            {[...Array(5)].map((_, index) => (
+              <ListItem 
+                key={index} 
+                sx={{ 
+                  px: 0,
+                  py: 1.5,
+                  borderBottom: '1px solid',
+                  borderBottomColor: 'divider',
+                  '&:last-child': {
+                    borderBottom: 'none'
+                  }
+                }}
+              >
+                <ListItemAvatar>
+                  <Skeleton variant="circular" width={40} height={40} />
+                </ListItemAvatar>
+                
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Skeleton variant="text" width="60%" />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Skeleton variant="circular" width={16} height={16} />
+                        <Skeleton variant="text" width={50} />
+                      </Box>
+                    </Box>
+                  }
+                  secondary={
+                    <Box>
+                      <Skeleton variant="text" width="80%" sx={{ mb: 1 }} />
+                      <Skeleton variant="rounded" width={70} height={20} />
+                    </Box>
+                  }
+                />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   return (
     <Card 
       sx={{ 
@@ -94,20 +149,21 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ title, activities })
       }}
     >
       <CardContent sx={{ p: 3 }}>
-        <Typography 
-          variant="h6" 
-          component="h3" 
-          gutterBottom
-          sx={{ 
-            fontWeight: 600,
-            background: 'linear-gradient(45deg, #0f172a 30%, #3b82f6 90%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}
-        >
-          {title}
-        </Typography>
+        {title && (
+          <Typography 
+            variant="h6" 
+            component="h3" 
+            gutterBottom
+            sx={{ 
+              fontWeight: 700,
+              color: theme.palette.text.primary,
+              mb: 3,
+              fontSize: '1.25rem'
+            }}
+          >
+            {title}
+          </Typography>
+        )}
         
         <List sx={{ pt: 0 }}>
           {activities.map((activity) => {
