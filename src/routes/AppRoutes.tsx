@@ -13,11 +13,12 @@ import CustomerLogsPage from '../features/customers/containers/Account/CustomerL
 import { CustomerInvoicesPage } from '../features/customers/containers';
 import CreateVehiclePage from '../features/vehicles/containers/CreateVehiclePage';
 import  CustomerVehiclesPage  from '../features/customers/containers/Account/CustomerVehiclesPage';
+import  {DashboardPage} from '../features/dashboard/containers/Dashboardpage';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<DashboardLayout />}>
-        <Route index element={<Navigate to="/customers" replace />} />
+        <Route index element={<DashboardPage/>} />
 
         <Route path="customers">
           <Route index element={<CustomersPage />} />
