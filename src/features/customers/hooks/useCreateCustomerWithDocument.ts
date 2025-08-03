@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { customerApi } from '../api/customerApi';
 import { documentApi, downloadFile } from '../api/documentApi';
 import { CreateCustomerDto, Customer } from '../types/customer.types';
@@ -18,59 +18,55 @@ export const useCreateCustomerWithDocument = () => {
   });
   const { showSuccess, showError } = useNotification();
 
-  // Debug logging for state changes
-  useEffect(() => {
-    console.log('Hook state updated - result:', result);
-  }, [result]);
-
   const createCustomer = async (data: CreateCustomerDto): Promise<Customer> => {
-    console.log('=== CREATE CUSTOMER START ===');
     setLoading(true);
     setError(null);
     
     try {
       // 1. Create customer
-      console.log('Creating customer with data:', data);
       const customer = await customerApi.create(data);
       console.log('Customer created successfully:', customer);
       
-      const newResult = { customer, isDownloading: false };
-      console.log('Setting new result state:', newResult);
-      setResult(newResult);
+      // 2. Generate registration PDF for the newly created customer
+      if (customer.id) {
+        try {
+          await documentApi.generateCustomerRegistrationPdf(customer.id);
+          console.log('Registration PDF generated successfully for customer:', customer.id);
+        } catch (pdfError) {
+          console.error('Failed to generate registration PDF:', pdfError);
+          // Don't fail the entire customer creation if PDF generation fails
+          showError('Customer created but failed to generate registration document');
+        }
+      } else {
+        console.error('Customer created but no ID returned');
+        showError('Customer created but cannot generate registration document (no ID)');
+      }
       
+      setResult({ customer, isDownloading: false });
       showSuccess('Customer created successfully');
-      console.log('=== CREATE CUSTOMER SUCCESS ===');
       return customer;
     } catch (err) {
       console.error('Error creating customer:', err);
       const message = err instanceof Error ? err.message : 'Failed to create customer';
       setError(message);
       showError(message);
-      console.log('=== CREATE CUSTOMER ERROR ===');
       throw err;
     } finally {
       setLoading(false);
-      console.log('=== CREATE CUSTOMER FINALLY ===');
     }
   };
 
   const downloadRegistrationDocument = async (customerId: string) => {
     if (!customerId) {
-      showError('Customer ID is required for document generation');
+      showError('Customer ID is required for document download');
       return;
     }
 
     setResult(prev => ({ ...prev, isDownloading: true }));
     
     try {
-      // Generate and download PDF
-      const pdfBlob = await documentApi.generateAndDownloadCustomerPdf(
-        customerId,
-        {
-          generatedFor: 'customer_registration',
-          timestamp: new Date().toISOString(),
-        }
-      );
+      // Download the pre-generated registration PDF
+      const pdfBlob = await documentApi.downloadCustomerRegistrationPdf(customerId);
 
       // Generate filename with timestamp
       const fileName = `customer-registration-${customerId}-${Date.now()}.pdf`;

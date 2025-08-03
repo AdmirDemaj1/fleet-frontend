@@ -20,6 +20,7 @@ import {
   Work
 } from '@mui/icons-material';
 import { Controller, useFormContext } from 'react-hook-form';
+import { MuiTelInput } from 'mui-tel-input';
 
 export const BusinessDetailsStep: React.FC = () => {
   const theme = useTheme();
@@ -300,20 +301,14 @@ export const BusinessDetailsStep: React.FC = () => {
               defaultValue=""
               rules={{ required: 'Phone number is required' }}
               render={({ field }) => (
-                <TextField
+                <MuiTelInput
                   {...field}
                   label="Phone"
                   fullWidth
                   required
+                  defaultCountry="AL"
                   error={!!getNestedError('businessDetails.phone')}
                   helperText={getNestedError('businessDetails.phone')?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Phone color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
                   sx={fieldStyle}
                 />
               )}
@@ -360,19 +355,13 @@ export const BusinessDetailsStep: React.FC = () => {
               control={control}
               defaultValue=""
               render={({ field }) => (
-                <TextField
+                <MuiTelInput
                   {...field}
                   label="Secondary Phone (Optional)"
                   fullWidth
+                  defaultCountry="AL"
                   error={!!getNestedError('businessDetails.secondaryPhone')}
                   helperText={getNestedError('businessDetails.secondaryPhone')?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Phone color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
                   sx={fieldStyle}
                 />
               )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { CustomerForm, CustomerCreationSuccess } from '../components';
 import { useCreateCustomerWithDocument } from '../hooks/useCreateCustomerWithDocument';
@@ -16,22 +16,12 @@ export const CreateCustomerPage: React.FC = () => {
   } = useCreateCustomerWithDocument();
   const [activeStep, setActiveStep] = useState(0);
 
-  // Debug logging for customer state changes
-  useEffect(() => {
-    console.log('CreateCustomerPage - customer state changed:', customer);
-  }, [customer]);
-
   const handleSubmit = async (data: any) => {
     try {
-      console.log('=== HANDLE SUBMIT START ===');
-      console.log('Submitting customer data:', data);
-      const result = await createCustomer(data);
-      console.log('Customer creation result:', result);
-      console.log('=== HANDLE SUBMIT SUCCESS ===');
+      await createCustomer(data);
       // Don't reset step, let success component handle navigation
     } catch (error) {
       console.error('Failed to create customer:', error);
-      console.log('=== HANDLE SUBMIT ERROR ===');
     }
   };
 
@@ -47,7 +37,6 @@ export const CreateCustomerPage: React.FC = () => {
   };
 
   // Show success component after customer creation
-  console.log('Current customer state:', customer);
   if (customer) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
