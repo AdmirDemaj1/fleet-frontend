@@ -3,6 +3,7 @@ import customerReducer from '../features/customers/slices/customerSlice';
 import vehicleReducer from '../features/vehicles/slices/vehicleSlice';
 import auditReducer from '../features/logs/slices/Auditslice';
 import { auditApi } from '../features/logs/api/auditapi'; // Import auditApi
+import { contractApi } from '../features/contracts/api/contractApi'; // Import contractApi
 
 export const store = configureStore({
   reducer: {
@@ -10,9 +11,12 @@ export const store = configureStore({
     vehicles: vehicleReducer,
     audits: auditReducer,
     [auditApi.reducerPath]: auditApi.reducer, // Add the auditApi reducer
+    [contractApi.reducerPath]: contractApi.reducer, // Add the contractApi reducer
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(auditApi.middleware), // Add the auditApi middleware
+    getDefaultMiddleware()
+      .concat(auditApi.middleware) // Add the auditApi middleware
+      .concat(contractApi.middleware), // Add the contractApi middleware
 });
 
 export type RootState = ReturnType<typeof store.getState>;
