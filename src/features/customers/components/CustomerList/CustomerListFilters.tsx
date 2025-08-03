@@ -26,7 +26,8 @@ import {
   Business,
   BusinessCenter,
   DirectionsCar,
-  CalendarMonth
+  CalendarMonth,
+  Security
 } from '@mui/icons-material';
 import { CustomerType } from '../../types/customer.types';
 
@@ -146,6 +147,12 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <Business fontSize="small" sx={{ mr: 1, color: theme.palette.secondary.main }} />
                       Business
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value={CustomerType.ENDORSER}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Security fontSize="small" sx={{ mr: 1, color: theme.palette.info.main }} />
+                      Endorser
                     </Box>
                   </MenuItem>
                 </Select>

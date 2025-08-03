@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { customerApi } from '../api/customerApi';
+import { endorserApi } from '../api/endorserApi';
 import { documentApi, downloadFile } from '../api/documentApi';
-import { CreateCustomerDto, Customer } from '../types/customer.types';
+import { CreateCustomerDto, Customer, EndorserResponseDto } from '../types/customer.types';
 import { useNotification } from '../../../shared/hooks/useNotification';
 
 interface CreateCustomerResult {
-  customer: Customer | null;
+  customer: Customer | EndorserResponseDto | null;
   isDownloading: boolean;
 }
 
@@ -18,16 +19,25 @@ export const useCreateCustomerWithDocument = () => {
   });
   const { showSuccess, showError } = useNotification();
 
-  const createCustomer = async (data: CreateCustomerDto): Promise<Customer> => {
+  const createCustomer = async (data: CreateCustomerDto): Promise<Customer | EndorserResponseDto> => {
     setLoading(true);
     setError(null);
     
     try {
-      // 1. Create customer
-      const customer = await customerApi.create(data);
-      console.log('Customer created successfully:', customer);
+      let customer: Customer | EndorserResponseDto;
       
-      // 2. Generate registration PDF for the newly created customer
+      // Check if we're creating an endorser
+      if (data.endorserDetails) {
+        console.log('Creating endorser with data:', data.endorserDetails);
+        customer = await endorserApi.createEndorser(data.endorserDetails);
+        console.log('Endorser created successfully:', customer);
+      } else {
+        console.log('Creating customer with data:', data);
+        customer = await customerApi.create(data);
+        console.log('Customer created successfully:', customer);
+      }
+      
+      // 2. Generate registration PDF for the newly created customer/endorser
       if (customer.id) {
         try {
           await documentApi.generateCustomerRegistrationPdf(customer.id);
@@ -35,15 +45,18 @@ export const useCreateCustomerWithDocument = () => {
         } catch (pdfError) {
           console.error('Failed to generate registration PDF:', pdfError);
           // Don't fail the entire customer creation if PDF generation fails
-          showError('Customer created but failed to generate registration document');
+          const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
+          showError(`${entityType} created but failed to generate registration document`);
         }
       } else {
         console.error('Customer created but no ID returned');
-        showError('Customer created but cannot generate registration document (no ID)');
+        const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
+        showError(`${entityType} created but cannot generate registration document (no ID)`);
       }
       
       setResult({ customer, isDownloading: false });
-      showSuccess('Customer created successfully');
+      const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
+      showSuccess(`${entityType} created successfully`);
       return customer;
     } catch (err) {
       console.error('Error creating customer:', err);

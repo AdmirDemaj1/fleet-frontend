@@ -19,6 +19,12 @@ export const API_ENDPOINTS = {
       DETAILS: (id: string) => `/customers/${id}`,
       EDIT: (id: string) => `/customers/${id}/edit`,
     },
+    ENDORSERS: {
+      LIST: '/endorsers',
+      CREATE: '/endorsers/new',
+      DETAILS: (id: string) => `/endorsers/${id}`,
+      EDIT: (id: string) => `/endorsers/${id}/edit`,
+    },
     VEHICLES: {
       LIST: '/vehicles',
       CREATE: '/vehicles/new',

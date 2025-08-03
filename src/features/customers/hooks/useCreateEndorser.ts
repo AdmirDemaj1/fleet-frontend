@@ -1,27 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { customerApi } from '../api/customerApi';
-import { CreateCustomerDto } from '../types/customer.types';
+import { endorserApi } from '../api/endorserApi';
+import { CreateEndorserDto } from '../types/customer.types';
 import { useNotification } from '../../../shared/hooks/useNotification';
 
-export const useCreateCustomer = () => {
+export const useCreateEndorser = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
 
-  const createCustomer = async (data: CreateCustomerDto) => {
-    console.log("Creating customer with data:", data);
+  const createEndorser = async (data: CreateEndorserDto) => {
+    console.log("Creating endorser with data:", data);
     setLoading(true);
     setError(null);
     
     try {
-      const customer = await customerApi.create(data);
-      showSuccess('Customer created successfully');
-      navigate(`/customers/${customer.id}`);
-      return customer;
+      const endorser = await endorserApi.createEndorser(data);
+      showSuccess('Endorser created successfully');
+      navigate(`/endorsers/${endorser.id}`);
+      return endorser;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create customer';
+      const message = err instanceof Error ? err.message : 'Failed to create endorser';
       setError(message);
       showError(message);
       throw err;
@@ -31,7 +31,7 @@ export const useCreateCustomer = () => {
   };
 
   return {
-    createCustomer,
+    createEndorser,
     loading,
     error
   };

@@ -89,6 +89,43 @@ export const createCustomerValidationSchema = (customerType: CustomerType) => {
     ...baseContactSchema
   });
 
+  const endorserSchema = yup.object({
+    type: yup.string().oneOf([CustomerType.ENDORSER]).required(),
+    firstName: yup
+      .string()
+      .required('First name is required')
+      .min(2, 'First name must be at least 2 characters')
+      .max(50, 'First name cannot exceed 50 characters'),
+    lastName: yup
+      .string()
+      .required('Last name is required')
+      .min(2, 'Last name must be at least 2 characters')
+      .max(50, 'Last name cannot exceed 50 characters'),
+    idNumber: yup
+      .string()
+      .required('ID number is required')
+      .min(10, 'ID number must be between 10 and 20 characters')
+      .max(20, 'ID number must be between 10 and 20 characters'),
+    dateOfBirth: yup
+      .string()
+      .required('Date of birth is required'),
+    guaranteedAmount: yup
+      .number()
+      .optional()
+      .min(0, 'Guaranteed amount must be positive'),
+    relationshipToCustomer: yup
+      .string()
+      .optional()
+      .max(100, 'Relationship description cannot exceed 100 characters'),
+    financialInformation: yup.object().optional(),
+    active: yup.boolean().optional(),
+    notes: yup
+      .string()
+      .optional()
+      .max(1000, 'Notes cannot exceed 1000 characters'),
+    ...baseContactSchema
+  });
+
   return yup.object({
     customerType: yup.string().oneOf(Object.values(CustomerType)).required('Customer type is required'),
     individualDetails: yup.lazy(() => 
@@ -99,6 +136,11 @@ export const createCustomerValidationSchema = (customerType: CustomerType) => {
     businessDetails: yup.lazy(() => 
       customerType === CustomerType.BUSINESS
         ? businessSchema.required('Business details are required')
+        : yup.mixed().optional()
+    ),
+    endorserDetails: yup.lazy(() => 
+      customerType === CustomerType.ENDORSER
+        ? endorserSchema.required('Endorser details are required')
         : yup.mixed().optional()
     )
   });
@@ -132,6 +174,23 @@ export const STEP_FIELDS = {
     'businessDetails.secondaryPhone',
     'businessDetails.secondaryEmail',
     'businessDetails.additionalNotes'
+  ],
+  ENDORSER_DETAILS: [
+    'endorserDetails.firstName',
+    'endorserDetails.lastName',
+    'endorserDetails.idNumber',
+    'endorserDetails.dateOfBirth',
+    'endorserDetails.address',
+    'endorserDetails.phone',
+    'endorserDetails.email',
+    'endorserDetails.secondaryPhone',
+    'endorserDetails.secondaryEmail',
+    'endorserDetails.additionalNotes',
+    'endorserDetails.guaranteedAmount',
+    'endorserDetails.relationshipToCustomer',
+    'endorserDetails.financialInformation',
+    'endorserDetails.active',
+    'endorserDetails.notes'
   ]
 };
 
@@ -156,6 +215,15 @@ export const REQUIRED_FIELDS = {
     'businessDetails.address',
     'businessDetails.phone',
     'businessDetails.email'
+  ],
+  ENDORSER_DETAILS: [
+    'endorserDetails.firstName',
+    'endorserDetails.lastName',
+    'endorserDetails.idNumber',
+    'endorserDetails.dateOfBirth',
+    'endorserDetails.address',
+    'endorserDetails.phone',
+    'endorserDetails.email'
   ]
 };
 

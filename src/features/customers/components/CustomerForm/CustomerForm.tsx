@@ -17,20 +17,21 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 import { CustomerType } from '../../types/customer.types';
-import { CreateCustomerDto, CreateIndividualCustomerDto, CreateBusinessCustomerDto } from '../../types/customer.types';
+import { CreateCustomerDto, CreateIndividualCustomerDto, CreateBusinessCustomerDto, CreateEndorserDto } from '../../types/customer.types';
 
 // Form data type that includes customerType for validation
 interface CustomerFormData {
   customerType: CustomerType;
   individualDetails?: CreateIndividualCustomerDto;
   businessDetails?: CreateBusinessCustomerDto;
+  endorserDetails?: CreateEndorserDto;
 }
 import {
   STEP_FIELDS,
   REQUIRED_FIELDS,
   STEP_CONFIG
 } from '../../utils/customerFormValidation';
-import { CustomerTypeStep, IndividualDetailsStep, BusinessDetailsStep } from './Steps';
+import { CustomerTypeStep, IndividualDetailsStep, BusinessDetailsStep, EndorserDetailsStep } from './Steps';
 
 interface CustomerFormProps {
   initialData?: Partial<CreateCustomerDto>;
@@ -51,7 +52,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   isEdit = false
 }) => {
   const [customerType, setCustomerType] = React.useState<CustomerType>(
-    initialData?.individualDetails ? CustomerType.INDIVIDUAL : CustomerType.BUSINESS
+    initialData?.individualDetails ? CustomerType.INDIVIDUAL : 
+    initialData?.businessDetails ? CustomerType.BUSINESS :
+    initialData?.endorserDetails ? CustomerType.ENDORSER :
+    CustomerType.INDIVIDUAL
   );
   
   const methods = useForm<CustomerFormData>({
@@ -85,6 +89,24 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         secondaryEmail: '',
         additionalNotes: ''
       } : undefined,
+      endorserDetails: customerType === CustomerType.ENDORSER ? {
+        type: CustomerType.ENDORSER,
+        firstName: '',
+        lastName: '',
+        idNumber: '',
+        dateOfBirth: '',
+        address: '',
+        phone: '',
+        email: '',
+        secondaryPhone: '',
+        secondaryEmail: '',
+        additionalNotes: '',
+        guaranteedAmount: undefined,
+        relationshipToCustomer: '',
+        financialInformation: undefined,
+        active: true,
+        notes: ''
+      } : undefined,
       ...initialData
     },
     mode: 'onChange',
@@ -110,6 +132,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     // Reset form sections when type changes
     if (customerType === CustomerType.INDIVIDUAL) {
       setValue('businessDetails', undefined);
+      setValue('endorserDetails', undefined);
       if (!currentFormData.individualDetails) {
         setValue('individualDetails', {
           type: CustomerType.INDIVIDUAL,
@@ -125,8 +148,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           additionalNotes: ''
         });
       }
-    } else {
+    } else if (customerType === CustomerType.BUSINESS) {
       setValue('individualDetails', undefined);
+      setValue('endorserDetails', undefined);
       if (!currentFormData.businessDetails) {
         setValue('businessDetails', {
           type: CustomerType.BUSINESS,
@@ -144,6 +168,29 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           additionalNotes: ''
         });
       }
+    } else if (customerType === CustomerType.ENDORSER) {
+      setValue('individualDetails', undefined);
+      setValue('businessDetails', undefined);
+      if (!currentFormData.endorserDetails) {
+        setValue('endorserDetails', {
+          type: CustomerType.ENDORSER,
+          firstName: '',
+          lastName: '',
+          idNumber: '',
+          dateOfBirth: '',
+          address: '',
+          phone: '',
+          email: '',
+          secondaryPhone: '',
+          secondaryEmail: '',
+          additionalNotes: '',
+          guaranteedAmount: undefined,
+          relationshipToCustomer: '',
+          financialInformation: undefined,
+          active: true,
+          notes: ''
+        });
+      }
     }
   }, [customerType, setValue, getValues]);
 
@@ -153,7 +200,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       case 0: return STEP_FIELDS.CUSTOMER_TYPE;
       case 1: return customerType === CustomerType.INDIVIDUAL 
         ? STEP_FIELDS.INDIVIDUAL_DETAILS 
-        : STEP_FIELDS.BUSINESS_DETAILS;
+        : customerType === CustomerType.BUSINESS
+        ? STEP_FIELDS.BUSINESS_DETAILS
+        : STEP_FIELDS.ENDORSER_DETAILS;
       case 2: return []; // Review step
       default: return [];
     }
@@ -165,7 +214,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       case 0: return REQUIRED_FIELDS.CUSTOMER_TYPE;
       case 1: return customerType === CustomerType.INDIVIDUAL 
         ? REQUIRED_FIELDS.INDIVIDUAL_DETAILS 
-        : REQUIRED_FIELDS.BUSINESS_DETAILS;
+        : customerType === CustomerType.BUSINESS
+        ? REQUIRED_FIELDS.BUSINESS_DETAILS
+        : REQUIRED_FIELDS.ENDORSER_DETAILS;
       case 2: return []; // Review step
       default: return [];
     }
@@ -239,6 +290,17 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           secondaryEmail: data.businessDetails.secondaryEmail || undefined,
           additionalNotes: data.businessDetails.additionalNotes || undefined,
           mainShareholders: data.businessDetails.mainShareholders || undefined
+        } : undefined,
+        endorserDetails: data.endorserDetails ? {
+          ...data.endorserDetails,
+          secondaryPhone: data.endorserDetails.secondaryPhone || undefined,
+          secondaryEmail: data.endorserDetails.secondaryEmail || undefined,
+          additionalNotes: data.endorserDetails.additionalNotes || undefined,
+          guaranteedAmount: data.endorserDetails.guaranteedAmount || undefined,
+          relationshipToCustomer: data.endorserDetails.relationshipToCustomer || undefined,
+          financialInformation: data.endorserDetails.financialInformation || undefined,
+          active: data.endorserDetails.active ?? true,
+          notes: data.endorserDetails.notes || undefined
         } : undefined
       };
       
@@ -282,6 +344,25 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           secondaryEmail: '',
           additionalNotes: '',
           ...initialData.businessDetails
+        } : undefined,
+        endorserDetails: customerType === CustomerType.ENDORSER ? {
+          type: CustomerType.ENDORSER,
+          firstName: '',
+          lastName: '',
+          idNumber: '',
+          dateOfBirth: '',
+          address: '',
+          phone: '',
+          email: '',
+          secondaryPhone: '',
+          secondaryEmail: '',
+          additionalNotes: '',
+          guaranteedAmount: undefined,
+          relationshipToCustomer: '',
+          financialInformation: undefined,
+          active: true,
+          notes: '',
+          ...initialData.endorserDetails
         } : undefined
       });
     }
@@ -295,8 +376,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       case 1:
         return customerType === CustomerType.INDIVIDUAL ? (
           <IndividualDetailsStep />
-        ) : (
+        ) : customerType === CustomerType.BUSINESS ? (
           <BusinessDetailsStep />
+        ) : (
+          <EndorserDetailsStep />
         );
       case 2:
         return (
@@ -319,7 +402,11 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               textAlign: 'left'
             }}>
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                Customer Type: {customerType === CustomerType.INDIVIDUAL ? 'Individual' : 'Business'}
+                Customer Type: {
+                  customerType === CustomerType.INDIVIDUAL ? 'Individual' :
+                  customerType === CustomerType.BUSINESS ? 'Business' :
+                  'Endorser'
+                }
               </Typography>
               
               {customerType === CustomerType.INDIVIDUAL && getValues('individualDetails') && (
@@ -350,6 +437,33 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                   <Typography variant="body2">
                     <strong>Phone:</strong> {getValues('businessDetails.phone')}
                   </Typography>
+                </>
+              )}
+
+              {customerType === CustomerType.ENDORSER && getValues('endorserDetails') && (
+                <>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Name:</strong> {getValues('endorserDetails.firstName')} {getValues('endorserDetails.lastName')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>ID Number:</strong> {getValues('endorserDetails.idNumber')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Email:</strong> {getValues('endorserDetails.email')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Phone:</strong> {getValues('endorserDetails.phone')}
+                  </Typography>
+                  {getValues('endorserDetails.guaranteedAmount') && (
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Max Guarantee:</strong> ${getValues('endorserDetails.guaranteedAmount')}
+                    </Typography>
+                  )}
+                  {getValues('endorserDetails.relationshipToCustomer') && (
+                    <Typography variant="body2">
+                      <strong>Relationship:</strong> {getValues('endorserDetails.relationshipToCustomer')}
+                    </Typography>
+                  )}
                 </>
               )}
             </Box>

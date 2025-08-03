@@ -1,20 +1,25 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { CustomerAccountEdit } from '../../components';
 
 export const EditCustomerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine if we're editing an endorser based on the current URL path
+  const isEndorser = location.pathname.includes('/endorsers/');
+  const basePath = isEndorser ? 'endorsers' : 'customers';
 
   const handleEditComplete = () => {
     // Navigate back to customer details or wherever appropriate
-    navigate(`/customers/${id}`);
+    navigate(`/${basePath}/${id}`);
   };
 
   const handleCancel = () => {
     // Navigate back without saving
-    navigate(`/customers/${id}`);
+    navigate(`/${basePath}/${id}`);
   };
 
   if (!id) {

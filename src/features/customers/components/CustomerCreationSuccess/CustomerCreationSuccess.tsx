@@ -15,6 +15,7 @@ import {
   Download,
   Person,
   Business,
+  Security,
   ArrowForward
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +37,8 @@ export const CustomerCreationSuccess: React.FC<CustomerCreationSuccessProps> = (
   const navigate = useNavigate();
 
   const handleGoToCustomer = () => {
-    navigate(`/customers/${customer.id}`);
+    const basePath = customer.type === 'endorser' ? 'endorsers' : 'customers';
+    navigate(`/${basePath}/${customer.id}`);
   };
 
   const handleCreateAnother = () => {
@@ -46,8 +48,12 @@ export const CustomerCreationSuccess: React.FC<CustomerCreationSuccessProps> = (
   };
 
   const customerName = customer.type === 'individual' 
-    ? `${customer.firstName} ${customer.lastName}`.trim()
-    : customer.legalName || customer.administratorName;
+    ? `${(customer as any).firstName} ${(customer as any).lastName}`.trim()
+    : customer.type === 'business'
+    ? (customer as any).legalName || (customer as any).administratorName
+    : customer.type === 'endorser'
+    ? `${(customer as any).firstName} ${(customer as any).lastName}`.trim()
+    : 'Unknown Customer';
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', py: 4 }}>
@@ -84,6 +90,8 @@ export const CustomerCreationSuccess: React.FC<CustomerCreationSuccessProps> = (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
               {customer.type === 'individual' ? (
                 <Person sx={{ color: 'primary.main' }} />
+              ) : customer.type === 'endorser' ? (
+                <Security sx={{ color: 'info.main' }} />
               ) : (
                 <Business sx={{ color: 'secondary.main' }} />
               )}
@@ -93,7 +101,7 @@ export const CustomerCreationSuccess: React.FC<CustomerCreationSuccessProps> = (
               <Chip
                 label={customer.type}
                 size="small"
-                color={customer.type === 'individual' ? 'primary' : 'secondary'}
+                color={customer.type === 'individual' ? 'primary' : customer.type === 'endorser' ? 'info' : 'secondary'}
                 variant="outlined"
               />
             </Box>

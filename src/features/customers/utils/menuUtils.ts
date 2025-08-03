@@ -10,9 +10,16 @@ export const getCustomerDisplayName = (customer: any): string => {
     const lastName = customerData?.lastName || '';
     const fullName = `${firstName} ${lastName}`.trim();
     return fullName || 'Customer';
-  } else {
+  } else if (customerData?.type === CustomerType.BUSINESS) {
     const businessName = customerData?.legalName;
     return businessName || 'Business Customer';
+  } else if (customerData?.type === CustomerType.ENDORSER) {
+    const firstName = customerData?.firstName || '';
+    const lastName = customerData?.lastName || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    return fullName || 'Endorser Customer';
+  } else {
+    return 'Customer';
   }
 };
 
