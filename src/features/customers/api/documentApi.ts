@@ -20,28 +20,42 @@ export interface DocumentResponse {
 }
 
 export const documentApi = {
-  // Generate and download customer registration PDF
+  // Generate customer registration PDF
+  generateCustomerRegistrationPdf: async (customerId: string): Promise<void> => {
+    await api.post(`/documents/generate/customer-registration/${customerId}`);
+  },
+
+  // Download customer registration PDF specifically
+  downloadCustomerRegistrationPdf: async (customerId: string): Promise<Blob> => {
+    const response = await api.post<Blob>(
+      `/documents/customer/${customerId}/registration-pdf`,
+      {}, // Empty body for POST request
+      {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/pdf',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // Generate and download customer PDF with metadata (legacy method)
   generateAndDownloadCustomerPdf: async (
-    customerId: string,
+    customerId: string, 
     metadata?: DocumentMetadata
   ): Promise<Blob> => {
-    try {
-      const response = await api.post(
-        `/documents/customer/${customerId}/registration-pdf`,
-        metadata || {},
-        {
-          responseType: 'blob',
-          headers: {
-            'Accept': 'application/pdf',
-          },
-        }
-      );
-      
-      return response.data as Blob;
-    } catch (error) {
-      console.error('Failed to generate customer PDF:', error);
-      throw error;
-    }
+    const response = await api.post<Blob>(
+      `/documents/customer/${customerId}/generate-pdf`,
+      metadata || {},
+      {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/pdf',
+        },
+      }
+    );
+    return response.data;
   },
 
   // Get document by ID
