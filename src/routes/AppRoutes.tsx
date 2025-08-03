@@ -13,7 +13,8 @@ import CustomerLogsPage from '../features/customers/containers/Account/CustomerL
 import { CustomerInvoicesPage } from '../features/customers/containers';
 import CreateVehiclePage from '../features/vehicles/containers/CreateVehiclePage';
 import  CustomerVehiclesPage  from '../features/customers/containers/Account/CustomerVehiclesPage';
-import  {DashboardPage} from '../features/dashboard/containers/Dashboardpage';
+import { DashboardPage } from '../features/dashboard/containers/DashboardPage';
+import { ContractsPage, CreateContractPage } from '../features/contracts/containers';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -42,8 +43,8 @@ export const AppRoutes: React.FC = () => {
         </Route>
 
         <Route path="contracts">
-          <Route index element={<div>Contracts Pager</div>} />
-          <Route path="new" element={<div>New Contract Pager</div>} />
+          <Route index element={<ContractsPage />} />
+          <Route path="create" element={<CreateContractPage />} />
           <Route path=":id/edit" element={<div>Edit Contract Page</div>} />
         </Route>
 
