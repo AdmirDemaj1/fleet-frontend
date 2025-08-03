@@ -10,7 +10,11 @@ export const createCustomerValidationSchema = (customerType: CustomerType) => {
     phone: yup
       .string()
       .required('Phone is required')
-      .matches(/^\+?[0-9]{10,15}$/, 'Phone number format is invalid'),
+      .test('valid-phone', 'Please enter a valid phone number', (value) => {
+        // MuiTelInput formats phones like "+1 234 567 8901" or "+33 1 23 45 67 89"
+        // Accept international format with spaces, dashes, or parentheses
+        return /^\+\d{1,3}\s?\d[\d\s\-\(\)]{7,15}$/.test(value || '');
+      }),
     email: yup
       .string()
       .required('Email is required')
@@ -18,7 +22,12 @@ export const createCustomerValidationSchema = (customerType: CustomerType) => {
     secondaryPhone: yup
       .string()
       .optional()
-      .matches(/^\+?[0-9]{10,15}$/, 'Secondary phone number format is invalid'),
+      .test('valid-secondary-phone', 'Please enter a valid secondary phone number', (value) => {
+        // Allow empty/null values for optional field
+        if (!value) return true;
+        // Same validation as primary phone for non-empty values
+        return /^\+\d{1,3}\s?\d[\d\s\-\(\)]{7,15}$/.test(value);
+      }),
     secondaryEmail: yup
       .string()
       .optional()

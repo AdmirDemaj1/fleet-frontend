@@ -18,6 +18,7 @@ import {
 } from '@mui/icons-material';
 import { Controller, useFormContext } from 'react-hook-form';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { MuiTelInput } from 'mui-tel-input';
 import dayjs from 'dayjs';
 
 export const IndividualDetailsStep: React.FC = () => {
@@ -233,20 +234,14 @@ export const IndividualDetailsStep: React.FC = () => {
               defaultValue=""
               rules={{ required: 'Phone number is required' }}
               render={({ field }) => (
-                <TextField
+                <MuiTelInput
                   {...field}
                   label="Phone"
                   fullWidth
                   required
+                  defaultCountry="AL"
                   error={!!getNestedError('individualDetails.phone')}
                   helperText={getNestedError('individualDetails.phone')?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Phone color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
                   sx={fieldStyle}
                 />
               )}
@@ -293,19 +288,13 @@ export const IndividualDetailsStep: React.FC = () => {
               control={control}
               defaultValue=""
               render={({ field }) => (
-                <TextField
+                <MuiTelInput
                   {...field}
                   label="Secondary Phone (Optional)"
                   fullWidth
+                  defaultCountry="AL"
                   error={!!getNestedError('individualDetails.secondaryPhone')}
                   helperText={getNestedError('individualDetails.secondaryPhone')?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Phone color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
                   sx={fieldStyle}
                 />
               )}
