@@ -3,6 +3,7 @@ export { CustomerList } from './CustomerList';
 export { CustomerListFilters } from './CustomerList/CustomerListFilters';
 export { CustomerListItem } from './CustomerList/CustomerListItem';
 export { CustomerAccountEdit } from './CustomerAccount/CustomerAccountEdit';
+export { CustomerCreationSuccess } from './CustomerCreationSuccess/CustomerCreationSuccess';
 
 export { ContractFilters } from './CustomerAccount/ContractFilters';
 export { InvoiceFilters } from './CustomerAccount/InvoiceFilters';
