@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { getApiUrl } from '../../../shared/utils/env';
 import { 
   CreateContractDto, 
   ContractResponse, 
@@ -15,7 +16,7 @@ export const contractApi = createApi({
     baseUrl: 'http://localhost:3000/',
     prepareHeaders: (headers) => {
       // Add authorization header if needed
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       if (token) {
         headers.set('authorization', `Bearer ${token}`);
       }

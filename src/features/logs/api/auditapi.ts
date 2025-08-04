@@ -1,5 +1,6 @@
 // src/features/logs/api/auditapi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { getApiUrl } from '../../../shared/utils/env';
 import { AuditLogResponseDto, FindAuditLogsDto, CustomerLogFilters } from '../types/audit.types';
 import { API_ENDPOINTS } from '../../../shared/utils/constants';
 

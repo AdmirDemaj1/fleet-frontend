@@ -6,9 +6,26 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   server: {
     host: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_DEV_API_URL || 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   },
   build: {
     sourcemap: mode === "development",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          mui: ['@mui/material', '@mui/icons-material'],
+          redux: ['@reduxjs/toolkit', 'react-redux']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
   },
-  base: "./",
+  base: "/",
 }));

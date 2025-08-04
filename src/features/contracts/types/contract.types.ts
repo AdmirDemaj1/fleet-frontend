@@ -176,6 +176,9 @@ export interface ContractFormData {
   
   // Loan specific fields
   loanDetails?: {
+    contractNumber: string;
+    startDate: string;
+    endDate: string;
     interestRate: number;
     loanTermMonths: number;
     monthlyPayment: number;

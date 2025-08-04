@@ -186,8 +186,6 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           type: data.type,
           contractNumber: data.contractNumber,
           customerId: data.customerId,
-          startDate: data.startDate,
-          endDate: data.endDate,
           totalAmount: data.totalAmount,
           residualValue: data.leasingDetails.residualValue,
           leaseTermMonths: data.leasingDetails.leaseTermMonths,

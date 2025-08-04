@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { getApiUrl } from './env';
 
 // const BASE_URL = import.meta.env.VITE_API_URL || 'https://fleet-credit-system-hmsc.vercel.app/';
 const BASE_URL ='http://localhost:3000/';

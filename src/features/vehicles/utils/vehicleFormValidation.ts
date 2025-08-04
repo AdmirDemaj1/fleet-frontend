@@ -1,6 +1,6 @@
 import * as yup from 'yup';
 import dayjs from 'dayjs';
-import { VehicleStatus, FuelType, ConditionStatus, InsuranceCompany } from '../types/vehicleType';
+import { VehicleStatus, FuelType } from '../types/vehicleType';
 
 /**
  * Enhanced vehicle form validation schema with comprehensive business rules
@@ -57,27 +57,30 @@ export const createVehicleValidationSchema = () => {
       .oneOf(Object.values(VehicleStatus), 'Invalid status selected'),
 
     // Details - Optional but validated when provided
-    mileage: yup
-      .number()
-      .nullable()
-      .min(0, 'Mileage cannot be negative')
-      .max(999999, 'Mileage seems unrealistic (max: 999,999 km)')
-      .integer('Mileage must be a whole number'),
+    // COMMENTED OUT - Backend validation error
+    // mileage: yup
+    //   .number()
+    //   .nullable()
+    //   .min(0, 'Mileage cannot be negative')
+    //   .max(999999, 'Mileage seems unrealistic (max: 999,999 km)')
+    //   .integer('Mileage must be a whole number'),
     
     fuelType: yup
       .string()
       .oneOf([...Object.values(FuelType), ''], 'Invalid fuel type')
       .nullable(),
     
-    transmission: yup
-      .string()
-      .max(20, 'Transmission type cannot exceed 20 characters')
-      .nullable(),
+    // COMMENTED OUT - Backend validation error
+    // transmission: yup
+    //   .string()
+    //   .max(20, 'Transmission type cannot exceed 20 characters')
+    //   .nullable(),
     
-    condition: yup
-      .string()
-      .oneOf([...Object.values(ConditionStatus), ''], 'Invalid condition')
-      .nullable(),
+    // COMMENTED OUT - Backend validation error
+    // condition: yup
+    //   .string()
+    //   .oneOf([...Object.values(ConditionStatus), ''], 'Invalid condition')
+    //   .nullable(),
     
     legalOwner: yup
       .string()
@@ -104,63 +107,69 @@ export const createVehicleValidationSchema = () => {
         return true;
       }),
     
-    purchasePrice: yup
-      .number()
-      .nullable()
-      .min(0, 'Purchase price cannot be negative')
-      .max(10000000, 'Purchase price seems unrealistic (max: $10M)'),
+    // COMMENTED OUT - Backend validation error
+    // purchasePrice: yup
+    //   .number()
+    //   .nullable()
+    //   .min(0, 'Purchase price cannot be negative')
+    //   .max(10000000, 'Purchase price seems unrealistic (max: $10M)'),
 
     // Documentation
-    registrationDate: yup
-      .string()
-      .nullable()
-      .test('valid-date', 'Invalid registration date', function(value) {
-        if (!value) return true;
-        const date = dayjs(value);
-        return date.isValid();
-      }),
+    // COMMENTED OUT - Backend validation error
+    // registrationDate: yup
+    //   .string()
+    //   .nullable()
+    //   .test('valid-date', 'Invalid registration date', function(value) {
+    //     if (!value) return true;
+    //     const date = dayjs(value);
+    //     return date.isValid();
+    //   }),
     
-    registrationExpiryDate: yup
-      .string()
-      .nullable()
-      .test('valid-date', 'Invalid registration expiry date', function(value) {
-        if (!value) return true;
-        const date = dayjs(value);
-        if (!date.isValid()) return false;
-        
-        const registrationDate = this.parent.registrationDate;
-        if (registrationDate && date.isBefore(dayjs(registrationDate))) {
-          return this.createError({ 
-            message: 'Registration expiry date cannot be before registration date' 
-          });
-        }
-        return true;
-      }),
+    // COMMENTED OUT - Backend validation error
+    // registrationExpiryDate: yup
+    //   .string()
+    //   .nullable()
+    //   .test('valid-date', 'Invalid registration expiry date', function(value) {
+    //     if (!value) return true;
+    //     const date = dayjs(value);
+    //     if (!date.isValid()) return false;
+    //     
+    //     const registrationDate = this.parent.registrationDate;
+    //     if (registrationDate && date.isBefore(dayjs(registrationDate))) {
+    //       return this.createError({ 
+    //         message: 'Registration expiry date cannot be before registration date' 
+    //       });
+    //     }
+    //     return true;
+    //   }),
     
-    insuranceProvider: yup
-      .string()
-      .oneOf([...Object.values(InsuranceCompany), ''], 'Invalid insurance provider')
-      .nullable(),
+    // COMMENTED OUT - Backend validation error
+    // insuranceProvider: yup
+    //   .string()
+    //   .oneOf([...Object.values(InsuranceCompany), ''], 'Invalid insurance provider')
+    //   .nullable(),
     
-    insurancePolicyNumber: yup
-      .string()
-      .max(50, 'Policy number cannot exceed 50 characters')
-      .nullable(),
+    // COMMENTED OUT - Backend validation error
+    // insurancePolicyNumber: yup
+    //   .string()
+    //   .max(50, 'Policy number cannot exceed 50 characters')
+    //   .nullable(),
     
-    insuranceExpiryDate: yup
-      .string()
-      .nullable()
-      .test('valid-date', 'Invalid insurance expiry date', function(value) {
-        if (!value) return true;
-        const date = dayjs(value);
-        if (!date.isValid()) return false;
-        if (date.isBefore(dayjs())) {
-          return this.createError({ 
-            message: 'Insurance expiry date cannot be in the past' 
-          });
-        }
-        return true;
-      }),
+    // COMMENTED OUT - Backend validation error
+    // insuranceExpiryDate: yup
+    //   .string()
+    //   .nullable()
+    //   .test('valid-date', 'Invalid insurance expiry date', function(value) {
+    //     if (!value) return true;
+    //     const date = dayjs(value);
+    //     if (!date.isValid()) return false;
+    //     if (date.isBefore(dayjs())) {
+    //       return this.createError({ 
+    //         message: 'Insurance expiry date cannot be in the past' 
+    //       });
+    //     }
+    //     return true;
+    //   }),
     
     currentValuation: yup
       .number()
@@ -192,8 +201,10 @@ export const createVehicleValidationSchema = () => {
  */
 export const STEP_FIELDS = {
   BASIC_INFO: ['licensePlate', 'vin', 'make', 'model', 'year', 'color', 'status'] as const,
-  DETAILS: ['mileage', 'fuelType', 'transmission', 'condition', 'legalOwner', 'isLiquidAsset', 'purchaseDate', 'purchasePrice'] as const,
-  DOCUMENTATION: ['registrationDate', 'registrationExpiryDate', 'insuranceProvider', 'insurancePolicyNumber', 'insuranceExpiryDate', 'currentValuation', 'marketValue', 'depreciatedValue'] as const,
+  // Removed commented out fields: 'mileage', 'transmission', 'condition', 'purchasePrice'
+  DETAILS: ['fuelType', 'legalOwner', 'isLiquidAsset', 'purchaseDate'] as const,
+  // Removed commented out fields: 'registrationDate', 'registrationExpiryDate', 'insuranceProvider', 'insurancePolicyNumber', 'insuranceExpiryDate'
+  DOCUMENTATION: ['currentValuation', 'marketValue', 'depreciatedValue'] as const,
 } as const;
 
 /**
