@@ -253,19 +253,12 @@ export const EndorserDetailsStep: React.FC = () => {
               render={({ field }) => (
                 <MuiTelInput
                   {...field}
-                  label="Phone Number"
+                  label="Phone"
                   fullWidth
                   required
                   defaultCountry="AL"
-                  error={!!getNestedError('endorserDetails.phone')}
-                  helperText={getNestedError('endorserDetails.phone')?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Phone color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
+                  error={!!getNestedError('endorserDetails.primaryPhone')}
+                  helperText={getNestedError('endorserDetails.primaryPhone')?.message}
                   sx={fieldStyle}
                 />
               )}
@@ -308,18 +301,12 @@ export const EndorserDetailsStep: React.FC = () => {
               render={({ field }) => (
                 <MuiTelInput
                   {...field}
-                  label="Secondary Phone (Optional)"
+                  label="Phone"
                   fullWidth
+                  required
                   defaultCountry="AL"
                   error={!!getNestedError('endorserDetails.secondaryPhone')}
                   helperText={getNestedError('endorserDetails.secondaryPhone')?.message}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Phone color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
                   sx={fieldStyle}
                 />
               )}
