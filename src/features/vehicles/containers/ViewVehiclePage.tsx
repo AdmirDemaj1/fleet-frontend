@@ -151,7 +151,7 @@ const formatMileage = (mileage: number | undefined): string => {
   return new Intl.NumberFormat('en-US').format(mileage) + ' miles';
 };
 
-export const ProfessionalViewVehiclePage: React.FC = () => {
+export const ViewVehiclePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
