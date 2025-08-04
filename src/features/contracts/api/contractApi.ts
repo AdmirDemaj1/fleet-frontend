@@ -12,7 +12,7 @@ import {
 export const contractApi = createApi({
   reducerPath: 'contractApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'https://fleet-credit-system-hmsc.vercel.app/',
+    baseUrl: 'http://localhost:3000/',
     prepareHeaders: (headers) => {
       // Add authorization header if needed
       const token = localStorage.getItem('token');

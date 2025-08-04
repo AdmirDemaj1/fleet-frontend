@@ -44,10 +44,10 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
     formatInvoiceNumber
   } = useBillingCards(customerId, onInvoicesClick, onLogsClick);
 
-  // Fetch customer logs
+  // Fetch customer logs - get recent activity (default amount)
   const { logs, loading: logsLoading, error: logsError } = useCustomerLogs(customerId);
 
-  // Transform and get the 5 most recent logs
+  // Transform and get the 5 most recent logs for display
   const recentLogs: LogEntry[] = useMemo(() => {
     if (!logs || logs.length === 0) return [];
     
@@ -65,7 +65,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
     };
     
     return logs
-      .slice(0, 5) // Get the 5 most recent logs
+      .slice(0, 5) // Get the 5 most recent logs for display
       .map((log) => ({
         id: log.id,
         timestamp: new Date(log.createdAt || log.actionTimestamp).toLocaleDateString('en-US', {

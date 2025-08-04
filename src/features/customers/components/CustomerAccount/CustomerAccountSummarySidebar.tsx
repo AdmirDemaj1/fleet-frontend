@@ -20,8 +20,8 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
 }) => {
   const { summaryData, financialSummary, loading, error } = useCustomerSidebar(customerId);
 
-  // Enhanced loading skeleton
-  if (loading) {
+  // Show loading skeleton while loading OR if we don't have data yet and no error
+  if (loading || (!summaryData && !error)) {
     return (
       <Paper
         elevation={0}
@@ -93,8 +93,8 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
     );
   }
 
-  // Enhanced error state
-  if (error || !summaryData) {
+  // Enhanced error state - show when we have an error or no data after loading is complete
+  if (error || (!loading && !summaryData)) {
     return (
       <Paper
         elevation={0}
@@ -147,12 +147,12 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
     );
   }
 
-  // Enhanced data processing
+  // Enhanced data processing - only process when data is available
   const {
     customerData,
     contracts = [],
     collateral = []
-  } = summaryData;
+  } = summaryData || {};
 
   const {
     totalDue = 0,

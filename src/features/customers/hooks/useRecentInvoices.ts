@@ -27,8 +27,11 @@ export const useRecentInvoices = (customerId: string) => {
         offset: 0
       });
       
+      // Ensure we only take the first 5 invoices (fallback if API doesn't respect limit)
+      const limitedData = data.slice(0, 5);
+      
       // Transform the data to match the expected format
-      const transformedInvoices: RecentInvoice[] = data.map(invoice => {
+      const transformedInvoices: RecentInvoice[] = limitedData.map(invoice => {
         // Determine if overdue
         const isDue = dayjs(invoice.dueDate).isBefore(dayjs(), 'day');
         const status = invoice.status === 'pending' && isDue ? 'overdue' : invoice.status;
