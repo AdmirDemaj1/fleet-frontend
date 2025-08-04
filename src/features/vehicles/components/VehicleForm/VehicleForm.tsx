@@ -58,19 +58,19 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       year: new Date().getFullYear(),
       color: '',
       status: VehicleStatus.AVAILABLE,
-      mileage: null,
+      // mileage: null,
       fuelType: '',
-      transmission: '',
-      condition: '',
+      // transmission: '',
+      // condition: '',
       legalOwner: '',
       isLiquidAsset: false,
       purchaseDate: null,
-      purchasePrice: null,
-      registrationDate: null,
-      registrationExpiryDate: null,
-      insuranceProvider: '',
-      insurancePolicyNumber: '',
-      insuranceExpiryDate: null,
+      // purchasePrice: null,
+      // registrationDate: null,
+      // registrationExpiryDate: null,
+      // insuranceProvider: '',
+      // insurancePolicyNumber: '',
+      // insuranceExpiryDate: null,
       currentValuation: null,
       marketValue: null,
       depreciatedValue: null,
@@ -173,19 +173,19 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         year: new Date().getFullYear(),
         color: '',
         status: VehicleStatus.AVAILABLE,
-        mileage: null,
+        // mileage: null,
         fuelType: '',
-        transmission: '',
-        condition: '',
+        // transmission: '',
+        // condition: '',
         legalOwner: '',
         isLiquidAsset: false,
-        purchaseDate: null,
-        purchasePrice: null,
-        registrationDate: null,
-        registrationExpiryDate: null,
-        insuranceProvider: '',
-        insurancePolicyNumber: '',
-        insuranceExpiryDate: null,
+        // purchaseDate: null,
+        // purchasePrice: null,
+        // registrationDate: null,
+        // registrationExpiryDate: null,
+        // insuranceProvider: '',
+        // insurancePolicyNumber: '',
+        // insuranceExpiryDate: null,
         currentValuation: null,
         marketValue: null,
         depreciatedValue: null,
@@ -221,15 +221,6 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <FormProvider {...methods}>
         <Paper elevation={2} sx={{ p: 4 }}>
-          {/* Header */}
-          <Box mb={4}>
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-              {isEdit ? 'Edit Vehicle' : 'Add New Vehicle'}
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {isEdit ? 'Update vehicle information' : 'Enter vehicle details in the form below'}
-            </Typography>
-          </Box>
 
           {/* Stepper */}
           <Box mb={4}>

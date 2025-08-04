@@ -6,7 +6,7 @@ import { API_ENDPOINTS } from '../../../shared/utils/constants';
 export const auditApi = createApi({
   reducerPath: 'auditApi',
   baseQuery: fetchBaseQuery({ 
-    baseUrl: '/api',
+    baseUrl: 'http://localhost:3000',
     prepareHeaders: (headers) => {
       const token = localStorage.getItem('authToken');
       if (token) {

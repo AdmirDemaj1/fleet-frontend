@@ -86,13 +86,10 @@ const menuItems: MenuItem[] = [
     path: '/assets' 
   },
   {
-    id: 'reports',
-    text: 'Reports',
+    id: 'Audit',
+    text: 'Audit Logs',
     icon: <AnalyticsIcon />,
-    children: [
-      { id: 'audit-logs', text: 'Audit Logs', icon: <ArticleIcon />, path: '/logs' },
-      { id: 'analytics', text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' }
-    ]
+    path: '/logs'
   }
 ];
 

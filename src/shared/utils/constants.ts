@@ -3,7 +3,7 @@ export const API_ENDPOINTS = {
     VEHICLES: '/vehicles',
     CONTRACTS: '/contracts',
     ASSETS: '/assets',
-    AUDIT: '/audit/logs',
+    AUDIT: '/audit',
     AUTH: {
       LOGIN: '/auth/login',
       LOGOUT: '/auth/logout',

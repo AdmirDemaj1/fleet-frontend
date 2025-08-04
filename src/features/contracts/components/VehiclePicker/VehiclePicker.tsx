@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   TextField,
@@ -11,137 +11,344 @@ import {
   Card,
   CardContent,
   IconButton,
-  Grid,
-  Divider,
-  Badge,
   MenuItem,
-  Button
+  Button,
+  Fade,
+  Tooltip,
+  InputAdornment,
+  useTheme,
+  alpha,
+  Avatar
 } from '@mui/material';
 import {
   DirectionsCar,
   Search,
-  Remove,
+  Clear,
   Add,
   CheckCircle,
-  OpenInNew
+  Refresh
 } from '@mui/icons-material';
 import { useGetAvailableVehiclesQuery } from '../../api/contractApi';
 import { VehiclePickerProps, VehicleSummary } from '../../types/contract.types';
+import { vehicleApi } from '../../../vehicles/api/vehicleApi';
+import { VehicleCreationModal } from '../../../../shared/components';
+import { Vehicle } from '../../../vehicles/types/vehicleType';
+
+// Simple debounce hook
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
+// Enhanced VehicleSummary for available vehicles only
+interface EnhancedVehicleSummary extends VehicleSummary {
+  status: 'AVAILABLE';
+  isVerified?: boolean;
+  mileage?: number;
+  fuelType?: string;
+  color?: string;
+}
+
+interface VehiclePickerState {
+  searchTerm: string;
+  selectedVehicle: EnhancedVehicleSummary | null;
+  isOpen: boolean;
+  hasInteracted: boolean;
+  isCreateModalOpen: boolean;
+  isCreatingVehicle: boolean;
+}
 
 export const VehiclePicker: React.FC<VehiclePickerProps> = ({
   selectedVehicleIds,
   onVehicleSelect,
   error
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedVehicles, setSelectedVehicles] = useState<VehicleSummary[]>([]);
-
-  // Fetch available vehicles - removed customerId filter
-  const {
-    data: vehicles = [],
-    isLoading,
-    error: apiError
-  } = useGetAvailableVehiclesQuery({
-    search: searchTerm,
-    limit: 100
+  const theme = useTheme();
+  
+  const [state, setState] = useState<VehiclePickerState>({
+    searchTerm: '',
+    selectedVehicle: null,
+    isOpen: false,
+    hasInteracted: false,
+    isCreateModalOpen: false,
+    isCreatingVehicle: false
   });
 
-  // Update selected vehicles when IDs change
+  // Debounced search term to improve performance
+  const debouncedSearchTerm = useDebounce(state.searchTerm, 300);
+
+  // Fetch ONLY available vehicles
+  const {
+    data: vehiclesResponse = [],
+    isLoading,
+    error: apiError,
+    refetch
+  } = useGetAvailableVehiclesQuery({
+    search: debouncedSearchTerm,
+    limit: 50,
+    status: 'AVAILABLE'
+  });
+
+  // Process vehicles - only available ones
+  const allVehicles = useMemo(() => 
+    vehiclesResponse
+      .filter(vehicle => vehicle.status === 'AVAILABLE')
+      .map(vehicle => ({
+        ...vehicle,
+        status: 'AVAILABLE' as const,
+        isVerified: (vehicle as any).isVerified ?? true,
+        mileage: (vehicle as any).mileage,
+        fuelType: (vehicle as any).fuelType,
+        color: (vehicle as any).color
+      })) as EnhancedVehicleSummary[],
+    [vehiclesResponse]
+  );
+
+  // Get available vehicles (excluding selected one)
+  const availableVehicles = useMemo(() => 
+    state.selectedVehicle 
+      ? allVehicles.filter(v => v.id !== state.selectedVehicle!.id)
+      : allVehicles,
+    [allVehicles, state.selectedVehicle]
+  );
+
+  // Update selected vehicle when IDs change
   useEffect(() => {
-    if (selectedVehicleIds.length > 0 && vehicles.length > 0) {
-      const selected = vehicles.filter(v => selectedVehicleIds.includes(v.id));
-      setSelectedVehicles(selected);
+    const vehicleId = selectedVehicleIds[0]; // Only first vehicle since we allow only one
+    if (vehicleId && allVehicles.length > 0) {
+      const selected = allVehicles.find(v => v.id === vehicleId);
+      if (selected && selected.id !== state.selectedVehicle?.id) {
+        setState(prev => ({ ...prev, selectedVehicle: selected }));
+      }
+    } else if (!vehicleId && state.selectedVehicle) {
+      setState(prev => ({ ...prev, selectedVehicle: null }));
+    }
+  }, [selectedVehicleIds, allVehicles, state.selectedVehicle?.id]);
+
+  // Handle vehicle selection - immediately select
+  const handleVehicleSelect = useCallback((vehicle: EnhancedVehicleSummary | null) => {
+    setState(prev => ({
+      ...prev,
+      selectedVehicle: vehicle,
+      hasInteracted: true
+    }));
+    
+    if (vehicle) {
+      onVehicleSelect([vehicle.id]); // Single vehicle array
     } else {
-      setSelectedVehicles([]);
+      onVehicleSelect([]); // Empty array
     }
-  }, [selectedVehicleIds, vehicles]);
+  }, [onVehicleSelect]);
 
-  const handleVehicleAdd = (vehicle: VehicleSummary) => {
-    if (!selectedVehicleIds.includes(vehicle.id)) {
-      const newSelectedIds = [...selectedVehicleIds, vehicle.id];
-      const newSelectedVehicles = [...selectedVehicles, vehicle];
-      setSelectedVehicles(newSelectedVehicles);
-      onVehicleSelect(newSelectedIds);
+  // Handle input change
+  const handleInputChange = useCallback((_event: any, newInputValue: string) => {
+    setState(prev => ({
+      ...prev,
+      hasInteracted: true,
+      searchTerm: newInputValue
+    }));
+  }, []);
+
+  // Handle open/close
+  const handleOpen = useCallback(() => {
+    setState(prev => ({ ...prev, isOpen: true }));
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setState(prev => ({ ...prev, isOpen: false }));
+  }, []);
+
+  // Get vehicle display name
+  const getVehicleDisplayName = useCallback((vehicle: EnhancedVehicleSummary) => {
+    return `${vehicle.year} ${vehicle.make} ${vehicle.model} - ${vehicle.licensePlate}`;
+  }, []);
+
+  // Handle refresh
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  // Vehicle creation modal handlers
+  const handleOpenCreateModal = useCallback(() => {
+    setState(prev => ({ ...prev, isCreateModalOpen: true }));
+  }, []);
+
+  const handleCloseCreateModal = useCallback(() => {
+    setState(prev => ({ ...prev, isCreateModalOpen: false }));
+  }, []);
+
+  const handleCreateVehicle = useCallback(async (vehicleData: Partial<Vehicle>) => {
+    try {
+      setState(prev => ({ ...prev, isCreatingVehicle: true }));
+      
+      const newVehicle = await vehicleApi.createVehicle(vehicleData);
+      
+      // Transform the created vehicle to match our enhanced type
+      const enhancedVehicle: EnhancedVehicleSummary = {
+        id: newVehicle.id,
+        make: newVehicle.make,
+        model: newVehicle.model,
+        year: newVehicle.year,
+        licensePlate: newVehicle.licensePlate,
+        vinNumber: newVehicle.vin,
+        status: 'AVAILABLE',
+        isVerified: true,
+        mileage: newVehicle.mileage,
+        fuelType: newVehicle.fuelType,
+        color: newVehicle.color
+      };
+
+      // Select the newly created vehicle
+      setState(prev => ({ 
+        ...prev, 
+        selectedVehicle: enhancedVehicle,
+        isCreateModalOpen: false,
+        isCreatingVehicle: false
+      }));
+      
+      // Notify parent component
+      onVehicleSelect([enhancedVehicle.id]);
+      
+      // Refresh the vehicle list
+      refetch();
+      
+    } catch (error) {
+      console.error('Failed to create vehicle:', error);
+      setState(prev => ({ ...prev, isCreatingVehicle: false }));
     }
-  };
+  }, [onVehicleSelect, refetch]);
 
-  const handleVehicleRemove = (vehicleId: string) => {
-    const newSelectedIds = selectedVehicleIds.filter(id => id !== vehicleId);
-    const newSelectedVehicles = selectedVehicles.filter(v => v.id !== vehicleId);
-    setSelectedVehicles(newSelectedVehicles);
-    onVehicleSelect(newSelectedIds);
-  };
-
-  const handleInputChange = (_event: any, newInputValue: string) => {
-    setSearchTerm(newInputValue);
-  };
-
-  const handleCreateVehicle = () => {
-    // Navigate to create vehicle page in a new tab
-    window.open('/vehicles/new', '_blank');
-  };
-
+  // Error handling
   if (apiError) {
     return (
-      <Alert severity="error" sx={{ mt: 1 }}>
-        Failed to load vehicles. Please try again.
+      <Alert 
+        severity="error" 
+        sx={{ mt: 1 }}
+        action={
+          <IconButton
+            color="inherit"
+            size="small"
+            onClick={handleRefresh}
+            aria-label="retry loading vehicles"
+          >
+            <Refresh />
+          </IconButton>
+        }
+      >
+        Failed to load available vehicles. Please try again.
       </Alert>
     );
   }
 
-  const availableVehicles = vehicles.filter(v => !selectedVehicleIds.includes(v.id));
-
   return (
     <Box>
-      {/* Header with Create Vehicle Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" component="h3">
-          Select Vehicles
-        </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<Add />}
-          endIcon={<OpenInNew />}
-          onClick={handleCreateVehicle}
-          size="small"
-        >
-          Create Vehicle
-        </Button>
+      {/* Header */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 2,
+        p: 2,
+        bgcolor: alpha(theme.palette.primary.main, 0.02),
+        borderRadius: 2,
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+      }}>
+        <Box>
+          <Typography variant="h6" component="h3" sx={{ fontWeight: 600, color: 'primary.main' }}>
+            Select Vehicle
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Choose one available vehicle for this contract
+          </Typography>
+        </Box>
+        <Tooltip title="Create a new vehicle">
+          <Button
+            variant="outlined"
+            startIcon={<Add />}
+            onClick={handleOpenCreateModal}
+            size="small"
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Create Vehicle
+          </Button>
+        </Tooltip>
       </Box>
 
-      {/* Search and Add Vehicle */}
+      {/* Vehicle Selection Autocomplete */}
       <Autocomplete
         options={availableVehicles}
-        getOptionLabel={(option) => `${option.year} ${option.make} ${option.model} - ${option.licensePlate}`}
-        onInputChange={handleInputChange}
-        loading={isLoading}
-        filterOptions={(x) => x} // Let the API handle filtering
+        getOptionLabel={getVehicleDisplayName}
+        value={state.selectedVehicle}
         onChange={(_event, value) => {
-          if (value) {
-            handleVehicleAdd(value);
-          }
+          handleVehicleSelect(value);
         }}
+        onInputChange={handleInputChange}
+        onOpen={handleOpen}
+        onClose={handleClose}
+        open={state.isOpen}
+        loading={isLoading}
+        filterOptions={(x) => x} // API handles filtering
+        blurOnSelect={true} // Close dropdown after selection
+        clearOnBlur={false} // Don't clear on blur
+        selectOnFocus={false} // Don't select on focus
+        handleHomeEndKeys
+        openOnFocus={true} // Open dropdown when focused
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Add Vehicle to Contract"
+            label="Select Vehicle"
             placeholder="Search available vehicles..."
             error={!!error}
-            helperText={error || 'Search and select vehicles to add to this contract'}
+            helperText={
+              error || 
+              `${availableVehicles.length} available vehicles found${state.selectedVehicle ? ' (1 selected)' : ''}`
+            }
             InputProps={{
               ...params.InputProps,
-              startAdornment: <Search sx={{ color: 'text.secondary', mr: 1 }} />,
-              endAdornment: (
-                <>
-                  {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                  {params.InputProps.endAdornment}
-                </>
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search sx={{ color: 'text.secondary' }} />
+                </InputAdornment>
               ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  {isLoading && <CircularProgress color="inherit" size={20} />}
+                  {params.InputProps.endAdornment}
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.2)}`,
+                },
+                '&.Mui-focused': {
+                  boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+                }
+              }
             }}
           />
         )}
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
+          const isSelected = option.id === state.selectedVehicle?.id;
+          
           return (
             <MenuItem
               {...otherProps}
@@ -151,178 +358,236 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
                 alignItems: 'center',
                 gap: 2,
                 p: 2,
+                borderRadius: 1,
+                mx: 0.5,
+                my: 0.25,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
                 '&:hover': {
-                  bgcolor: 'action.hover'
+                  bgcolor: alpha(theme.palette.primary.main, 0.05),
+                  transform: 'translateY(-1px)',
+                  boxShadow: theme.shadows[2]
                 }
               }}
             >
-              <DirectionsCar sx={{ color: 'primary.main' }} />
+              <Avatar
+                sx={{
+                  bgcolor: theme.palette.success.main,
+                  width: 40,
+                  height: 40
+                }}
+              >
+                <DirectionsCar />
+              </Avatar>
+              
               <Box sx={{ flex: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
                     {option.year} {option.make} {option.model}
                   </Typography>
                   <Chip
-                    label={option.status}
+                    label="Available"
                     size="small"
-                    color={option.status === 'AVAILABLE' ? 'success' : 
-                           option.status === 'LEASED' ? 'warning' : 
-                           option.status === 'SOLD' ? 'error' : 'default'}
+                    color="success"
                     variant="outlined"
                     sx={{ fontSize: '0.7rem', height: 20 }}
                   />
+                  {option.isVerified && (
+                    <Tooltip title="Verified vehicle">
+                      <CheckCircle 
+                        sx={{ 
+                          fontSize: 16, 
+                          color: theme.palette.success.main 
+                        }} 
+                      />
+                    </Tooltip>
+                  )}
                 </Box>
-                <Typography variant="body2" color="text.secondary">
-                  License: {option.licensePlate} • VIN: {option.vinNumber}
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  🏷️ {option.licensePlate} • 🔢 {option.vinNumber}
                 </Typography>
+                
+                {(option.mileage || option.fuelType || option.color) && (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {option.mileage && (
+                      <Typography variant="caption" color="text.secondary">
+                        📏 {option.mileage?.toLocaleString()} km
+                      </Typography>
+                    )}
+                    {option.fuelType && (
+                      <Typography variant="caption" color="text.secondary">
+                        ⛽ {option.fuelType}
+                      </Typography>
+                    )}
+                    {option.color && (
+                      <Typography variant="caption" color="text.secondary">
+                        🎨 {option.color}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </Box>
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleVehicleAdd(option);
-                }}
-              >
-                <Add />
-              </IconButton>
             </MenuItem>
           );
         }}
+        PaperComponent={(props) => (
+          <Paper 
+            {...props} 
+            sx={{ 
+              mt: 1, 
+              maxHeight: 300, 
+              overflow: 'auto',
+              boxShadow: theme.shadows[8],
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 2
+            }} 
+          />
+        )}
         noOptionsText={
-          searchTerm ? 'No available vehicles found' : 'Start typing to search vehicles'
+          <Box sx={{ textAlign: 'center', py: 3 }}>
+            <DirectionsCar sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              {state.searchTerm ? 'No available vehicles found' : 'Start typing to search available vehicles'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Only vehicles with AVAILABLE status are shown
+            </Typography>
+          </Box>
         }
-        loadingText="Loading vehicles..."
-        value={null}
+        loadingText={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2, justifyContent: 'center' }}>
+            <CircularProgress size={16} />
+            <Typography variant="body2">Loading available vehicles...</Typography>
+          </Box>
+        }
       />
 
-      {/* Selected Vehicles Count */}
-      {selectedVehicles.length > 0 && (
-        <Box sx={{ mt: 2, mb: 2 }}>
-          <Badge badgeContent={selectedVehicles.length} color="primary">
-            <Chip
-              icon={<DirectionsCar />}
-              label="Selected Vehicles"
-              variant="outlined"
-              color="primary"
-            />
-          </Badge>
-        </Box>
-      )}
-
-      {/* Selected Vehicles List */}
-      {selectedVehicles.length > 0 && (
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-            Selected Vehicles ({selectedVehicles.length})
-          </Typography>
-          
-          <Grid container spacing={2}>
-            {selectedVehicles.map((vehicle) => (
-              <Grid item xs={12} sm={6} md={4} key={vehicle.id}>
-                <Card
-                  elevation={0}
+      {/* Selected Vehicle Display */}
+      {state.selectedVehicle && (
+        <Fade in timeout={300}>
+          <Card
+            elevation={0}
+            sx={{
+              mt: 3,
+              border: '2px solid',
+              borderColor: 'success.main',
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.success.main, 0.02),
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Avatar
                   sx={{
-                    border: '1px solid',
-                    borderColor: 'success.main',
-                    borderRadius: 2,
-                    position: 'relative',
-                    '&:hover': {
-                      boxShadow: 2
-                    }
+                    bgcolor: theme.palette.success.main,
+                    width: 50,
+                    height: 50
                   }}
                 >
-                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                    {/* Remove button */}
-                    <IconButton
+                  <DirectionsCar />
+                </Avatar>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {state.selectedVehicle.year} {state.selectedVehicle.make} {state.selectedVehicle.model}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                    <Chip
+                      label="Selected"
                       size="small"
-                      color="error"
-                      onClick={() => handleVehicleRemove(vehicle.id)}
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        bgcolor: 'background.paper',
-                        '&:hover': {
-                          bgcolor: 'error.light',
-                          color: 'white'
-                        }
-                      }}
-                    >
-                      <Remove fontSize="small" />
-                    </IconButton>
-
-                    {/* Status indicator */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <CheckCircle sx={{ color: 'success.main', fontSize: 16 }} />
+                      color="success"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                    {state.selectedVehicle.isVerified && (
                       <Chip
-                        label="Selected"
+                        label="Verified"
                         size="small"
-                        color="success"
+                        color="info"
                         variant="outlined"
-                        sx={{ fontSize: '0.7rem', height: 20 }}
+                        sx={{ fontSize: '0.7rem' }}
                       />
-                    </Box>
+                    )}
+                  </Box>
+                </Box>
+                <Tooltip title="Remove selection">
+                  <IconButton
+                    color="error"
+                    onClick={() => handleVehicleSelect(null)}
+                    sx={{
+                      bgcolor: 'background.paper',
+                      boxShadow: theme.shadows[2],
+                      '&:hover': {
+                        bgcolor: 'error.main',
+                        color: 'white'
+                      }
+                    }}
+                  >
+                    <Clear />
+                  </IconButton>
+                </Tooltip>
+              </Box>
 
-                    {/* Vehicle info */}
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                      {vehicle.year} {vehicle.make} {vehicle.model}
-                    </Typography>
-                    
-                    <Divider sx={{ my: 1 }} />
-                    
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        <strong>License:</strong> {vehicle.licensePlate}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        <strong>VIN:</strong> {vehicle.vinNumber}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          <strong>Status:</strong>
-                        </Typography>
-                        <Chip
-                          label={vehicle.status}
-                          size="small"
-                          color={vehicle.status === 'AVAILABLE' ? 'success' : 
-                                 vehicle.status === 'LEASED' ? 'warning' : 
-                                 vehicle.status === 'SOLD' ? 'error' : 'default'}
-                          variant="outlined"
-                          sx={{ fontSize: '0.6rem', height: 16 }}
-                        />
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  🏷️ License Plate: <strong>{state.selectedVehicle.licensePlate}</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  🔢 VIN: <strong style={{ fontFamily: 'monospace' }}>{state.selectedVehicle.vinNumber}</strong>
+                </Typography>
+                {state.selectedVehicle.color && (
+                  <Typography variant="body2" color="text.secondary">
+                    🎨 Color: <strong>{state.selectedVehicle.color}</strong>
+                  </Typography>
+                )}
+                {state.selectedVehicle.mileage && (
+                  <Typography variant="body2" color="text.secondary">
+                    📏 Mileage: <strong>{state.selectedVehicle.mileage.toLocaleString()} km</strong>
+                  </Typography>
+                )}
+                {state.selectedVehicle.fuelType && (
+                  <Typography variant="body2" color="text.secondary">
+                    ⛽ Fuel Type: <strong>{state.selectedVehicle.fuelType}</strong>
+                  </Typography>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        </Fade>
       )}
 
       {/* Empty state */}
-      {selectedVehicles.length === 0 && !isLoading && (
+      {!state.selectedVehicle && !isLoading && (
         <Paper
           elevation={0}
           sx={{
-            mt: 2,
-            p: 3,
+            mt: 3,
+            p: 4,
             textAlign: 'center',
             border: '2px dashed',
-            borderColor: 'divider',
-            borderRadius: 2
+            borderColor: alpha(theme.palette.primary.main, 0.3),
+            borderRadius: 2,
+            bgcolor: alpha(theme.palette.primary.main, 0.02)
           }}
         >
-          <DirectionsCar sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-          <Typography variant="body2" color="text.secondary">
-            No vehicles selected yet
+          <DirectionsCar sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+            No vehicle selected
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Search and select vehicles to add them to this contract
+          <Typography variant="body2" color="text.secondary">
+            Search and select an available vehicle for this contract
           </Typography>
         </Paper>
       )}
+
+      {/* Vehicle Creation Modal */}
+      <VehicleCreationModal
+        open={state.isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onSubmit={handleCreateVehicle}
+        isCreating={state.isCreatingVehicle}
+      />
     </Box>
   );
 };

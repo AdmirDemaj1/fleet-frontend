@@ -1,575 +1,482 @@
 import React, { useState } from 'react';
-import { AuditLogResponseDto } from '../../types/audit.types';
-import { 
-  Box, 
-  Card, 
-  CardContent, 
-  Chip, 
-  Collapse, 
-  Divider, 
-  Grid, 
-  IconButton, 
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Tooltip, 
-  Typography, 
-  useTheme, 
+import {
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  IconButton,
+  TableSortLabel,
   alpha,
-  Avatar
+  useTheme,
+  Avatar,
+  Chip,
+  Grid,
+  Collapse,
+  Typography,
+  Paper,
+  Skeleton
 } from '@mui/material';
-import { 
-  Add as CreateIcon, 
-  Edit as UpdateIcon, 
-  Delete as DeleteIcon, 
-  Login as LoginIcon, 
-  Logout as LogoutIcon, 
-  Person as UserIcon, 
-  ExpandMore, 
-  ExpandLess, 
-  ContentCopy,
-  VerifiedUser as VerifiedIcon,
-  Assignment as AssignmentIcon,
-  Info as InfoIcon
+import {
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
-import { format } from 'date-fns';
-import ReactDiffViewer from 'react-diff-viewer-continued';
+import { AuditLogResponseDto } from '../../types/audit.types';
+import { formatLogTimestamp, getLogEventTypeIcon, getLogEntityTypeIcon } from '../../utils/auditLogRenderUtils';
 
 interface AuditLogListProps {
   logs: AuditLogResponseDto[];
-  isLoading?: boolean;
+  loading?: boolean;
+  totalCount?: number;
+  page?: number;
+  rowsPerPage?: number;
+  order?: 'asc' | 'desc';
+  orderBy?: string;
+  onPageChange?: (page: number) => void;
+  onRowsPerPageChange?: (rowsPerPage: number) => void;
+  onRequestSort?: (property: string) => void;
 }
 
-// Utility function to find and highlight differences between objects
-const findDifferences = (oldObj: Record<string, any>, newObj: Record<string, any>) => {
-  const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
-  const differences: Record<string, { old: any; new: any; changed: boolean }> = {};
-  
-  allKeys.forEach(key => {
-    const oldValue = oldObj[key];
-    const newValue = newObj[key];
-    const changed = JSON.stringify(oldValue) !== JSON.stringify(newValue);
-    
-    if (changed) {
-      differences[key] = {
-        old: oldValue,
-        new: newValue,
-        changed
-      };
-    }
-  });
-  
-  return differences;
-};
+const AUDIT_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
-const AuditLogList: React.FC<AuditLogListProps> = ({ logs, isLoading = false }) => {
+export const AuditLogList: React.FC<AuditLogListProps> = ({
+  logs,
+  loading = false,
+  totalCount = 0,
+  page = 0,
+  rowsPerPage = 25,
+  order = 'desc',
+  orderBy = 'actionTimestamp',
+  onPageChange,
+  onRowsPerPageChange,
+  onRequestSort
+}) => {
   const theme = useTheme();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
+  const handleToggleExpanded = (logId: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(logId)) {
+      newExpandedRows.delete(logId);
+    } else {
+      newExpandedRows.add(logId);
+    }
+    setExpandedRows(newExpandedRows);
   };
 
-  const getEventIcon = (eventType: string) => {
-    switch(eventType.toLowerCase()) {
-      case 'create':
-        return <CreateIcon fontSize="small" />;
-      case 'update':
-        return <UpdateIcon fontSize="small" />;
-      case 'delete':
-        return <DeleteIcon fontSize="small" />;
-      case 'login':
-        return <LoginIcon fontSize="small" />;
-      case 'logout':
-        return <LogoutIcon fontSize="small" />;
-      default:
-        return <InfoIcon fontSize="small" />;
+  const handleRequestSort = (property: string) => {
+    if (onRequestSort) {
+      onRequestSort(property);
     }
   };
 
-  const getEventColor = (eventType: string) => {
-    switch(eventType.toLowerCase()) {
-      case 'create':
-        return theme.palette.success;
-      case 'update':
-        return theme.palette.info;
-      case 'delete':
-        return theme.palette.error;
-      case 'login':
-        return theme.palette.success;
-      case 'logout':
-        return theme.palette.warning;
-      default:
-        return theme.palette.primary;
+  const handlePageChange = (_: unknown, newPage: number) => {
+    if (onPageChange) {
+      onPageChange(newPage);
     }
   };
 
-  const getEntityIcon = (entityType: string) => {
-    switch(entityType.toLowerCase()) {
-      case 'user':
-        return <UserIcon fontSize="small" />;
-      case 'role':
-        return <VerifiedIcon fontSize="small" />;
-      default:
-        return <AssignmentIcon fontSize="small" />;
+  const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (onRowsPerPageChange) {
+      onRowsPerPageChange(parseInt(event.target.value, 10));
     }
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      return format(new Date(timestamp), 'MMM dd, yyyy HH:mm:ss');
-    } catch (e) {
-      return timestamp;
-    }
-  };
-
-  const handleCopyId = (id: string) => {
-    navigator.clipboard.writeText(id);
-  };
-
-  // Function to nicely format JSON data for display
-  const formatJsonData = (oldValues: Record<string, any> | null, newValues: Record<string, any> | null) => {
-    if (!oldValues && !newValues) return null;
-    
-    // For creates where there's only new values
-    if (!oldValues && newValues) {
-      return (
-        <Box sx={{ mt: 2, maxHeight: 300, overflow: 'auto' }}>
-          <Paper variant="outlined" sx={{ p: 2, bgcolor: alpha(theme.palette.success.main, 0.05) }}>
-            <Typography variant="subtitle2" color="success.main" gutterBottom>
-              Created Values
-            </Typography>
-            <pre style={{ 
-              margin: 0, 
-              fontSize: '0.75rem', 
-              fontFamily: 'monospace',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word'
-            }}>
-              {JSON.stringify(newValues, null, 2)}
-            </pre>
-          </Paper>
-        </Box>
-      );
-    }
-    
-    // For deletes where there's only old values
-    if (oldValues && !newValues) {
-      return (
-        <Box sx={{ mt: 2, maxHeight: 300, overflow: 'auto' }}>
-          <Paper variant="outlined" sx={{ p: 2, bgcolor: alpha(theme.palette.error.main, 0.05) }}>
-            <Typography variant="subtitle2" color="error.main" gutterBottom>
-              Deleted Values
-            </Typography>
-            <pre style={{ 
-              margin: 0, 
-              fontSize: '0.75rem', 
-              fontFamily: 'monospace',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word'
-            }}>
-              {JSON.stringify(oldValues, null, 2)}
-            </pre>
-          </Paper>
-        </Box>
-      );
-    }
-    
-    // For updates where we can show a diff view
-    if (oldValues && newValues) {
-      const differences = findDifferences(oldValues, newValues);
-      const hasDifferences = Object.keys(differences).length > 0;
-      
-      return (
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle2" color="info.main" gutterBottom>
-            {hasDifferences 
-              ? `Changes detected in ${Object.keys(differences).length} fields` 
-              : "No changes detected between values"}
-          </Typography>
-          
-          <Box sx={{ maxHeight: 300, overflow: 'auto', mb: 3 }}>
-            <ReactDiffViewer
-              oldValue={JSON.stringify(oldValues, null, 2)}
-              newValue={JSON.stringify(newValues, null, 2)}
-              splitView={true}
-              leftTitle="Previous Values"
-              rightTitle="New Values"
-              useDarkTheme={theme.palette.mode === 'dark'}
-            />
-          </Box>
-          
-          {hasDifferences && (
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Changed Fields Summary:
-              </Typography>
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
-                    <TableRow>
-                      <TableCell width="20%">Field</TableCell>
-                      <TableCell width="40%">Previous Value</TableCell>
-                      <TableCell width="40%">New Value</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Object.entries(differences).map(([key, diff]) => (
-                      <TableRow key={key} hover>
-                        <TableCell 
-                          sx={{ 
-                            fontWeight: 500,
-                            color: theme.palette.primary.main
-                          }}
-                        >
-                          {key}
-                        </TableCell>
-                        <TableCell sx={{ 
-                          bgcolor: alpha(theme.palette.error.main, 0.05),
-                          fontFamily: 'monospace',
-                          fontSize: '0.75rem',
-                          maxWidth: 0, // Forces truncation
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          <Tooltip title={typeof diff.old === 'object' ? JSON.stringify(diff.old) : String(diff.old)}>
-                            <span>
-                              {diff.old === undefined ? '(undefined)' : 
-                                diff.old === null ? '(null)' : 
-                                typeof diff.old === 'object' ? JSON.stringify(diff.old) : 
-                                String(diff.old)}
-                            </span>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell sx={{ 
-                          bgcolor: alpha(theme.palette.success.main, 0.05),
-                          fontFamily: 'monospace',
-                          fontSize: '0.75rem',
-                          maxWidth: 0, // Forces truncation
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          <Tooltip title={typeof diff.new === 'object' ? JSON.stringify(diff.new) : String(diff.new)}>
-                            <span>
-                              {diff.new === undefined ? '(undefined)' : 
-                                diff.new === null ? '(null)' : 
-                                typeof diff.new === 'object' ? JSON.stringify(diff.new) : 
-                                String(diff.new)}
-                            </span>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-        </Box>
-      );
-    }
-    
-    return null;
-  };
-
-  if (logs.length === 0) {
+  if (loading && logs.length === 0) {
     return (
-      <Paper 
-        elevation={0} 
-        variant="outlined" 
-        sx={{ 
-          p: 4, 
-          textAlign: 'center',
-          borderRadius: 2,
-          bgcolor: alpha(theme.palette.info.main, 0.05)
-        }}
-      >
-        <InfoIcon sx={{ fontSize: 48, color: theme.palette.info.main, opacity: 0.6, mb: 2 }} />
-        <Typography variant="h6" gutterBottom>No Audit Logs Found</Typography>
-        <Typography variant="body2" color="textSecondary">
-          No activity has been recorded matching your current filters.
-        </Typography>
+      <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+        <Box sx={{ p: 3 }}>
+          {[...Array(5)].map((_, index) => (
+            <Box key={index} sx={{ 
+              py: 2, 
+              display: 'flex', 
+              alignItems: 'center',
+              borderBottom: index < 4 ? `1px solid ${theme.palette.divider}` : 'none'
+            }}>
+              {['20%', '15%', '35%', '15%', '15%'].map((width, i) => (
+                <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
+              ))}
+            </Box>
+          ))}
+        </Box>
       </Paper>
     );
   }
 
   return (
-    <TableContainer component={Paper} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-      <Table sx={{ minWidth: 650 }}>
-        <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
-          <TableRow>
-            <TableCell width="15%">Event</TableCell>
-            <TableCell width="15%">Entity</TableCell>
-            <TableCell width="20%">Time</TableCell>
-            <TableCell width="20%">User</TableCell>
-            <TableCell width="20%">Details</TableCell>
-            <TableCell width="10%" align="right">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {logs.map((log) => {
-            const eventColor = getEventColor(log.eventType);
-            const isExpanded = expandedId === log.id;
-            
-            return (
+    <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell width="40px"></TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={orderBy === 'actionTimestamp'}
+                  direction={orderBy === 'actionTimestamp' ? order : 'asc'}
+                  onClick={() => handleRequestSort('actionTimestamp')}
+                >
+                  Event & Time
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={orderBy === 'entityType'}
+                  direction={orderBy === 'entityType' ? order : 'asc'}
+                  onClick={() => handleRequestSort('entityType')}
+                >
+                  Entity
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>Changes</TableCell>
+              <TableCell>User & Metadata</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {logs.map((log) => (
               <React.Fragment key={log.id}>
                 <TableRow 
                   hover
                   sx={{ 
-                    '&:last-child td, &:last-child th': { border: 0 },
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s',
-                    bgcolor: isExpanded ? alpha(eventColor.main, 0.05) : 'transparent',
+                    transition: 'all 0.2s',
                     '&:hover': {
-                      bgcolor: alpha(eventColor.main, 0.08),
+                      backgroundColor: alpha(theme.palette.primary.main, 0.02)
                     }
                   }}
-                  onClick={() => toggleExpand(log.id)}
                 >
                   <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar 
-                        sx={{ 
-                          width: 32, 
-                          height: 32, 
-                          mr: 1.5,
-                          bgcolor: alpha(eventColor.main, 0.1),
-                          color: eventColor.main
-                        }}
-                      >
-                        {getEventIcon(log.eventType)}
+                    <IconButton
+                      size="small"
+                      onClick={() => handleToggleExpanded(log.id)}
+                    >
+                      {expandedRows.has(log.id) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </IconButton>
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Avatar sx={{ width: 32, height: 32 }}>
+                        {getLogEventTypeIcon(log.eventType)}
                       </Avatar>
                       <Box>
-                        <Typography variant="body2" fontWeight={500}>
-                          {log.eventType}
+                        <Typography variant="body2" fontWeight="medium">
+                          {log.eventType ? 
+                            log.eventType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
+                            'Unknown Event'
+                          }
                         </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          ID: {log.id.substring(0, 8)}...
+                        <Typography variant="caption" color="text.secondary">
+                          {log.actionTimestamp ? 
+                            formatLogTimestamp(log.actionTimestamp) : 
+                            log.createdAt ? 
+                            formatLogTimestamp(log.createdAt) :
+                            'No timestamp'
+                          }
                         </Typography>
                       </Box>
                     </Box>
                   </TableCell>
                   
                   <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      {getLogEntityTypeIcon(log.entityType)}
                       <Chip
-                        icon={getEntityIcon(log.entityType)}
-                        label={log.entityType}
+                        label={log.entityType ? 
+                          log.entityType.charAt(0).toUpperCase() + log.entityType.slice(1) : 
+                          'Unknown'
+                        }
                         size="small"
-                        sx={{ 
-                          mr: 1,
-                          textTransform: 'capitalize',
-                          bgcolor: alpha(theme.palette.primary.main, 0.1),
-                          color: theme.palette.primary.main,
-                          fontWeight: 500
-                        }}
+                        variant="outlined"
                       />
-                      <Tooltip title={`Entity ID: ${log.entityId}`}>
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            maxWidth: 120, 
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            display: 'inline-block',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {log.entityId.substring(0, 8)}...
-                        </Typography>
-                      </Tooltip>
                     </Box>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatTimestamp(log.actionTimestamp)}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      Created: {formatTimestamp(log.createdAt)}
-                    </Typography>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar 
-                        sx={{ 
-                          width: 24, 
-                          height: 24, 
-                          mr: 1,
-                          fontSize: '0.75rem',
-                          bgcolor: alpha(theme.palette.secondary.main, 0.1),
-                          color: theme.palette.secondary.main
-                        }}
-                      >
-                        {log.userId.substring(0, 2).toUpperCase()}
-                      </Avatar>
-                      <Typography variant="body2">
-                        {log.userId.length > 15 
-                          ? `${log.userId.substring(0, 15)}...` 
-                          : log.userId}
+                    {log.entityId && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        ID: {log.entityId.slice(0, 8)}...
                       </Typography>
+                    )}
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Box sx={{ maxWidth: 300 }}>
+                      {log.eventType === 'entity_created' && log.newValues && (
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium" color="success.main">
+                            Created new {log.entityType}
+                          </Typography>
+                          {log.newValues.name && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Name: {log.newValues.name}
+                            </Typography>
+                          )}
+                          {log.newValues.email && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              Email: {log.newValues.email}
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                      
+                      {log.eventType === 'entity_updated' && (
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium" color="warning.main">
+                            Updated {log.entityType}
+                          </Typography>
+                          {log.oldValues && log.newValues && (
+                            <Box sx={{ mt: 0.5 }}>
+                              {Object.keys(log.newValues).slice(0, 3).map((key) => (
+                                <Typography key={key} variant="caption" display="block" color="text.secondary">
+                                  {key}: {log.oldValues?.[key]} → {log.newValues?.[key]}
+                                </Typography>
+                              ))}
+                              {Object.keys(log.newValues).length > 3 && (
+                                <Typography variant="caption" color="text.secondary">
+                                  +{Object.keys(log.newValues).length - 3} more changes
+                                </Typography>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+                      
+                      {log.eventType === 'entity_deleted' && (
+                        <Typography variant="body2" fontWeight="medium" color="error.main">
+                          Deleted {log.entityType}
+                        </Typography>
+                      )}
+                      
+                      {!['entity_created', 'entity_updated', 'entity_deleted'].includes(log.eventType || '') && (
+                        <Typography variant="body2">
+                          {log.eventType ? log.eventType.replace('_', ' ') : 'Unknown action'}
+                        </Typography>
+                      )}
                     </Box>
                   </TableCell>
                   
                   <TableCell>
-                    <Typography variant="body2" color="textSecondary">
-                      {log.metadata 
-                        ? Object.keys(log.metadata).length 
-                        : 0} metadata fields
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {log.oldValues && log.newValues 
-                        ? 'Values changed' 
-                        : log.newValues 
-                          ? 'New record' 
-                          : 'Record deleted'}
-                    </Typography>
-                  </TableCell>
-                  
-                  <TableCell align="right">
-                    <IconButton 
-                      size="small" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleExpand(log.id);
-                      }}
-                    >
-                      {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                    </IconButton>
+                    <Box>
+                      <Typography variant="body2" fontWeight="medium">
+                        {log.userId || 'System'}
+                      </Typography>
+                      {log.metadata && (
+                        <Box sx={{ mt: 0.5 }}>
+                          {log.metadata.userType && (
+                            <Chip
+                              label={`User: ${log.metadata.userType}`}
+                              size="small"
+                              variant="outlined"
+                              sx={{ mr: 0.5, mb: 0.5 }}
+                            />
+                          )}
+                          {log.metadata.ipAddress && (
+                            <Typography variant="caption" display="block" color="text.secondary">
+                              IP: {log.metadata.ipAddress}
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
                 
-                <TableRow sx={{ bgcolor: alpha(eventColor.main, 0.03) }}>
-                  <TableCell 
-                    colSpan={6} 
-                    sx={{ 
-                      p: 0, 
-                      borderBottom: isExpanded ? `1px solid ${theme.palette.divider}` : 'none' 
-                    }}
-                  >
-                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                      <Box sx={{ py: 3, px: 4 }}>
-                        <Grid container spacing={3}>
-                          <Grid item xs={12} md={4}>
-                            <Typography variant="subtitle2" gutterBottom color="textSecondary">
-                              Audit Details
-                            </Typography>
-                            
-                            <Box sx={{ mb: 2 }}>
-                              <Typography variant="caption" color="textSecondary" display="block">
-                                Event ID
+                {/* Expanded Row */}
+                <TableRow>
+                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
+                    <Collapse in={expandedRows.has(log.id)} timeout="auto" unmountOnExit>
+                      <Box sx={{ 
+                        p: 2, 
+                        bgcolor: alpha(theme.palette.grey[50], 0.5),
+                        borderLeft: `3px solid ${theme.palette.primary.main}`
+                      }}>
+                        {/* Basic Information */}
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                            Basic Information
+                          </Typography>
+                          <Grid container spacing={1}>
+                            <Grid item xs={3}>
+                              <Typography variant="caption" color="text.secondary">Event Type</Typography>
+                              <Typography variant="body2">{log.eventType}</Typography>
+                            </Grid>
+                            <Grid item xs={3}>
+                              <Typography variant="caption" color="text.secondary">Entity Type</Typography>
+                              <Typography variant="body2">{log.entityType}</Typography>
+                            </Grid>
+                            <Grid item xs={3}>
+                              <Typography variant="caption" color="text.secondary">Entity ID</Typography>
+                              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                                {log.entityId}
                               </Typography>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant="body2" sx={{ mr: 1 }}>
-                                  {log.id}
-                                </Typography>
-                                <Tooltip title="Copy ID">
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCopyId(log.id);
-                                    }}
-                                  >
-                                    <ContentCopy fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            </Box>
-                            
-                            <Box sx={{ mb: 2 }}>
-                              <Typography variant="caption" color="textSecondary" display="block">
-                                Entity Details
-                              </Typography>
-                              <Typography variant="body2" gutterBottom>
-                                Type: {log.entityType}
-                              </Typography>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant="body2" sx={{ mr: 1 }}>
-                                  ID: {log.entityId}
-                                </Typography>
-                                <Tooltip title="Copy Entity ID">
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCopyId(log.entityId);
-                                    }}
-                                  >
-                                    <ContentCopy fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            </Box>
-                            
-                            <Box sx={{ mb: 2 }}>
-                              <Typography variant="caption" color="textSecondary" display="block">
-                                User Information
-                              </Typography>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography variant="body2" sx={{ mr: 1 }}>
-                                  ID: {log.userId}
-                                </Typography>
-                                <Tooltip title="Copy User ID">
-                                  <IconButton 
-                                    size="small" 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCopyId(log.userId);
-                                    }}
-                                  >
-                                    <ContentCopy fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            </Box>
+                            </Grid>
+                            <Grid item xs={3}>
+                              <Typography variant="caption" color="text.secondary">User ID</Typography>
+                              <Typography variant="body2">{log.userId}</Typography>
+                            </Grid>
                           </Grid>
-                          
-                          <Grid item xs={12} md={8}>
-                            <Typography variant="subtitle2" gutterBottom color="textSecondary">
-                              Changed Data
+                        </Box>
+
+                        {/* Timestamps */}
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                            Timestamps
+                          </Typography>
+                          <Grid container spacing={1}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">Action Timestamp</Typography>
+                              <Typography variant="body2">{log.actionTimestamp}</Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">Created At</Typography>
+                              <Typography variant="body2">{log.createdAt}</Typography>
+                            </Grid>
+                          </Grid>
+                        </Box>
+
+                        {/* Metadata */}
+                        {log.metadata && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                              Metadata
                             </Typography>
-                            
-                            {formatJsonData(log.oldValues, log.newValues)}
-                            
-                            {log.metadata && Object.keys(log.metadata).length > 0 && (
-                              <>
-                                <Typography variant="subtitle2" gutterBottom color="textSecondary" sx={{ mt: 3 }}>
-                                  Metadata
-                                </Typography>
-                                <Paper variant="outlined" sx={{ p: 2, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
-                                  <pre style={{ 
-                                    margin: 0, 
-                                    fontSize: '0.75rem', 
-                                    fontFamily: 'monospace',
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-word'
+                            <Box sx={{ 
+                              fontFamily: 'monospace', 
+                              fontSize: '0.75rem',
+                              bgcolor: theme.palette.background.paper,
+                              p: 1,
+                              borderRadius: 1,
+                              border: `1px solid ${theme.palette.divider}`,
+                              maxHeight: 200,
+                              overflow: 'auto'
+                            }}>
+                              <pre style={{ margin: 0 }}>{JSON.stringify(log.metadata, null, 2)}</pre>
+                            </Box>
+                          </Box>
+                        )}
+
+                        {/* Value Changes */}
+                        {(log.oldValues || log.newValues) && (
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                              Value Changes
+                            </Typography>
+                            <Grid container spacing={1}>
+                              {/* Previous Values */}
+                              {log.oldValues && (
+                                <Grid item xs={log.newValues ? 6 : 12}>
+                                  <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
+                                    Previous Values
+                                  </Typography>
+                                  <Box sx={{ 
+                                    fontFamily: 'monospace', 
+                                    fontSize: '0.75rem',
+                                    bgcolor: alpha(theme.palette.error.main, 0.05),
+                                    p: 1,
+                                    borderRadius: 1,
+                                    border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                                    maxHeight: 200,
+                                    overflow: 'auto'
                                   }}>
-                                    {JSON.stringify(log.metadata, null, 2)}
-                                  </pre>
-                                </Paper>
-                              </>
-                            )}
-                          </Grid>
-                        </Grid>
+                                    <pre style={{ margin: 0 }}>{JSON.stringify(log.oldValues, null, 2)}</pre>
+                                  </Box>
+                                </Grid>
+                              )}
+
+                              {/* New Values */}
+                              {log.newValues && (
+                                <Grid item xs={log.oldValues ? 6 : 12}>
+                                  <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
+                                    {log.oldValues ? 'New Values' : 'Created Values'}
+                                  </Typography>
+                                  <Box sx={{ 
+                                    fontFamily: 'monospace', 
+                                    fontSize: '0.75rem',
+                                    bgcolor: alpha(theme.palette.success.main, 0.05),
+                                    p: 1,
+                                    borderRadius: 1,
+                                    border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                                    maxHeight: 200,
+                                    overflow: 'auto'
+                                  }}>
+                                    <pre style={{ margin: 0 }}>{JSON.stringify(log.newValues, null, 2)}</pre>
+                                  </Box>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Box>
+                        )}
                       </Box>
                     </Collapse>
                   </TableCell>
                 </TableRow>
               </React.Fragment>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
+            ))}
+            {logs.length === 0 && !loading && (
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center',
+                    p: 3
+                  }}>
+                    <Box 
+                      sx={{ 
+                        bgcolor: alpha(theme.palette.primary.main, 0.05),
+                        borderRadius: '50%',
+                        p: 2,
+                        mb: 2
+                      }}
+                    >
+                      <HistoryIcon sx={{ fontSize: 48, color: theme.palette.primary.main, opacity: 0.7 }} />
+                    </Box>
+                    <Typography variant="h6" gutterBottom>No audit logs found</Typography>
+                    <Typography variant="body2" color="textSecondary" align="center" sx={{ maxWidth: 500 }}>
+                      No audit logs are available yet.
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      
+      {onPageChange && onRowsPerPageChange && (
+        <TablePagination
+          component="div"
+          count={totalCount}
+          page={Math.min(page, Math.max(0, Math.ceil(totalCount / rowsPerPage) - 1))}
+          onPageChange={handlePageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={AUDIT_ROWS_PER_PAGE_OPTIONS}
+          labelRowsPerPage="Rows per page:"
+          labelDisplayedRows={({ from, to, count }) => {
+            if (loading) {
+              return 'Loading...';
+            }
+            return `${from}–${to} of ${count !== -1 ? count : `more than ${to}`}`;
+          }}
+          disabled={loading}
+          sx={{
+            borderTop: `1px solid ${theme.palette.divider}`,
+            '& .MuiTablePagination-select': {
+              pr: 1
+            },
+            '& .MuiTablePagination-displayedRows': {
+              fontSize: '0.875rem',
+              color: theme.palette.text.secondary
+            },
+            '&.Mui-disabled': {
+              opacity: 0.6
+            }
+          }}
+        />
+      )}
+    </Paper>
   );
 };
 
