@@ -86,7 +86,7 @@ export interface EndorserCollateral extends BaseCollateral {
   specialConditions?: string;
 }
 
-// Create Contract DTO
+// Create Contract DTO - Matches backend expectations exactly
 export interface CreateContractDto {
   type: ContractType;
   contractNumber: string;
@@ -95,12 +95,73 @@ export interface CreateContractDto {
   endDate: string;
   totalAmount: number;
   interestRate: number;
-  loanDetails?: LoanContract;
-  leasingDetails?: LeasingContract;
-  terms?: Record<string, any>;
-  collaterals?: VehicleCollateral[];
-  endorserCollaterals?: EndorserCollateral[];
+  
+  // Contract type-specific details
+  loanDetails?: {
+    type: ContractType;
+    contractNumber: string;
+    customerId: string;
+    startDate: string;
+    endDate: string;
+    totalAmount: number;
+    interestRate: number;
+    loanTermMonths: number;
+    monthlyPayment: number;
+    processingFee?: number;
+    earlyRepaymentPenalty?: number;
+    paymentScheduleType?: string;
+  };
+  
+  leasingDetails?: {
+    type: ContractType;
+    contractNumber: string;
+    customerId: string;
+    startDate: string;
+    endDate: string;
+    totalAmount: number;
+    residualValue: number;
+    leaseTermMonths: number;
+    monthlyPayment: number;
+    advancePayment: number;
+    withPurchaseOption?: boolean;
+    purchaseOptionPrice?: number;
+  };
+  
+  // Vehicle assignments
   vehicleIds?: string[];
+  
+  // Collaterals
+  collaterals?: {
+    type: 'vehicle';
+    description: string;
+    value: number;
+    active: boolean;
+    make: string;
+    model: string;
+    year: number;
+    licensePlate: string;
+    vinNumber: string;
+    color: string;
+    engineNumber?: string;
+    registrationCertificate?: string;
+    insurancePolicy?: string;
+  }[];
+  
+  // Endorser guarantees
+  endorserCollaterals?: {
+    type: 'endorser';
+    description: string;
+    value: number;
+    endorserId: string;
+    guaranteedAmount: number;
+    guaranteeType: string;
+    requiresNotarization?: boolean;
+    guaranteeExpirationDate?: string;
+    legalDocumentReference?: string;
+  }[];
+  
+  // Contract terms
+  terms?: Record<string, any>;
 }
 
 // Form data interface for the contract creation form
@@ -203,6 +264,7 @@ export interface CustomerPickerProps {
   preSelectedCustomerId?: string;
   disabled?: boolean;
   error?: string;
+  onCreateCustomer?: () => void;
 }
 
 export interface VehiclePickerProps {
@@ -218,29 +280,6 @@ export interface EndorserPickerProps {
   customerId?: string;
   onCreateEndorser?: () => void;
   error?: string;
-}
-
-// Loan form props
-export interface LoanFormProps {
-  data?: {
-    interestRate?: number;
-    loanTermMonths?: number;
-    monthlyPayment?: number;
-    processingFee?: number;
-    earlyRepaymentPenalty?: number;
-    paymentScheduleType?: string;
-  };
-  onChange: (data: {
-    interestRate?: number;
-    loanTermMonths?: number;
-    monthlyPayment?: number;
-    processingFee?: number;
-    earlyRepaymentPenalty?: number;
-    paymentScheduleType?: string;
-  }) => void;
-  errors?: Record<string, string>;
-  contractType: ContractType;
-  totalAmount?: number;
 }
 
 // Contract form props

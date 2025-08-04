@@ -1,11 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Box, Alert, Button } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { 
+  Typography, 
+  Box, 
+  Alert, 
+  Button, 
+  Paper
+} from '@mui/material';
+import { 
+  Add, 
+  Refresh, 
+  Download,
+  DirectionsCar,
+  Build,
+  CheckCircle
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { VehicleList } from '../components/VehicleList/VehicleList';
 import { VehicleFilters } from '../components/VehicleList/VehicleListFilters';
 import { vehicleApi } from '../api/vehicleApi';
-import { Vehicle, VehicleQueryParams } from '../types/vehicleType';
+import { Vehicle, VehicleQueryParams, VehicleStatistics } from '../types/vehicleType';
 
 // Export as named export
 export const VehiclesPage: React.FC = () => {
@@ -14,6 +27,8 @@ export const VehiclesPage: React.FC = () => {
   const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<VehicleStatistics | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Pagination
   const [page, setPage] = useState<number>(0);
@@ -43,9 +58,31 @@ export const VehiclesPage: React.FC = () => {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const statistics = await vehicleApi.getVehicleStatistics();
+      setStats(statistics);
+    } catch (err) {
+      console.error('Error fetching vehicle statistics:', err);
+    }
+  };
+
   useEffect(() => {
     fetchVehicles();
   }, [page, rowsPerPage, filters]);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([fetchVehicles(), fetchStats()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -81,19 +118,170 @@ export const VehiclesPage: React.FC = () => {
     }
   };
 
+  const handleExport = () => {
+    // TODO: Implement export functionality
+    console.log('Export vehicles');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   return (
     <Box>
-      {/* Header matching CustomersPage style */}
+      {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4">Vehicles</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={handleAddVehicle}
-        >
-          Add Vehicle
-        </Button>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Vehicles
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage your fleet vehicles and track their status
+          </Typography>
+        </Box>
+        
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Button
+            variant="outlined"
+            startIcon={<Download />}
+            onClick={handleExport}
+            disabled={vehicles.length === 0}
+          >
+            Export
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={handleAddVehicle}
+          >
+            Add Vehicle
+          </Button>
+        </Box>
       </Box>
+
+      {/* Stats Cards */}
+      {stats && (
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+          gap: 2, 
+          mb: 3 
+        }}>
+          <Paper 
+            elevation={0}
+            sx={{ 
+              p: 3, 
+              textAlign: 'center',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+              <DirectionsCar sx={{ color: 'primary.main', mr: 1 }} />
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                {stats.totalVehicles}
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Total Vehicles
+            </Typography>
+          </Paper>
+          
+          <Paper 
+            elevation={0}
+            sx={{ 
+              p: 3, 
+              textAlign: 'center',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+              <CheckCircle sx={{ color: 'success.main', mr: 1 }} />
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                {stats.availableVehicles}
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Available
+            </Typography>
+          </Paper>
+          
+          <Paper 
+            elevation={0}
+            sx={{ 
+              p: 3, 
+              textAlign: 'center',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'info.main' }}>
+                {stats.leasedVehicles}
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Leased
+            </Typography>
+          </Paper>
+          
+          <Paper 
+            elevation={0}
+            sx={{ 
+              p: 3, 
+              textAlign: 'center',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+              <Build sx={{ color: 'warning.main', mr: 1 }} />
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'warning.main' }}>
+                {stats.maintenanceVehicles}
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Maintenance
+            </Typography>
+          </Paper>
+          
+          <Paper 
+            elevation={0}
+            sx={{ 
+              p: 3, 
+              textAlign: 'center',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2
+            }}
+          >
+            <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
+              {formatCurrency(stats.totalValue)}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total Value
+            </Typography>
+          </Paper>
+        </Box>
+      )}
 
       {/* Filters */}
       <VehicleFilters 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   TextField,
@@ -11,338 +11,580 @@ import {
   Card,
   CardContent,
   IconButton,
-  Grid,
-  Divider,
-  Badge,
   Button,
   Avatar,
   MenuItem,
-  ListItemText,
-  ListItemAvatar
+  Fade,
+  Tooltip,
+  InputAdornment,
+  useTheme,
+  alpha
 } from '@mui/material';
 import {
   Person,
   Search,
-  Remove,
-  Add,
+  Clear,
   CheckCircle,
-  PersonAdd
+  PersonAdd,
+  Refresh
 } from '@mui/icons-material';
 import { useGetEndorsersQuery } from '../../api/contractApi';
 import { EndorserPickerProps, EndorserSummary } from '../../types/contract.types';
+import { CustomerCreationModal } from '../../../../shared/components';
+import { CreateCustomerDto } from '../../../customers/types/customer.types';
+import { customerApi } from '../../../customers/api/customerApi';
+
+// Simple debounce hook
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
+// Enhanced EndorserSummary for available endorsers only
+interface EnhancedEndorserSummary extends EndorserSummary {
+  isVerified?: boolean;
+  status?: string;
+}
+
+interface EndorserPickerState {
+  searchTerm: string;
+  selectedEndorser: EnhancedEndorserSummary | null;
+  isOpen: boolean;
+  hasInteracted: boolean;
+  isCreateModalOpen: boolean;
+  isCreatingEndorser: boolean;
+}
 
 export const EndorserPicker: React.FC<EndorserPickerProps> = ({
   selectedEndorserIds,
   onEndorserSelect,
-  customerId,
-  onCreateEndorser,
   error
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedEndorsers, setSelectedEndorsers] = useState<EndorserSummary[]>([]);
-
-  // Fetch available endorsers
-  const {
-    data: endorsers = [],
-    isLoading,
-    error: apiError
-  } = useGetEndorsersQuery({
-    customerId,
-    search: searchTerm,
-    limit: 100
+  const theme = useTheme();
+  
+  const [state, setState] = useState<EndorserPickerState>({
+    searchTerm: '',
+    selectedEndorser: null,
+    isOpen: false,
+    hasInteracted: false,
+    isCreateModalOpen: false,
+    isCreatingEndorser: false
   });
 
-  // Update selected endorsers when IDs change
+  // Debounced search term to improve performance
+  const debouncedSearchTerm = useDebounce(state.searchTerm, 300);
+
+  // Fetch ALL endorsers from /endorsers endpoint
+  const {
+    data: endorsersResponse = [],
+    isLoading,
+    error: apiError,
+    refetch
+  } = useGetEndorsersQuery({
+    search: debouncedSearchTerm,
+    limit: 50
+  });
+
+  // Process endorsers - all available ones
+  const allEndorsers = useMemo(() => 
+    endorsersResponse.map(endorser => ({
+      ...endorser,
+      isVerified: (endorser as any).isVerified ?? true,
+      status: (endorser as any).status || 'active'
+    })) as EnhancedEndorserSummary[],
+    [endorsersResponse]
+  );
+
+  // Get available endorsers (excluding selected one)
+  const availableEndorsers = useMemo(() => 
+    state.selectedEndorser 
+      ? allEndorsers.filter(e => e.id !== state.selectedEndorser!.id)
+      : allEndorsers,
+    [allEndorsers, state.selectedEndorser]
+  );
+
+  // Update selected endorser when IDs change (single selection)
   useEffect(() => {
-    if (selectedEndorserIds.length > 0 && endorsers.length > 0) {
-      const selected = endorsers.filter(e => selectedEndorserIds.includes(e.id));
-      setSelectedEndorsers(selected);
+    const endorserId = selectedEndorserIds[0]; // Only first endorser since we allow only one
+    if (endorserId && allEndorsers.length > 0) {
+      const selected = allEndorsers.find(e => e.id === endorserId);
+      if (selected && selected.id !== state.selectedEndorser?.id) {
+        setState(prev => ({ ...prev, selectedEndorser: selected }));
+      }
+    } else if (!endorserId && state.selectedEndorser) {
+      setState(prev => ({ ...prev, selectedEndorser: null }));
+    }
+  }, [selectedEndorserIds, allEndorsers, state.selectedEndorser?.id]);
+
+  // Handle endorser selection - single selection
+  const handleEndorserSelect = useCallback((endorser: EnhancedEndorserSummary | null) => {
+    setState(prev => ({
+      ...prev,
+      selectedEndorser: endorser,
+      hasInteracted: true
+    }));
+    
+    if (endorser) {
+      onEndorserSelect([endorser.id]); // Single endorser array
     } else {
-      setSelectedEndorsers([]);
+      onEndorserSelect([]); // Empty array
     }
-  }, [selectedEndorserIds, endorsers]);
+  }, [onEndorserSelect]);
 
-  const handleEndorserAdd = (endorser: EndorserSummary) => {
-    if (!selectedEndorserIds.includes(endorser.id)) {
-      const newSelectedIds = [...selectedEndorserIds, endorser.id];
-      const newSelectedEndorsers = [...selectedEndorsers, endorser];
-      setSelectedEndorsers(newSelectedEndorsers);
-      onEndorserSelect(newSelectedIds);
+  // Handle input change
+  const handleInputChange = useCallback((_event: any, newInputValue: string) => {
+    setState(prev => ({
+      ...prev,
+      hasInteracted: true,
+      searchTerm: newInputValue
+    }));
+  }, []);
+
+  // Handle open/close
+  const handleOpen = useCallback(() => {
+    setState(prev => ({ ...prev, isOpen: true }));
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setState(prev => ({ ...prev, isOpen: false }));
+  }, []);
+
+  // Get endorser display name
+  const getEndorserDisplayName = useCallback((endorser: EnhancedEndorserSummary) => {
+    return `${endorser.firstName} ${endorser.lastName}`;
+  }, []);
+
+  // Handle refresh
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  // Endorser creation modal handlers
+  const handleOpenCreateModal = useCallback(() => {
+    setState(prev => ({ ...prev, isCreateModalOpen: true }));
+  }, []);
+
+  const handleCloseCreateModal = useCallback(() => {
+    setState(prev => ({ ...prev, isCreateModalOpen: false }));
+  }, []);
+
+  const handleCreateEndorser = useCallback(async (customerData: CreateCustomerDto) => {
+    try {
+      setState(prev => ({ ...prev, isCreatingEndorser: true }));
+      
+      const newEndorser = await customerApi.create(customerData);
+      
+      // Transform the created customer to match our enhanced endorser type
+      let enhancedEndorser: EnhancedEndorserSummary;
+      
+      if (newEndorser.type === 'individual') {
+        const individualCustomer = newEndorser as any; // Individual customer
+        enhancedEndorser = {
+          id: newEndorser.id || '',
+          firstName: individualCustomer.firstName || '',
+          lastName: individualCustomer.lastName || '',
+          idNumber: individualCustomer.idNumber || '',
+          email: newEndorser.email || '',
+          phone: newEndorser.phone || '',
+          relationshipToCustomer: 'Endorser',
+          isVerified: true,
+          status: 'active'
+        };
+      } else {
+        const businessCustomer = newEndorser as any; // Business customer
+        enhancedEndorser = {
+          id: newEndorser.id || '',
+          firstName: businessCustomer.legalName || '',
+          lastName: '',
+          idNumber: businessCustomer.nuisNipt || '',
+          email: newEndorser.email || '',
+          phone: newEndorser.phone || '',
+          relationshipToCustomer: 'Endorser',
+          isVerified: true,
+          status: 'active'
+        };
+      }
+
+      // Select the newly created endorser
+      setState(prev => ({ 
+        ...prev, 
+        selectedEndorser: enhancedEndorser,
+        isCreateModalOpen: false,
+        isCreatingEndorser: false
+      }));
+      
+      // Notify parent component
+      onEndorserSelect([enhancedEndorser.id]);
+      
+      // Refresh the endorser list
+      refetch();
+      
+    } catch (error) {
+      console.error('Failed to create endorser:', error);
+      setState(prev => ({ ...prev, isCreatingEndorser: false }));
     }
-  };
+  }, [customerApi, onEndorserSelect, refetch]);
 
-  const handleEndorserRemove = (endorserId: string) => {
-    const newSelectedIds = selectedEndorserIds.filter(id => id !== endorserId);
-    const newSelectedEndorsers = selectedEndorsers.filter(e => e.id !== endorserId);
-    setSelectedEndorsers(newSelectedEndorsers);
-    onEndorserSelect(newSelectedIds);
-  };
-
-  const handleInputChange = (_event: any, newInputValue: string) => {
-    setSearchTerm(newInputValue);
-  };
-
+  // Error handling
   if (apiError) {
     return (
-      <Alert severity="error" sx={{ mt: 1 }}>
+      <Alert 
+        severity="error" 
+        sx={{ mt: 1 }}
+        action={
+          <IconButton
+            color="inherit"
+            size="small"
+            onClick={handleRefresh}
+            aria-label="retry loading endorsers"
+          >
+            <Refresh />
+          </IconButton>
+        }
+      >
         Failed to load endorsers. Please try again.
       </Alert>
     );
   }
 
-  const availableEndorsers = endorsers.filter(e => !selectedEndorserIds.includes(e.id));
-
   return (
     <Box>
-      {/* Search and Add Endorser */}
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
-        <Box sx={{ flex: 1 }}>
-          <Autocomplete
-            options={availableEndorsers}
-            getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
-            onInputChange={handleInputChange}
-            loading={isLoading}
-            filterOptions={(x) => x} // Let the API handle filtering
-            onChange={(_event, value) => {
-              if (value) {
-                handleEndorserAdd(value);
-              }
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Add Endorser to Contract"
-                placeholder="Search endorsers..."
-                error={!!error}
-                helperText={error || 'Search and select endorsers to guarantee this contract'}
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: <Search sx={{ color: 'text.secondary', mr: 1 }} />,
-                  endAdornment: (
-                    <>
-                      {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-            renderOption={(props, option) => {
-              const { key, ...otherProps } = props;
-              return (
-                <MenuItem
-                  {...otherProps}
-                  key={option.id}
-                >
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: 'secondary.main', width: 36, height: 36 }}>
-                      <Person />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {option.firstName} {option.lastName}
-                        </Typography>
-                        {option.relationshipToCustomer && (
-                          <Chip
-                            label={option.relationshipToCustomer}
-                            size="small"
-                            variant="outlined"
-                            sx={{ fontSize: '0.7rem', height: 20 }}
-                          />
-                        )}
-                      </Box>
-                    }
-                    secondary={
-                      <Box>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          ID: {option.idNumber}
-                        </Typography>
-                        {option.email && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {option.email}
-                          </Typography>
-                        )}
-                        {option.phone && (
-                          <Typography variant="caption" color="text.secondary">
-                            {option.phone}
-                          </Typography>
-                        )}
-                      </Box>
-                    }
-                  />
-                  <IconButton
-                    size="small"
-                    color="primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEndorserAdd(option);
-                    }}
-                  >
-                    <Add />
-                  </IconButton>
-                </MenuItem>
-              );
-            }}
-            noOptionsText={
-              searchTerm ? 'No endorsers found' : 'Start typing to search endorsers'
-            }
-            loadingText="Loading endorsers..."
-            value={null}
-          />
+      {/* Header */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 2,
+        p: 2,
+        bgcolor: alpha(theme.palette.secondary.main, 0.02),
+        borderRadius: 2,
+        border: `1px solid ${alpha(theme.palette.secondary.main, 0.1)}`
+      }}>
+        <Box>
+          <Typography variant="h6" component="h3" sx={{ fontWeight: 600, color: 'secondary.main' }}>
+            Select Endorser
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Choose one endorser to guarantee this contract
+          </Typography>
         </Box>
-        
-        {/* Create New Endorser Button */}
-        {onCreateEndorser && (
+        <Tooltip title="Create a new endorser">
           <Button
             variant="outlined"
             startIcon={<PersonAdd />}
-            onClick={onCreateEndorser}
-            sx={{ whiteSpace: 'nowrap', mb: error ? 2.5 : 0 }}
+            onClick={handleOpenCreateModal}
+            size="small"
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 500
+            }}
           >
-            Create New
+            Create Endorser
           </Button>
-        )}
+        </Tooltip>
       </Box>
 
-      {/* Selected Endorsers Count */}
-      {selectedEndorsers.length > 0 && (
-        <Box sx={{ mt: 2, mb: 2 }}>
-          <Badge badgeContent={selectedEndorsers.length} color="primary">
-            <Chip
-              icon={<Person />}
-              label="Selected Endorsers"
-              variant="outlined"
-              color="primary"
-            />
-          </Badge>
-        </Box>
-      )}
-
-      {/* Selected Endorsers List */}
-      {selectedEndorsers.length > 0 && (
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-            Selected Endorsers ({selectedEndorsers.length})
-          </Typography>
+      {/* Endorser Selection Autocomplete */}
+      <Autocomplete
+        options={availableEndorsers}
+        getOptionLabel={getEndorserDisplayName}
+        value={state.selectedEndorser}
+        onChange={(_event, value) => {
+          handleEndorserSelect(value);
+        }}
+        onInputChange={handleInputChange}
+        onOpen={handleOpen}
+        onClose={handleClose}
+        open={state.isOpen}
+        loading={isLoading}
+        filterOptions={(x) => x} // API handles filtering
+        blurOnSelect={true} // Close dropdown after selection
+        clearOnBlur={false} // Don't clear on blur
+        selectOnFocus={false} // Don't select on focus
+        handleHomeEndKeys
+        openOnFocus={true} // Open dropdown when focused
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Select Endorser"
+            placeholder="Search endorsers..."
+            error={!!error}
+            helperText={
+              error || 
+              `${availableEndorsers.length} endorsers found${state.selectedEndorser ? ' (1 selected)' : ''}`
+            }
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search sx={{ color: 'text.secondary' }} />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  {isLoading && <CircularProgress color="inherit" size={20} />}
+                  {params.InputProps.endAdornment}
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  boxShadow: `0 0 0 1px ${alpha(theme.palette.secondary.main, 0.2)}`,
+                },
+                '&.Mui-focused': {
+                  boxShadow: `0 0 0 2px ${alpha(theme.palette.secondary.main, 0.2)}`,
+                }
+              }
+            }}
+          />
+        )}
+        renderOption={(props, option) => {
+          const { key, ...otherProps } = props;
+          const isSelected = option.id === state.selectedEndorser?.id;
           
-          <Grid container spacing={2}>
-            {selectedEndorsers.map((endorser) => (
-              <Grid item xs={12} sm={6} md={4} key={endorser.id}>
-                <Card
-                  elevation={0}
+          return (
+            <MenuItem
+              {...otherProps}
+              key={option.id}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                p: 2,
+                borderRadius: 1,
+                mx: 0.5,
+                my: 0.25,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                backgroundColor: isSelected ? alpha(theme.palette.secondary.main, 0.1) : 'transparent',
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.secondary.main, 0.05),
+                  transform: 'translateY(-1px)',
+                  boxShadow: theme.shadows[2]
+                }
+              }}
+            >
+              <Avatar
+                sx={{
+                  bgcolor: theme.palette.secondary.main,
+                  width: 40,
+                  height: 40
+                }}
+              >
+                <Person />
+              </Avatar>
+              
+              <Box sx={{ flex: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {option.firstName} {option.lastName}
+                  </Typography>
+                  {option.relationshipToCustomer && (
+                    <Chip
+                      label={option.relationshipToCustomer}
+                      size="small"
+                      color="secondary"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem', height: 20 }}
+                    />
+                  )}
+                  {option.isVerified && (
+                    <Tooltip title="Verified endorser">
+                      <CheckCircle 
+                        sx={{ 
+                          fontSize: 16, 
+                          color: theme.palette.success.main 
+                        }} 
+                      />
+                    </Tooltip>
+                  )}
+                </Box>
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  🆔 {option.idNumber}
+                </Typography>
+                
+                {(option.email || option.phone) && (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {option.email && (
+                      <Typography variant="caption" color="text.secondary">
+                        📧 {option.email}
+                      </Typography>
+                    )}
+                    {option.phone && (
+                      <Typography variant="caption" color="text.secondary">
+                        📞 {option.phone}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            </MenuItem>
+          );
+        }}
+        PaperComponent={(props) => (
+          <Paper 
+            {...props} 
+            sx={{ 
+              mt: 1, 
+              maxHeight: 300, 
+              overflow: 'auto',
+              boxShadow: theme.shadows[8],
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 2
+            }} 
+          />
+        )}
+        noOptionsText={
+          <Box sx={{ textAlign: 'center', py: 3 }}>
+            <Person sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              {state.searchTerm ? 'No endorsers found' : (state.selectedEndorser ? 'Selected endorser is not shown in list' : 'Start typing to search endorsers')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {state.selectedEndorser ? 'Clear selection to see all endorsers' : 'All available endorsers are shown'}
+            </Typography>
+          </Box>
+        }
+        loadingText={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2, justifyContent: 'center' }}>
+            <CircularProgress size={16} />
+            <Typography variant="body2">Loading endorsers...</Typography>
+          </Box>
+        }
+      />
+
+      {/* Selected Endorser Display */}
+      {state.selectedEndorser && (
+        <Fade in timeout={300}>
+          <Card
+            elevation={0}
+            sx={{
+              mt: 3,
+              border: '2px solid',
+              borderColor: 'secondary.main',
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.secondary.main, 0.02),
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Avatar
                   sx={{
-                    border: '1px solid',
-                    borderColor: 'secondary.main',
-                    borderRadius: 2,
-                    position: 'relative',
-                    '&:hover': {
-                      boxShadow: 2
-                    }
+                    bgcolor: theme.palette.secondary.main,
+                    width: 50,
+                    height: 50
                   }}
                 >
-                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                    {/* Remove button */}
-                    <IconButton
+                  <Person />
+                </Avatar>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {state.selectedEndorser.firstName} {state.selectedEndorser.lastName}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                    <Chip
+                      label="Selected"
                       size="small"
-                      color="error"
-                      onClick={() => handleEndorserRemove(endorser.id)}
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        bgcolor: 'background.paper',
-                        '&:hover': {
-                          bgcolor: 'error.light',
-                          color: 'white'
-                        }
-                      }}
-                    >
-                      <Remove fontSize="small" />
-                    </IconButton>
-
-                    {/* Status indicator */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <CheckCircle sx={{ color: 'secondary.main', fontSize: 16 }} />
+                      color="secondary"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                    {state.selectedEndorser.relationshipToCustomer && (
                       <Chip
-                        label="Selected"
+                        label={state.selectedEndorser.relationshipToCustomer}
                         size="small"
                         color="secondary"
                         variant="outlined"
-                        sx={{ fontSize: '0.7rem', height: 20 }}
+                        sx={{ fontSize: '0.7rem' }}
                       />
-                    </Box>
+                    )}
+                  </Box>
+                </Box>
+                <Tooltip title="Remove selection">
+                  <IconButton
+                    color="error"
+                    onClick={() => handleEndorserSelect(null)}
+                    sx={{
+                      bgcolor: 'background.paper',
+                      boxShadow: theme.shadows[2],
+                      '&:hover': {
+                        bgcolor: 'error.main',
+                        color: 'white'
+                      }
+                    }}
+                  >
+                    <Clear />
+                  </IconButton>
+                </Tooltip>
+              </Box>
 
-                    {/* Endorser info */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                      <Avatar sx={{ bgcolor: 'secondary.main', width: 40, height: 40 }}>
-                        <Person />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                          {endorser.firstName} {endorser.lastName}
-                        </Typography>
-                        {endorser.relationshipToCustomer && (
-                          <Chip
-                            label={endorser.relationshipToCustomer}
-                            size="small"
-                            variant="filled"
-                            color="secondary"
-                            sx={{ fontSize: '0.7rem', height: 18, mt: 0.5 }}
-                          />
-                        )}
-                      </Box>
-                    </Box>
-                    
-                    <Divider sx={{ my: 1 }} />
-                    
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        <strong>ID:</strong> {endorser.idNumber}
-                      </Typography>
-                      {endorser.email && (
-                        <Typography variant="caption" color="text.secondary">
-                          <strong>Email:</strong> {endorser.email}
-                        </Typography>
-                      )}
-                      {endorser.phone && (
-                        <Typography variant="caption" color="text.secondary">
-                          <strong>Phone:</strong> {endorser.phone}
-                        </Typography>
-                      )}
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  🆔 ID Number: <strong>{state.selectedEndorser.idNumber}</strong>
+                </Typography>
+                {state.selectedEndorser.email && (
+                  <Typography variant="body2" color="text.secondary">
+                    📧 Email: <strong>{state.selectedEndorser.email}</strong>
+                  </Typography>
+                )}
+                {state.selectedEndorser.phone && (
+                  <Typography variant="body2" color="text.secondary">
+                    📞 Phone: <strong>{state.selectedEndorser.phone}</strong>
+                  </Typography>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        </Fade>
       )}
 
       {/* Empty state */}
-      {selectedEndorsers.length === 0 && !isLoading && (
+      {!state.selectedEndorser && !isLoading && (
         <Paper
           elevation={0}
           sx={{
-            mt: 2,
-            p: 3,
+            mt: 3,
+            p: 4,
             textAlign: 'center',
             border: '2px dashed',
-            borderColor: 'divider',
-            borderRadius: 2
+            borderColor: alpha(theme.palette.secondary.main, 0.3),
+            borderRadius: 2,
+            bgcolor: alpha(theme.palette.secondary.main, 0.02)
           }}
         >
-          <Person sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            No endorsers selected yet
+          <Person sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+            No endorser selected
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Search and select endorsers or create a new one to guarantee this contract
+          <Typography variant="body2" color="text.secondary">
+            Search and select an endorser to guarantee this contract
           </Typography>
         </Paper>
       )}
+
+      {/* Endorser Creation Modal */}
+      <CustomerCreationModal
+        open={state.isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onSubmit={handleCreateEndorser}
+        isCreating={state.isCreatingEndorser}
+        title="Create New Endorser"
+      />
     </Box>
   );
 };

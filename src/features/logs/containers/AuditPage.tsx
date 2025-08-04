@@ -1,745 +1,614 @@
-import React, { useState, useMemo } from 'react';
-import { useGetAuditLogsQuery } from '../api/auditapi';
-import AuditLogList from '../components/AuditLogList/AuditLogList';
-import { FindAuditLogsDto } from '../types/audit.types';
+import React, { useState } from 'react';
 import {
-  TextField,
-  Button,
-  Container,
-  Typography,
   Box,
-  CircularProgress,
+  Typography,
+  Button,
   Paper,
-  Grid,
-  InputAdornment,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
   IconButton,
-  Pagination,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Tab,
-  Tabs,
-  Chip,
   Divider,
-  Tooltip,
-  Stack,
+  Skeleton,
+  TableSortLabel,
   alpha,
-  Card,
-  CardContent,
   useTheme,
-  Collapse,
-  SelectChangeEvent
+  Alert,
+  Snackbar,
+  Avatar,
+  Chip,
+  Grid,
+  Collapse
 } from '@mui/material';
-import { 
-  Search, 
-  Clear, 
-  Refresh, 
-  FilterList, 
-  ExpandMore, 
-  ExpandLess,
-  Assessment,
-  CalendarToday,
-  Person,
-  Category,
-  History,
-  Dashboard,
-  BarChart,
-  PieChart,
-  LineStyle,
-  Sort
+import {
+  History as HistoryIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
-import useAuditFilters from '../hooks/AuditFilters';
-import { useDebounce } from '../../../shared/hooks/useDebounce';
-import { format, startOfDay, endOfDay, subDays, subWeeks, subMonths, parse, isValid } from 'date-fns';
 
-const eventTypeOptions = [
-  { value: 'create', label: 'Create' },
-  { value: 'update', label: 'Update' },
-  { value: 'delete', label: 'Delete' },
-  { value: 'login', label: 'Login' },
-  { value: 'logout', label: 'Logout' },
-];
+// Local imports
+import { useAuditLogs } from '../hooks/useAuditLogs';
+import { AuditLogFilters } from '../components/AuditLogList/AuditLogFilters';
+import { formatLogTimestamp } from '../utils/auditLogRenderUtils';
+import { getLogEventTypeIcon, getLogEntityTypeIcon } from '../utils/auditLogRenderUtils';
 
-const entityTypeOptions = [
-  { value: 'user', label: 'User' },
-  { value: 'role', label: 'Role' },
-  { value: 'customer', label: 'Customer' },
-  { value: 'invoice', label: 'Invoice' },
-  { value: 'asset', label: 'Asset' },
-];
+// Constants
+const AUDIT_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
-const AuditLogsContainer: React.FC = () => {
+const AuditPage: React.FC = () => {
   const theme = useTheme();
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('logs');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'custom'>('30days');
-  const [startDate, setStartDate] = useState<Date | null>(subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date | null>(new Date());
-  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  
+  // Audit logs hook
+  const {
+    logs,
+    totalCount,
+    loading,
+    error,
+    refetch,
+    filters,
+    setFilters,
+    page,
+    rowsPerPage,
+    order,
+    orderBy,
+    setPage,
+    setRowsPerPage,
+    setOrder,
+    setOrderBy
+  } = useAuditLogs();
 
-  // Custom filters from the hook
-  const { filters, handleFilterChange, clearFilters } = useAuditFilters();
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  // Expanded rows state
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  
+  // Notification state
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'info' as 'success' | 'error' | 'warning' | 'info'
+  });
 
-  // Calculate date range for the query
-  const getDateRangeFilter = () => {
-    if (dateRange === 'today') {
-      return { 
-        startDate: format(startOfDay(new Date()), 'yyyy-MM-dd\'T\'HH:mm:ss'),
-        endDate: format(endOfDay(new Date()), 'yyyy-MM-dd\'T\'HH:mm:ss')
-      };
-    } else if (dateRange === '7days') {
-      return { 
-        startDate: format(startOfDay(subDays(new Date(), 7)), 'yyyy-MM-dd\'T\'HH:mm:ss'),
-        endDate: format(endOfDay(new Date()), 'yyyy-MM-dd\'T\'HH:mm:ss')
-      };
-    } else if (dateRange === '30days') {
-      return { 
-        startDate: format(startOfDay(subDays(new Date(), 30)), 'yyyy-MM-dd\'T\'HH:mm:ss'),
-        endDate: format(endOfDay(new Date()), 'yyyy-MM-dd\'T\'HH:mm:ss')
-      };
-    } else if (dateRange === 'custom' && startDate && endDate) {
-      return { 
-        startDate: format(startOfDay(startDate), 'yyyy-MM-dd\'T\'HH:mm:ss'),
-        endDate: format(endOfDay(endDate), 'yyyy-MM-dd\'T\'HH:mm:ss')
-      };
-    }
-    return {};
+  // Event handlers
+  const handleClearFilters = () => {
+    setFilters({
+      search: '',
+      eventType: '',
+      entityType: '',
+      startDate: '',
+      endDate: ''
+    });
   };
 
-  const dateRangeFilter = getDateRangeFilter();
+  const handleToggleExpanded = (logId: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(logId)) {
+      newExpandedRows.delete(logId);
+    } else {
+      newExpandedRows.add(logId);
+    }
+    setExpandedRows(newExpandedRows);
+  };
 
-  const enhancedFilters = useMemo(() => ({
-    ...filters,
-    search: debouncedSearchTerm,
-    limit: rowsPerPage,
-    offset: (page - 1) * rowsPerPage,
-    sortOrder,
-    ...(selectedEventTypes.length > 0 ? { eventTypes: selectedEventTypes } : {}),
-    ...dateRangeFilter
-  }), [
-    filters, 
-    debouncedSearchTerm, 
-    rowsPerPage, 
-    page, 
-    sortOrder, 
-    selectedEventTypes,
-    dateRangeFilter
-  ]);
+  const handleRequestSort = (property: string) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
 
-  const {
-    data: response,
-    isLoading,
-    error,
-    refetch
-  } = useGetAuditLogsQuery(enhancedFilters);
-
-  const logs = response?.data || [];
-  const total = response?.total || 0;
-
-  const handleChangePage = (_event: React.ChangeEvent<unknown>, newPage: number) => {
+  const handlePageChange = (_: unknown, newPage: number) => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: SelectChangeEvent<number>) => {
-    setRowsPerPage(Number(event.target.value));
-    setPage(1);
+  const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
   };
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
-    setActiveTab(newValue);
+  const hideNotification = () => {
+    setNotification(prev => ({ ...prev, open: false }));
   };
 
-  const handleDateRangeChange = (range: 'today' | '7days' | '30days' | 'custom') => {
-    setDateRange(range);
-    if (range === 'today') {
-      setStartDate(startOfDay(new Date()));
-      setEndDate(endOfDay(new Date()));
-    } else if (range === '7days') {
-      setStartDate(startOfDay(subDays(new Date(), 7)));
-      setEndDate(endOfDay(new Date()));
-    } else if (range === '30days') {
-      setStartDate(startOfDay(subDays(new Date(), 30)));
-      setEndDate(endOfDay(new Date()));
-    }
-  };
-
-  const handleEventTypeToggle = (eventType: string) => {
-    setSelectedEventTypes(prev => 
-      prev.includes(eventType)
-        ? prev.filter(type => type !== eventType)
-        : [...prev, eventType]
+  // Loading state - following customer list pattern
+  if (loading && logs.length === 0) {
+    return (
+      <Paper 
+        elevation={2}
+        sx={{ 
+          borderRadius: 2,
+          overflow: 'hidden',
+          transition: 'box-shadow 0.3s ease-in-out',
+          '&:hover': {
+            boxShadow: theme.shadows[4]
+          }
+        }}
+      >
+        <Box sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Skeleton variant="text" width={200} height={32} />
+            <Skeleton variant="rectangular" width={100} height={36} sx={{ borderRadius: 1 }} />
+          </Box>
+          <Divider sx={{ mb: 2 }} />
+          <Box sx={{ display: 'flex', mb: 1.5 }}>
+            {['20%', '15%', '35%', '15%', '15%'].map((width, i) => (
+              <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
+            ))}
+          </Box>
+          {[...Array(5)].map((_, index) => (
+            <Box key={index} sx={{ 
+              py: 2, 
+              display: 'flex', 
+              alignItems: 'center',
+              borderBottom: index < 4 ? `1px solid ${theme.palette.divider}` : 'none'
+            }}>
+              {['20%', '15%', '35%', '15%', '15%'].map((width, i) => (
+                <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
+              ))}
+            </Box>
+          ))}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Skeleton variant="rectangular" width={300} height={36} sx={{ borderRadius: 1 }} />
+          </Box>
+        </Box>
+      </Paper>
     );
-  };
+  }
 
-  const handleResetFilters = () => {
-    setSearchTerm('');
-    setDateRange('30days');
-    setStartDate(subDays(new Date(), 30));
-    setEndDate(new Date());
-    setSelectedEventTypes([]);
-    setSortOrder('desc');
-    clearFilters();
-  };
-
-  const hasActiveFilters = searchTerm || 
-    Object.values(filters).some(val => val) || 
-    selectedEventTypes.length > 0 ||
-    dateRange !== '30days' ||
-    sortOrder !== 'desc';
-
-  const activeFiltersCount = [
-    searchTerm,
-    ...Object.values(filters).filter(Boolean),
-    ...selectedEventTypes,
-    dateRange !== '30days' ? 'dateRange' : null,
-    sortOrder !== 'desc' ? 'sortOrder' : null
-  ].filter(Boolean).length;
-
-  // Function to get event type and entity type distribution for the charts
-  const getEventTypeDistribution = () => {
-    const distribution: Record<string, number> = {};
-    logs.forEach(log => {
-      const eventType = log.eventType.toLowerCase();
-      distribution[eventType] = (distribution[eventType] || 0) + 1;
-    });
-    return distribution;
-  };
-
-  const getEntityTypeDistribution = () => {
-    const distribution: Record<string, number> = {};
-    logs.forEach(log => {
-      const entityType = log.entityType.toLowerCase();
-      distribution[entityType] = (distribution[entityType] || 0) + 1;
-    });
-    return distribution;
-  };
+  // Error state
+  if (error && !logs.length) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Failed to load audit logs. Please try again.
+        </Alert>
+        <Button
+          variant="contained"
+          onClick={() => refetch()}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
-          Audit Logs
-        </Typography>
-        <Typography variant="body1" color="textSecondary">
-          View and analyze system activity and changes made by users.
-        </Typography>
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h5" fontWeight={600} sx={{ mb: 0.5 }}>
+            System Audit Logs
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            View system-wide activity and audit events
+          </Typography>
+        </Box>
       </Box>
 
-      <Tabs
-        value={activeTab}
-        onChange={handleTabChange}
-        textColor="primary"
-        indicatorColor="primary"
-        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+      {/* Filters */}
+      <Box sx={{ mb: 3 }}>
+        <AuditLogFilters
+          filters={filters}
+          onFilterChange={setFilters}
+          logsCount={totalCount}
+        />
+      </Box>
+
+      {/* Table */}
+      <Paper 
+        elevation={2}
+        sx={{ 
+          borderRadius: 2,
+          overflow: 'hidden',
+          transition: 'box-shadow 0.3s ease-in-out',
+          '&:hover': {
+            boxShadow: theme.shadows[4]
+          }
+        }}
       >
-        <Tab 
-          icon={<History fontSize="small" />} 
-          iconPosition="start" 
-          label="Logs" 
-          value="logs" 
-        />
-        <Tab 
-          icon={<Dashboard fontSize="small" />} 
-          iconPosition="start" 
-          label="Dashboard" 
-          value="dashboard" 
-        />
-      </Tabs>
-
-      {activeTab === 'logs' && (
-        <>
-          <Paper 
-            elevation={2} 
-            sx={{ 
-              p: 3, 
-              mb: 3, 
-              borderRadius: 2,
-              transition: 'box-shadow 0.3s ease-in-out',
-              '&:hover': {
-                boxShadow: theme.shadows[4]
-              }
-            }}
-          >
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={5}>
-                <TextField
-                  fullWidth
-                  placeholder="Search by user, entity, or action..."
-                  variant="outlined"
-                  size="small"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search color="action" />
-                      </InputAdornment>
-                    ),
-                    endAdornment: searchTerm ? (
-                      <InputAdornment position="end">
-                        <IconButton size="small" onClick={() => setSearchTerm('')}>
-                          <Clear fontSize="small" />
-                        </IconButton>
-                      </InputAdornment>
-                    ) : null,
-                    sx: {
-                      borderRadius: 2,
-                      '&.Mui-focused': {
-                        boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.25)}`
-                      }
-                    }
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={5}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <FormControl size="small" sx={{ minWidth: 140 }}>
-                    <InputLabel id="date-range-label">Date Range</InputLabel>
-                    <Select
-                      labelId="date-range-label"
-                      value={dateRange}
-                      onChange={(e) => handleDateRangeChange(e.target.value as any)}
-                      label="Date Range"
-                      startAdornment={
-                        <CalendarToday fontSize="small" sx={{ mr: 1, opacity: 0.7 }} />
-                      }
-                      sx={{ borderRadius: 2 }}
-                    >
-                      <MenuItem value="today">Today</MenuItem>
-                      <MenuItem value="7days">Last 7 Days</MenuItem>
-                      <MenuItem value="30days">Last 30 Days</MenuItem>
-                      <MenuItem value="custom">Custom Range</MenuItem>
-                    </Select>
-                  </FormControl>
-
-                  <FormControl size="small" sx={{ minWidth: 140 }}>
-                    <InputLabel id="sort-order-label">Sort</InputLabel>
-                    <Select
-                      labelId="sort-order-label"
-                      value={sortOrder}
-                      onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                      label="Sort"
-                      startAdornment={
-                        <Sort fontSize="small" sx={{ mr: 1, opacity: 0.7 }} />
-                      }
-                      sx={{ borderRadius: 2 }}
-                    >
-                      <MenuItem value="desc">Newest First</MenuItem>
-                      <MenuItem value="asc">Oldest First</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} md={2} sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                <Tooltip title="Refresh">
-                  <IconButton 
-                    onClick={() => refetch()} 
-                    color="primary"
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell width="40px"></TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={orderBy === 'actionTimestamp'}
+                    direction={orderBy === 'actionTimestamp' ? order : 'asc'}
+                    onClick={() => handleRequestSort('actionTimestamp')}
+                  >
+                    Event & Time
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={orderBy === 'entityType'}
+                    direction={orderBy === 'entityType' ? order : 'asc'}
+                    onClick={() => handleRequestSort('entityType')}
+                  >
+                    Entity
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>Changes</TableCell>
+                <TableCell>User & Metadata</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {logs.map((log) => (
+                <React.Fragment key={log.id}>
+                  <TableRow 
+                    hover
                     sx={{ 
-                      border: `1px solid ${theme.palette.divider}`,
-                      borderRadius: 2
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.02)
+                      }
                     }}
                   >
-                    <Refresh />
-                  </IconButton>
-                </Tooltip>
-                
-                <Button
-                  variant={showAdvancedFilters ? "contained" : "outlined"}
-                  color={showAdvancedFilters ? "primary" : "inherit"}
-                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  startIcon={<FilterList />}
-                  endIcon={showAdvancedFilters ? <ExpandLess /> : <ExpandMore />}
-                  sx={{ borderRadius: 2 }}
-                >
-                  Filters
-                </Button>
-              </Grid>
-            </Grid>
-
-            <Collapse in={showAdvancedFilters}>
-              <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                  Advanced Filters
-                </Typography>
-                
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
-                      <TextField
-                        fullWidth
-                        label="Start Date"
-                        name="startDate"
-                        type="date"
-                        value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
-                        onChange={(e) => {
-                          const date = parse(e.target.value, 'yyyy-MM-dd', new Date());
-                          setStartDate(isValid(date) ? date : null);
-                        }}
-                        InputLabelProps={{ shrink: true }}
-                        disabled={dateRange !== 'custom'}
+                    <TableCell>
+                      <IconButton
                         size="small"
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                      />
-                      <TextField
-                        fullWidth
-                        label="End Date"
-                        name="endDate"
-                        type="date"
-                        value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
-                        onChange={(e) => {
-                          const date = parse(e.target.value, 'yyyy-MM-dd', new Date());
-                          setEndDate(isValid(date) ? date : null);
+                        onClick={() => handleToggleExpanded(log.id)}
+                      >
+                        {expandedRows.has(log.id) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      </IconButton>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Avatar sx={{ width: 32, height: 32 }}>
+                          {getLogEventTypeIcon(log.eventType)}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {log.eventType ? 
+                              log.eventType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
+                              'Unknown Event'
+                            }
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {log.actionTimestamp ? 
+                              formatLogTimestamp(log.actionTimestamp) : 
+                              log.createdAt ? 
+                              formatLogTimestamp(log.createdAt) :
+                              'No timestamp'
+                            }
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        {getLogEntityTypeIcon(log.entityType)}
+                        <Chip
+                          label={log.entityType ? 
+                            log.entityType.charAt(0).toUpperCase() + log.entityType.slice(1) : 
+                            'Unknown'
+                          }
+                          size="small"
+                          variant="outlined"
+                        />
+                      </Box>
+                      {log.entityId && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          ID: {log.entityId.slice(0, 8)}...
+                        </Typography>
+                      )}
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box sx={{ maxWidth: 300 }}>
+                        {log.eventType === 'entity_created' && log.newValues && (
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium" color="success.main">
+                              Created new {log.entityType}
+                            </Typography>
+                            {log.newValues.name && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                Name: {log.newValues.name}
+                              </Typography>
+                            )}
+                            {log.newValues.email && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                Email: {log.newValues.email}
+                              </Typography>
+                            )}
+                            {log.newValues.type && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                Type: {log.newValues.type}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+                        
+                        {log.eventType === 'entity_updated' && (
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium" color="warning.main">
+                              Updated {log.entityType}
+                            </Typography>
+                            {log.oldValues && log.newValues && (
+                              <Box sx={{ mt: 0.5 }}>
+                                {Object.keys(log.newValues).slice(0, 3).map((key) => (
+                                  <Typography key={key} variant="caption" display="block" color="text.secondary">
+                                    {key}: {log.oldValues?.[key]} → {log.newValues?.[key]}
+                                  </Typography>
+                                ))}
+                                {Object.keys(log.newValues).length > 3 && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    +{Object.keys(log.newValues).length - 3} more changes
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
+                          </Box>
+                        )}
+                        
+                        {log.eventType === 'entity_deleted' && (
+                          <Typography variant="body2" fontWeight="medium" color="error.main">
+                            Deleted {log.entityType}
+                          </Typography>
+                        )}
+                        
+                        {!['entity_created', 'entity_updated', 'entity_deleted'].includes(log.eventType || '') && (
+                          <Typography variant="body2">
+                            {log.eventType ? log.eventType.replace('_', ' ') : 'Unknown action'}
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box>
+                        <Typography variant="body2" fontWeight="medium">
+                          {log.userId || 'System'}
+                        </Typography>
+                        {log.metadata && (
+                          <Box sx={{ mt: 0.5 }}>
+                            {log.metadata.userType && (
+                              <Chip
+                                label={`User: ${log.metadata.userType}`}
+                                size="small"
+                                variant="outlined"
+                                sx={{ mr: 0.5, mb: 0.5 }}
+                              />
+                            )}
+                            {log.metadata.ipAddress && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                IP: {log.metadata.ipAddress}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                  
+                  {/* Expanded Row */}
+                  <TableRow>
+                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
+                      <Collapse in={expandedRows.has(log.id)} timeout="auto" unmountOnExit>
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: alpha(theme.palette.grey[50], 0.5),
+                          borderLeft: `3px solid ${theme.palette.primary.main}`
+                        }}>
+                          {/* Basic Information */}
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                              Basic Information
+                            </Typography>
+                            <Grid container spacing={1}>
+                              <Grid item xs={3}>
+                                <Typography variant="caption" color="text.secondary">Event Type</Typography>
+                                <Typography variant="body2">{log.eventType}</Typography>
+                              </Grid>
+                              <Grid item xs={3}>
+                                <Typography variant="caption" color="text.secondary">Entity Type</Typography>
+                                <Typography variant="body2">{log.entityType}</Typography>
+                              </Grid>
+                              <Grid item xs={3}>
+                                <Typography variant="caption" color="text.secondary">Entity ID</Typography>
+                                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                                  {log.entityId}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={3}>
+                                <Typography variant="caption" color="text.secondary">User ID</Typography>
+                                <Typography variant="body2">{log.userId}</Typography>
+                              </Grid>
+                            </Grid>
+                          </Box>
+
+                          {/* Timestamps */}
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                              Timestamps
+                            </Typography>
+                            <Grid container spacing={1}>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Action Timestamp</Typography>
+                                <Typography variant="body2">{log.actionTimestamp}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Created At</Typography>
+                                <Typography variant="body2">{log.createdAt}</Typography>
+                              </Grid>
+                            </Grid>
+                          </Box>
+
+                          {/* Metadata */}
+                          {log.metadata && (
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                Metadata
+                              </Typography>
+                              <Box sx={{ 
+                                fontFamily: 'monospace', 
+                                fontSize: '0.75rem',
+                                bgcolor: theme.palette.background.paper,
+                                p: 1,
+                                borderRadius: 1,
+                                border: `1px solid ${theme.palette.divider}`,
+                                maxHeight: 200,
+                                overflow: 'auto'
+                              }}>
+                                <pre style={{ margin: 0 }}>{JSON.stringify(log.metadata, null, 2)}</pre>
+                              </Box>
+                            </Box>
+                          )}
+
+                          {/* Value Changes */}
+                          {(log.oldValues || log.newValues) && (
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                Value Changes
+                              </Typography>
+                              <Grid container spacing={1}>
+                                {/* Previous Values */}
+                                {log.oldValues && (
+                                  <Grid item xs={log.newValues ? 6 : 12}>
+                                    <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
+                                      Previous Values
+                                    </Typography>
+                                    <Box sx={{ 
+                                      fontFamily: 'monospace', 
+                                      fontSize: '0.75rem',
+                                      bgcolor: alpha(theme.palette.error.main, 0.05),
+                                      p: 1,
+                                      borderRadius: 1,
+                                      border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                                      maxHeight: 200,
+                                      overflow: 'auto'
+                                    }}>
+                                      <pre style={{ margin: 0 }}>{JSON.stringify(log.oldValues, null, 2)}</pre>
+                                    </Box>
+                                  </Grid>
+                                )}
+
+                                {/* New Values */}
+                                {log.newValues && (
+                                  <Grid item xs={log.oldValues ? 6 : 12}>
+                                    <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
+                                      {log.oldValues ? 'New Values' : 'Created Values'}
+                                    </Typography>
+                                    <Box sx={{ 
+                                      fontFamily: 'monospace', 
+                                      fontSize: '0.75rem',
+                                      bgcolor: alpha(theme.palette.success.main, 0.05),
+                                      p: 1,
+                                      borderRadius: 1,
+                                      border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                                      maxHeight: 200,
+                                      overflow: 'auto'
+                                    }}>
+                                      <pre style={{ margin: 0 }}>{JSON.stringify(log.newValues, null, 2)}</pre>
+                                    </Box>
+                                  </Grid>
+                                )}
+                              </Grid>
+                            </Box>
+                          )}
+                        </Box>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
+              ))}
+              {logs.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center',
+                      p: 3
+                    }}>
+                      <Box 
+                        sx={{ 
+                          bgcolor: alpha(theme.palette.primary.main, 0.05),
+                          borderRadius: '50%',
+                          p: 2,
+                          mb: 2
                         }}
-                        InputLabelProps={{ shrink: true }}
-                        disabled={dateRange !== 'custom'}
-                        size="small"
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                      />
-                    </Stack>
-                  </Grid>
-                  
-                  <Grid item xs={12} md={3}>
-                    <TextField
-                      fullWidth
-                      label="Entity ID"
-                      name="entityId"
-                      value={filters.entityId || ''}
-                      onChange={handleFilterChange}
-                      variant="outlined"
-                      size="small"
-                      placeholder="Filter by entity ID"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Category fontSize="small" sx={{ opacity: 0.7 }} />
-                          </InputAdornment>
-                        )
-                      }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                  
-                  <Grid item xs={12} md={3}>
-                    <TextField
-                      fullWidth
-                      label="User ID"
-                      name="userId"
-                      value={filters.userId || ''}
-                      onChange={handleFilterChange}
-                      variant="outlined"
-                      size="small"
-                      placeholder="Filter by user ID"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Person fontSize="small" sx={{ opacity: 0.7 }} />
-                          </InputAdornment>
-                        )
-                      }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                </Grid>
-                
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" gutterBottom>
-                    Event Types:
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                    {eventTypeOptions.map(option => (
-                      <Chip
-                        key={option.value}
-                        label={option.label}
-                        clickable
-                        color={selectedEventTypes.includes(option.value) ? 'primary' : 'default'}
-                        variant={selectedEventTypes.includes(option.value) ? 'filled' : 'outlined'}
-                        onClick={() => handleEventTypeToggle(option.value)}
-                        sx={{ borderRadius: 1.5 }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-                
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" gutterBottom>
-                    Entity Types:
-                  </Typography>
-                  <FormControl sx={{ mt: 1, minWidth: 200 }} size="small">
-                    <InputLabel id="entity-type-label">Entity Type</InputLabel>
-                    <Select
-                      labelId="entity-type-label"
-                      name="entityType"
-                      value={filters.entityType || ''}
-                      onChange={handleFilterChange}
-                      label="Entity Type"
-                      sx={{ borderRadius: 2 }}
-                    >
-                      <MenuItem value="">All Entity Types</MenuItem>
-                      {entityTypeOptions.map(option => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                  <Button 
-                    variant="outlined" 
-                    color="inherit" 
-                    onClick={handleResetFilters} 
-                    startIcon={<Clear />}
-                    sx={{ mr: 1, borderRadius: 2 }}
-                  >
-                    Clear All
-                  </Button>
-                  <Button 
-                    variant="contained" 
-                    color="primary"
-                    onClick={() => refetch()}
-                    startIcon={<Search />}
-                    sx={{ borderRadius: 2 }}
-                  >
-                    Apply Filters
-                  </Button>
-                </Box>
-              </Box>
-            </Collapse>
-            
-            {hasActiveFilters && (
-              <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Typography variant="body2" color="textSecondary">
-                    Active filters ({activeFiltersCount}):
-                  </Typography>
-                  
-                  {searchTerm && (
-                    <Chip 
-                      label={`Search: ${searchTerm}`} 
-                      size="small" 
-                      onDelete={() => setSearchTerm('')}
-                      sx={{ borderRadius: 1.5 }}
-                    />
-                  )}
-                  
-                  {dateRange !== '30days' && (
-                    <Chip 
-                      label={`Date: ${dateRange === 'today' ? 'Today' : 
-                        dateRange === '7days' ? 'Last 7 Days' : 
-                        dateRange === 'custom' ? 'Custom Range' : 'Last 30 Days'}`} 
-                      size="small" 
-                      onDelete={() => handleDateRangeChange('30days')}
-                      sx={{ borderRadius: 1.5 }}
-                    />
-                  )}
-                  
-                  {selectedEventTypes.map(type => (
-                    <Chip 
-                      key={type}
-                      label={`Event: ${type.charAt(0).toUpperCase() + type.slice(1)}`} 
-                      size="small" 
-                      onDelete={() => handleEventTypeToggle(type)}
-                      sx={{ borderRadius: 1.5 }}
-                    />
-                  ))}
-                  
-                  {filters.entityType && (
-                    <Chip 
-                      label={`Entity Type: ${filters.entityType}`} 
-                      size="small" 
-                      onDelete={() => handleFilterChange({ target: { name: 'entityType', value: '' } } as any)}
-                      sx={{ borderRadius: 1.5 }}
-                    />
-                  )}
-                  
-                  {filters.entityId && (
-                    <Chip 
-                      label={`Entity ID: ${filters.entityId}`} 
-                      size="small" 
-                      onDelete={() => handleFilterChange({ target: { name: 'entityId', value: '' } } as any)}
-                      sx={{ borderRadius: 1.5 }}
-                    />
-                  )}
-                  
-                  {filters.userId && (
-                    <Chip 
-                      label={`User ID: ${filters.userId}`} 
-                      size="small" 
-                      onDelete={() => handleFilterChange({ target: { name: 'userId', value: '' } } as any)}
-                      sx={{ borderRadius: 1.5 }}
-                    />
-                  )}
-                  
-                  {sortOrder !== 'desc' && (
-                    <Chip 
-                      label={`Sort: Oldest First`} 
-                      size="small" 
-                      onDelete={() => setSortOrder('desc')}
-                      sx={{ borderRadius: 1.5 }}
-                    />
-                  )}
-                  
-                  <Button 
-                    size="small" 
-                    color="inherit" 
-                    onClick={handleResetFilters}
-                    startIcon={<Clear />}
-                    sx={{ ml: 'auto' }}
-                  >
-                    Clear All
-                  </Button>
-                </Stack>
-              </Box>
-            )}
-          </Paper>
+                      >
+                        <HistoryIcon sx={{ fontSize: 48, color: theme.palette.primary.main, opacity: 0.7 }} />
+                      </Box>
+                      <Typography variant="h6" gutterBottom>No audit logs found</Typography>
+                      <Typography variant="body2" color="textSecondary" align="center" sx={{ maxWidth: 500, mb: 3 }}>
+                        {Object.values(filters).some(v => v !== '') 
+                          ? 'No logs match your current filter criteria.'
+                          : 'No audit logs are available yet.'
+                        }
+                      </Typography>
+                      {Object.values(filters).some(v => v !== '') && (
+                        <Button 
+                          variant="outlined" 
+                          onClick={handleClearFilters}
+                        >
+                          Clear Filters
+                        </Button>
+                      )}
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        
+        <TablePagination
+          component="div"
+          count={totalCount || 0}
+          page={Math.min(page, Math.max(0, Math.ceil((totalCount || 0) / rowsPerPage) - 1))}
+          onPageChange={handlePageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={AUDIT_ROWS_PER_PAGE_OPTIONS}
+          labelRowsPerPage="Rows per page:"
+          labelDisplayedRows={({ from, to, count }) => {
+            if (loading) {
+              return 'Loading...';
+            }
+            return `${from}–${to} of ${count !== -1 ? count : `more than ${to}`}`;
+          }}
+          disabled={loading}
+          sx={{
+            borderTop: `1px solid ${theme.palette.divider}`,
+            '& .MuiTablePagination-select': {
+              pr: 1
+            },
+            '& .MuiTablePagination-displayedRows': {
+              fontSize: '0.875rem',
+              color: theme.palette.text.secondary
+            },
+            '&.Mui-disabled': {
+              opacity: 0.6
+            }
+          }}
+        />
+      </Paper>
 
-          {isLoading ? (
-            <Box display="flex" justifyContent="center" alignItems="center" height={200}>
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Paper 
-              elevation={0} 
-              variant="outlined" 
-              sx={{ 
-                p: 3, 
-                borderRadius: 2,
-                bgcolor: alpha(theme.palette.error.main, 0.05),
-                borderColor: theme.palette.error.main,
-                mb: 3
-              }}
-            >
-              <Typography color="error" variant="h6" gutterBottom>
-                Error Loading Audit Logs
-              </Typography>
-              <Typography color="error.dark">
-                {('message' in error) ? error.message : 'An unexpected error occurred while loading the audit logs.'}
-              </Typography>
-              <Button 
-                variant="outlined" 
-                color="error" 
-                onClick={() => refetch()} 
-                sx={{ mt: 2, borderRadius: 2 }}
-                startIcon={<Refresh />}
-              >
-                Retry
-              </Button>
-            </Paper>
-          ) : (
-            <AuditLogList logs={logs} />
-          )}
-
-          {logs.length > 0 && !isLoading && (
-            <Paper sx={{ p: 2, mt: 2, borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography variant="body2" color="textSecondary">
-                  Showing {(page - 1) * rowsPerPage + 1} - {Math.min(page * rowsPerPage, total)} of {total} logs
-                </Typography>
-              </Box>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <FormControl variant="outlined" size="small" sx={{ minWidth: 120, mr: 2 }}>
-                  <InputLabel id="rows-per-page-label">Per Page</InputLabel>
-                  <Select
-                    labelId="rows-per-page-label"
-                    id="rows-per-page"
-                    value={rowsPerPage}
-                    onChange={handleChangeRowsPerPage}
-                    label="Per Page"
-                    sx={{ borderRadius: 2 }}
-                  >
-                    <MenuItem value={5}>5</MenuItem>
-                    <MenuItem value={10}>10</MenuItem>
-                    <MenuItem value={25}>25</MenuItem>
-                    <MenuItem value={50}>50</MenuItem>
-                    <MenuItem value={100}>100</MenuItem>
-                  </Select>
-                </FormControl>
-                
-                <Pagination
-                  count={Math.ceil(total / rowsPerPage)}
-                  page={page}
-                  onChange={handleChangePage}
-                  color="primary"
-                  size="medium"
-                  showFirstButton
-                  showLastButton
-                  shape="rounded"
-                  sx={{
-                    '& .MuiPaginationItem-root': {
-                      borderRadius: 1
-                    }
-                  }}
-                />
-              </Box>
-            </Paper>
-          )}
-        </>
-      )}
-
-      {activeTab === 'dashboard' && (
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Card sx={{ height: '100%', borderRadius: 2 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Event Type Distribution
-                </Typography>
-                <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <PieChart sx={{ fontSize: 120, color: alpha(theme.palette.primary.main, 0.7) }} />
-                </Box>
-                <Typography variant="body2" align="center" color="textSecondary">
-                  Chart visualization of event types would appear here
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <Card sx={{ height: '100%', borderRadius: 2 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Entity Type Distribution
-                </Typography>
-                <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <BarChart sx={{ fontSize: 120, color: alpha(theme.palette.secondary.main, 0.7) }} />
-                </Box>
-                <Typography variant="body2" align="center" color="textSecondary">
-                  Chart visualization of entity types would appear here
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Activity Timeline
-                </Typography>
-                <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <LineStyle sx={{ fontSize: 120, color: alpha(theme.palette.info.main, 0.7) }} />
-                </Box>
-                <Typography variant="body2" align="center" color="textSecondary">
-                  Timeline visualization of audit activity would appear here
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
-    </Container>
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={hideNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={hideNotification} 
+          severity={notification.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 
-export default AuditLogsContainer;
+export default AuditPage;

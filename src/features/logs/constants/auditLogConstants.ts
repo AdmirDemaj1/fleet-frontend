@@ -1,0 +1,2 @@
+export const AUDIT_LOG_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+export const DEFAULT_AUDIT_LOGS_ROWS_PER_PAGE = 25;

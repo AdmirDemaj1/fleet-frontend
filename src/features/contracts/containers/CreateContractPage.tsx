@@ -1,11 +1,11 @@
 import React from 'react';
 import { Box, Typography, Container } from '@mui/material';
 import { ContractForm } from '../components';
-import { useCreateContractMutation } from '../api/contractApi';
+import { useCreateContractWithDependenciesMutation } from '../api/contractApi';
 import { CreateContractDto } from '../types/contract.types';
 
 export const CreateContractPage: React.FC = () => {
-  const [createContract, { isLoading }] = useCreateContractMutation();
+  const [createContract, { isLoading }] = useCreateContractWithDependenciesMutation();
 
   const handleSubmit = async (data: CreateContractDto) => {
     try {

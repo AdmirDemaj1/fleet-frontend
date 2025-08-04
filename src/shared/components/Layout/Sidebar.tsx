@@ -30,7 +30,8 @@ import {
   ExpandMore,
   Analytics as AnalyticsIcon,
   KeyboardDoubleArrowLeft,
-  KeyboardDoubleArrowRight
+  KeyboardDoubleArrowRight,
+  Payment as PaymentIcon
 } from '@mui/icons-material';
 
 interface MenuItem {
@@ -80,19 +81,22 @@ const menuItems: MenuItem[] = [
     path: '/contracts' 
   },
   { 
+    id: 'payments',
+    text: 'Payments', 
+    icon: <PaymentIcon />, 
+    path: '/payments' 
+  },
+  { 
     id: 'assets',
     text: 'Assets', 
     icon: <AssetsIcon />, 
     path: '/assets' 
   },
   {
-    id: 'reports',
-    text: 'Reports',
+    id: 'Audit',
+    text: 'Audit Logs',
     icon: <AnalyticsIcon />,
-    children: [
-      { id: 'audit-logs', text: 'Audit Logs', icon: <ArticleIcon />, path: '/logs' },
-      { id: 'analytics', text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' }
-    ]
+    path: '/logs'
   }
 ];
 
@@ -122,10 +126,10 @@ const SidebarMenuItem: React.FC<{
   }, [hasChildren, item.path, item.disabled, onNavigate, onClose]);
 
   const menuItemStyles = useMemo(() => ({
-    minHeight: collapsed && !isMobile ? 52 : 48,
+    minHeight: collapsed && !isMobile ? 44 : 48,
     borderRadius: collapsed && !isMobile ? 2.5 : 2,
-    mx: collapsed && !isMobile ? 1.5 : 1,
-    my: collapsed && !isMobile ? 1 : 0.5,
+    mx: collapsed && !isMobile ? 1 : 1,
+    my: collapsed && !isMobile ? 0.5 : 0.5,
     pl: level > 0 ? 4 : (collapsed && !isMobile ? 0 : 2.5),
     pr: collapsed && !isMobile ? 0 : 2,
     position: 'relative',
@@ -206,7 +210,7 @@ const SidebarMenuItem: React.FC<{
       duration: theme.transitions.duration.shorter,
     }),
     '& svg': {
-      fontSize: collapsed && !isMobile ? 26 : 22,
+      fontSize: collapsed && !isMobile ? 22 : 22,
       ...(isSelected && {
         transform: 'scale(1.1)',
       }),
@@ -439,7 +443,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       flex: 1, 
       overflowY: 'auto',
       overflowX: 'hidden',
-      py: collapsed && !isMobile ? 3 : 2,
+      py: collapsed && !isMobile ? 2 : 2,
       px: collapsed && !isMobile ? 0.5 : 0,
       position: 'relative',
       '&::-webkit-scrollbar': {
@@ -595,6 +599,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       overflowX: 'hidden',
       ...(isMobile ? {
         boxShadow: `8px 0 32px ${alpha('#000', 0.12)}`,
+        zIndex: theme.zIndex.drawer,
+        position: 'fixed',
+        height: '100vh',
+        top: 0,
       } : {
         top: 64,
         height: 'calc(100vh - 64px)',

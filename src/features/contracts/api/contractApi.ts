@@ -13,7 +13,7 @@ import {
 export const contractApi = createApi({
   reducerPath: 'contractApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: getApiUrl(),
+    baseUrl: 'http://localhost:3000/',
     prepareHeaders: (headers) => {
       // Add authorization header if needed
       const token = localStorage.getItem('authToken');
@@ -26,22 +26,36 @@ export const contractApi = createApi({
   tagTypes: ['Contract', 'Customer', 'Vehicle', 'Endorser'],
   endpoints: (builder) => ({
     // Contract endpoints
-    createContract: builder.mutation<ContractResponse, CreateContractDto>({
-      query: (contractData) => ({
-        url: '/contracts',
-        method: 'POST',
-        body: contractData,
-      }),
-      invalidatesTags: ['Contract'],
+    createContract: builder.mutation<any, CreateContractDto>({
+      query: (contractData) => {
+        console.log('🚀 Creating contract with data:', JSON.stringify(contractData, null, 2));
+        return {
+          url: '/contracts/with-dependencies',
+          method: 'POST',
+          body: contractData,
+        };
+      },
+      invalidatesTags: ['Contract', 'Vehicle'],
+      transformErrorResponse: (response: any) => {
+        console.error('❌ Contract creation failed:', response);
+        return response;
+      },
     }),
 
-    createContractWithDependencies: builder.mutation<any, { contractData: CreateContractDto; vehicleIds?: string[] }>({
-      query: ({ contractData, vehicleIds }) => ({
-        url: '/contracts/with-dependencies',
-        method: 'POST',
-        body: { ...contractData, vehicleIds },
-      }),
+    createContractWithDependencies: builder.mutation<any, CreateContractDto>({
+      query: (contractData) => {
+        console.log('🚀 Creating contract with dependencies:', JSON.stringify(contractData, null, 2));
+        return {
+          url: '/contracts/with-dependencies',
+          method: 'POST',
+          body: contractData,
+        };
+      },
       invalidatesTags: ['Contract', 'Vehicle'],
+      transformErrorResponse: (response: any) => {
+        console.error('❌ Contract creation with dependencies failed:', response);
+        return response;
+      },
     }),
 
     getContract: builder.query<ContractResponse, string>({

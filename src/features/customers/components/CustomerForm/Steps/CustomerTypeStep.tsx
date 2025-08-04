@@ -9,7 +9,7 @@ import {
   alpha,
   Chip
 } from '@mui/material';
-import { Person, Business } from '@mui/icons-material';
+import { Person, Business, Security } from '@mui/icons-material';
 import { CustomerType } from '../../../types/customer.types';
 
 interface CustomerTypeStepProps {
@@ -43,6 +43,13 @@ export const CustomerTypeStep: React.FC<CustomerTypeStepProps> = ({
       icon: Business,
       color: 'secondary' as const,
       description: 'Corporate customer account for businesses'
+    },
+    {
+      value: CustomerType.ENDORSER,
+      label: 'Endorser',
+      icon: Security,
+      color: 'info' as const,
+      description: 'Endorser who provides guarantees for other customers'
     }
   ];
 
@@ -162,12 +169,18 @@ export const CustomerTypeStep: React.FC<CustomerTypeStepProps> = ({
             mx: 'auto'
           }}>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-              Selected: {customerType === CustomerType.INDIVIDUAL ? 'Individual Customer' : 'Business Customer'}
+              Selected: {
+                customerType === CustomerType.INDIVIDUAL ? 'Individual Customer' :
+                customerType === CustomerType.BUSINESS ? 'Business Customer' :
+                'Endorser Customer'
+              }
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {customerType === CustomerType.INDIVIDUAL 
                 ? 'You will enter personal information for an individual customer'
-                : 'You will enter business information and administrator details'
+                : customerType === CustomerType.BUSINESS
+                ? 'You will enter business information and administrator details'
+                : 'You will enter endorser information and guarantee details'
               }
             </Typography>
           </Box>

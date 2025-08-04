@@ -3,7 +3,7 @@ export const API_ENDPOINTS = {
     VEHICLES: '/vehicles',
     CONTRACTS: '/contracts',
     ASSETS: '/assets',
-    AUDIT: '/audit/logs',
+    AUDIT: '/audit',
     AUTH: {
       LOGIN: '/auth/login',
       LOGOUT: '/auth/logout',
@@ -18,6 +18,12 @@ export const API_ENDPOINTS = {
       CREATE: '/customers/new',
       DETAILS: (id: string) => `/customers/${id}`,
       EDIT: (id: string) => `/customers/${id}/edit`,
+    },
+    ENDORSERS: {
+      LIST: '/endorsers',
+      CREATE: '/endorsers/new',
+      DETAILS: (id: string) => `/endorsers/${id}`,
+      EDIT: (id: string) => `/endorsers/${id}/edit`,
     },
     VEHICLES: {
       LIST: '/vehicles',

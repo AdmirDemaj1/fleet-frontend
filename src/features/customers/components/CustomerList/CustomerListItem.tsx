@@ -20,6 +20,7 @@ import {
   Phone as PhoneIcon,
   BusinessCenter,
   Person,
+  Security,
   FileDownload,
   Receipt,
   DirectionsCar,
@@ -45,6 +46,11 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
   
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
+  // Helper function to get the correct base path based on customer type
+  const getBasePath = () => {
+    return customer.type === CustomerType.ENDORSER ? 'endorsers' : 'customers';
+  };
+
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setMenuAnchorEl(event.currentTarget);
   };
@@ -64,6 +70,11 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
       const business = customer as any;
       if (business.legalName) {
         return business.legalName;
+      }
+    } else if (customer.type === CustomerType.ENDORSER) {
+      const endorser = customer as any;
+      if (endorser.firstName && endorser.lastName) {
+        return `${endorser.firstName} ${endorser.lastName}`;
       }
     }
     
@@ -88,6 +99,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
   };
 
   const isIndividual = customer.type === CustomerType.INDIVIDUAL;
+  const isEndorser = customer.type === CustomerType.ENDORSER;
 
   return (
     <>
@@ -110,7 +122,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
                 color: theme.palette.primary.main
               }
             }}
-            onClick={() => navigate(`/customers/${customer.id}`)}
+            onClick={() => navigate(`/${getBasePath()}/${customer.id}`)}
           >
             <Box
               sx={{
@@ -119,6 +131,8 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
                 bgcolor: alpha(
                   isIndividual 
                     ? theme.palette.primary.main 
+                    : isEndorser
+                    ? theme.palette.info.main
                     : theme.palette.secondary.main,
                   0.1
                 ),
@@ -133,6 +147,11 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
                 <Person 
                   fontSize="small"
                   sx={{ color: theme.palette.primary.main }} 
+                />
+              ) : isEndorser ? (
+                <Security 
+                  fontSize="small"
+                  sx={{ color: theme.palette.info.main }} 
                 />
               ) : (
                 <BusinessCenter 
@@ -169,9 +188,9 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         
         <TableCell>
           <Chip
-            label={isIndividual ? 'Individual' : 'Business'}
+            label={isIndividual ? 'Individual' : isEndorser ? 'Endorser' : 'Business'}
             size="small"
-            color={isIndividual ? 'primary' : 'secondary'}
+            color={isIndividual ? 'primary' : isEndorser ? 'info' : 'secondary'}
             variant="outlined"
             sx={{ 
               fontWeight: 500,
@@ -250,7 +269,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         {/* Overview group */}
         <MenuItem 
           onClick={() => {
-            navigate(`/customers/${customer.id}`);
+            navigate(`/${getBasePath()}/${customer.id}`);
             handleMenuClose();
           }}
           dense
@@ -260,7 +279,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         </MenuItem>
         <MenuItem 
           onClick={() => {
-            navigate(`/customers/${customer.id}/summary`);
+            navigate(`/${getBasePath()}/${customer.id}/summary`);
             handleMenuClose();
           }}
           dense
@@ -274,7 +293,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         {/* Assets & Contracts group */}
         <MenuItem 
           onClick={() => {
-            navigate(`/customers/${customer.id}/contracts`);
+            navigate(`/${getBasePath()}/${customer.id}/contracts`);
             handleMenuClose();
           }}
           dense
@@ -284,7 +303,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         </MenuItem>
         <MenuItem 
           onClick={() => {
-            navigate(`/customers/${customer.id}/vehicles`);
+            navigate(`/${getBasePath()}/${customer.id}/vehicles`);
             handleMenuClose();
           }}
           dense
@@ -298,7 +317,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         {/* Finance group */}
         <MenuItem 
           onClick={() => {
-            navigate(`/customers/${customer.id}/invoices`);
+            navigate(`/${getBasePath()}/${customer.id}/invoices`);
             handleMenuClose();
           }}
           dense
@@ -308,7 +327,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         </MenuItem>
         <MenuItem 
           onClick={() => {
-            navigate(`/customers/${customer.id}/export`);
+            navigate(`/${getBasePath()}/${customer.id}/export`);
             handleMenuClose();
           }}
           dense
@@ -322,7 +341,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
         {/* History group */}
         <MenuItem 
           onClick={() => {
-            navigate(`/customers/${customer.id}/logs`);
+            navigate(`/${getBasePath()}/${customer.id}/logs`);
             handleMenuClose();
           }}
           dense

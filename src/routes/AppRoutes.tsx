@@ -12,9 +12,11 @@ import CustomerContractsPage from '../features/customers/containers/Account/Cust
 import CustomerLogsPage from '../features/customers/containers/Account/CustomerLogsPage';
 import { CustomerInvoicesPage } from '../features/customers/containers';
 import CreateVehiclePage from '../features/vehicles/containers/CreateVehiclePage';
+import ProfessionalViewVehiclePage from '../features/vehicles/containers/ViewVehiclePage';
 import  CustomerVehiclesPage  from '../features/customers/containers/Account/CustomerVehiclesPage';
 import { DashboardPage } from '../features/dashboard/containers/DashboardPage';
 import { ContractsPage, CreateContractPage } from '../features/contracts/containers';
+import { PaymentsPage , PaymentDetailPage } from '../features/invoices/containers';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -33,14 +35,29 @@ export const AppRoutes: React.FC = () => {
             <Route path="logs" element={< CustomerLogsPage/>} />
             <Route path="edit" element={<EditCustomerPage />} />
           </Route>
-          
+        </Route>
+
+        <Route path="endorsers">
+          <Route index element={<div> endrorsers Page</div>} />
+          <Route path="new" element={<CreateCustomerPage />} />
+          <Route path=":id" element={<div>view Endorser Page</div>}>
+          <Route path="edit" element={<div>edit Vehicle Page</div>} />
+          </Route>
         </Route>
 
         <Route path="vehicles">
           <Route index element={<VehiclesPage />} />
           <Route path="new" element={<CreateVehiclePage />} />
+          <Route path=":id" element={<ProfessionalViewVehiclePage />} />
+        </Route>
+
+
+         <Route path="payments">
+          <Route index element={<PaymentsPage />} />
+          <Route path=":id" element={<PaymentDetailPage />} />
           <Route path=":id/edit" element={<div>edit Vehicle Page</div>} />
         </Route>
+
 
         <Route path="contracts">
           <Route index element={<ContractsPage />} />

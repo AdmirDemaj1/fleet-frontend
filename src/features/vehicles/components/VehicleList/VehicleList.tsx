@@ -10,22 +10,19 @@ import {
   TableRow,
   TablePagination,
   Chip,
-  Tooltip,
   IconButton,
   Typography,
-  Stack,
   Paper,
   useTheme,
   alpha,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Visibility,
   Edit,
   Delete,
-  DirectionsCar,
-  Assignment,
-  BuildCircle,
-  AttachMoney
+  MoreVert,
 } from '@mui/icons-material';
 import { Vehicle, VehicleStatus } from '../../types/vehicleType';
 import { VehicleListSkeleton } from './VehicleListSkeleton';
@@ -56,6 +53,58 @@ export const VehicleList: React.FC<VehicleListProps> = ({
 }) => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [selectedVehicle, setSelectedVehicle] = React.useState<Vehicle | null>(null);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, vehicle: Vehicle) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedVehicle(vehicle);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedVehicle(null);
+  };
+
+  const handleViewDetails = (id: string) => {
+    navigate(`/vehicles/${id}`);
+    handleMenuClose();
+  };
+
+  const handleEditVehicle = (id: string) => {
+    if (onEdit) {
+      onEdit(id);
+    }
+    handleMenuClose();
+  };
+
+  const handleDeleteVehicle = (id: string) => {
+    if (onDelete) {
+      onDelete(id);
+    }
+    handleMenuClose();
+  };
+
+  const formatCurrency = (amount?: number) => {
+    if (!amount) return 'N/A';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (date?: string | Date) => {
+    if (!date) return 'N/A';
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
 
   const getStatusChip = (status: VehicleStatus) => {
     const statusConfig: Record<VehicleStatus, { color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning', label: string }> = {
@@ -73,37 +122,34 @@ export const VehicleList: React.FC<VehicleListProps> = ({
         size="small"
         color={config.color}
         label={config.label}
+        sx={{ fontSize: '0.75rem', height: 20 }}
       />
     );
   };
 
-  const handleViewDetails = (id: string) => {
-    navigate(`/vehicles/${id}`);
-  };
-
   return (
-    <Paper 
-      elevation={2}
-      sx={{ 
-        borderRadius: 2,
-        overflow: 'hidden',
-        transition: 'box-shadow 0.3s ease-in-out',
-        '&:hover': {
-          boxShadow: theme.shadows[4]
-        }
-      }}
-    >
+    <>
+      <Paper 
+        elevation={0}
+        sx={{ 
+          borderRadius: 2,
+          overflow: 'hidden',
+          border: '1px solid',
+          borderColor: 'divider'
+        }}
+      >
       <TableContainer>
-        <Table>
+        <Table size="small" sx={{ '& .MuiTableCell-root': { py: 1, px: 2 } }}>
           <TableHead>
-            <TableRow>
-              <TableCell>License Plate</TableCell>
-              <TableCell>Vehicle</TableCell>
-              <TableCell>Year</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Valuation ($)</TableCell>
-              <TableCell>Ownership</TableCell>
-              <TableCell>Actions</TableCell>
+            <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.02) }}>
+              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>License Plate</TableCell>
+              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Vehicle Info</TableCell>
+              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Financial</TableCell>
+              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Insurance</TableCell>
+              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Ownership</TableCell>
+              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>Operational</TableCell>
+              <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 40 }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -111,85 +157,114 @@ export const VehicleList: React.FC<VehicleListProps> = ({
               <VehicleListSkeleton rowsPerPage={rowsPerPage} />
             ) : vehicles.length > 0 ? (
               vehicles.map((vehicle) => (
-                <TableRow key={vehicle.id} hover>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="bold">
-                      {vehicle.licensePlate}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      VIN: {vehicle.vin}
-                    </Typography>
+                <TableRow
+                  key={vehicle.id}
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.02)
+                    },
+                    '&:nth-of-type(even)': {
+                      backgroundColor: alpha(theme.palette.grey[500], 0.01)
+                    }
+                  }}
+                >
+                  <TableCell sx={{ fontSize: '0.8rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                        {vehicle.licensePlate}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                        VIN: {vehicle.vin || 'N/A'}
+                      </Typography>
+                    </Box>
                   </TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <DirectionsCar color="action" fontSize="small" />
-                      <Box>
-                        <Typography variant="body2">{vehicle.make} {vehicle.model}</Typography>
-                        {vehicle.color && (
-                          <Typography variant="caption" color="textSecondary">
-                            {vehicle.color}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Stack>
+                  
+                  <TableCell sx={{ fontSize: '0.8rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                        {vehicle.year} {vehicle.make} {vehicle.model}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                        {vehicle.color ? `${vehicle.color} • ` : ''}{vehicle.mileage?.toLocaleString() || 0} mi
+                      </Typography>
+                    </Box>
                   </TableCell>
-                  <TableCell>{vehicle.year}</TableCell>
-                  <TableCell>{getStatusChip(vehicle.status)}</TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      ${vehicle.currentValuation?.toLocaleString() || 'N/A'}
-                    </Typography>
+
+                  <TableCell sx={{ fontSize: '0.8rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {getStatusChip(vehicle.status)}
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                        Updated: {formatDate(vehicle.updatedAt)}
+                      </Typography>
+                    </Box>
                   </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {vehicle.legalOwner || 'Company Owned'}
-                    </Typography>
-                    {vehicle.isLiquidAsset && (
-                      <Chip 
-                        size="small" 
-                        variant="outlined" 
-                        color="info"
-                        label="Liquid Asset" 
-                        icon={<AttachMoney fontSize="small" />}
-                      />
-                    )}
+
+                  <TableCell sx={{ fontSize: '0.8rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                        {formatCurrency(vehicle.currentValuation)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                        Purchase: {formatCurrency(vehicle.purchasePrice)}
+                      </Typography>
+                    </Box>
                   </TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <Tooltip title="View Details">
-                        <IconButton 
+
+                  <TableCell sx={{ fontSize: '0.8rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                        {vehicle.insuranceProvider || 'Uninsured'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                        {vehicle.insuranceExpiryDate ? 
+                          `Exp: ${formatDate(vehicle.insuranceExpiryDate)}` : 
+                          'No expiry'
+                        }
+                      </Typography>
+                    </Box>
+                  </TableCell>
+
+                  <TableCell sx={{ fontSize: '0.8rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                        {vehicle.legalOwner || 'Company Owned'}
+                      </Typography>
+                      {vehicle.isLiquidAsset && (
+                        <Chip 
                           size="small" 
-                          color="primary" 
-                          onClick={() => handleViewDetails(vehicle.id)}
-                        >
-                          <Visibility fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      
-                      {onEdit && (
-                        <Tooltip title="Edit">
-                          <IconButton 
-                            size="small" 
-                            color="info" 
-                            onClick={() => onEdit(vehicle.id)}
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                          variant="outlined" 
+                          color="info"
+                          label="Liquid" 
+                          sx={{ height: 16, fontSize: '0.6rem', mt: 0.5 }}
+                        />
                       )}
-                      
-                      {onDelete && vehicle.status !== VehicleStatus.LEASED && (
-                        <Tooltip title="Delete">
-                          <IconButton 
-                            size="small" 
-                            color="error" 
-                            onClick={() => onDelete(vehicle.id)}
-                          >
-                            <Delete fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Stack>
+                    </Box>
+                  </TableCell>
+
+                  <TableCell sx={{ fontSize: '0.8rem' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                        Fuel: {vehicle.fuelType || 'Unknown'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                        Condition: {vehicle.condition || 'Unknown'}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+
+                  <TableCell sx={{ fontSize: '0.8rem' }}>
+                    <IconButton
+                      onClick={(event) => handleMenuOpen(event, vehicle)}
+                      size="small"
+                      sx={{ 
+                        p: 0.5,
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                        }
+                      }}
+                    >
+                      <MoreVert fontSize="small" />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))
@@ -239,5 +314,73 @@ export const VehicleList: React.FC<VehicleListProps> = ({
         }}
       />
     </Paper>
+
+    {/* Actions Menu */}
+    <Menu
+      anchorEl={anchorEl}
+      open={Boolean(anchorEl)}
+      onClose={handleMenuClose}
+      transformOrigin={{
+        vertical: 'top',
+        horizontal: 'right',
+      }}
+      anchorOrigin={{
+        vertical: 'bottom',
+        horizontal: 'right',
+      }}
+      PaperProps={{
+        sx: {
+          boxShadow: theme.shadows[8],
+          border: `1px solid ${theme.palette.divider}`,
+          borderRadius: 2,
+          minWidth: 140
+        }
+      }}
+    >
+      <MenuItem 
+        onClick={() => handleViewDetails(selectedVehicle?.id || '')}
+        sx={{ 
+          gap: 1.5,
+          fontSize: '0.875rem',
+          '&:hover': {
+            backgroundColor: alpha(theme.palette.primary.main, 0.08)
+          }
+        }}
+      >
+        <Visibility fontSize="small" color="primary" />
+        View Details
+      </MenuItem>
+      {onEdit && (
+        <MenuItem 
+          onClick={() => handleEditVehicle(selectedVehicle?.id || '')}
+          sx={{ 
+            gap: 1.5,
+            fontSize: '0.875rem',
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.warning.main, 0.08)
+            }
+          }}
+        >
+          <Edit fontSize="small" color="warning" />
+          Edit Vehicle
+        </MenuItem>
+      )}
+      {onDelete && selectedVehicle?.status !== VehicleStatus.LEASED && (
+        <MenuItem 
+          onClick={() => handleDeleteVehicle(selectedVehicle?.id || '')}
+          sx={{ 
+            gap: 1.5,
+            fontSize: '0.875rem',
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.error.main, 0.08)
+            }
+          }}
+        >
+          <Delete fontSize="small" color="error" />
+          Delete Vehicle
+        </MenuItem>
+      )}
+    </Menu>
+    </>
   );
 };

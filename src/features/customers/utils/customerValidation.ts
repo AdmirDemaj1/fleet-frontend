@@ -54,7 +54,30 @@ const businessDetailsSchema = yup.object().shape({
   ...baseSchema
 });
 
-// Unified schema that can handle both customer types
+const endorserDetailsSchema = yup.object().shape({
+  type: yup.string().oneOf([CustomerType.ENDORSER]).required(),
+  firstName: yup.string().required('First name is required'),
+  lastName: yup.string().required('Last name is required'),
+  idNumber: yup
+    .string()
+    .required('ID number is required')
+    .min(10, 'ID number must be between 10 and 20 characters')
+    .max(20, 'ID number must be between 10 and 20 characters'),
+  dateOfBirth: yup
+    .string()
+    .required('Date of birth is required'),
+  guaranteedAmount: yup
+    .number()
+    .nullable()
+    .min(0, 'Guaranteed amount must be positive'),
+  relationshipToCustomer: yup.string().nullable(),
+  financialInformation: yup.object().nullable(),
+  active: yup.boolean().nullable(),
+  notes: yup.string().nullable(),
+  ...baseSchema
+});
+
+// Unified schema that can handle all customer types
 export const getValidationSchema = (customerType: CustomerType) => {
   return yup.object().shape({
     individualDetails: yup.lazy(() => 
@@ -65,6 +88,11 @@ export const getValidationSchema = (customerType: CustomerType) => {
     businessDetails: yup.lazy(() => 
       customerType === CustomerType.BUSINESS
         ? businessDetailsSchema.required('Business details are required')
+        : yup.mixed().optional()
+    ),
+    endorserDetails: yup.lazy(() => 
+      customerType === CustomerType.ENDORSER
+        ? endorserDetailsSchema.required('Endorser details are required')
         : yup.mixed().optional()
     )
   });

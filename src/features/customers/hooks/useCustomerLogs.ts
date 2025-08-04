@@ -6,7 +6,7 @@ import { filterLogs, sortLogs } from '../utils/logUtils';
 import { DEFAULT_LOGS_ROWS_PER_PAGE } from '../constants/logConstants';
 
 // Hook for managing logs data
-export const useCustomerLogs = (customerId?: string) => {
+export const useCustomerLogs = (customerId?: string, options?: { limit?: number; offset?: number }) => {
   const { id: urlCustomerId } = useParams<{ id: string }>();
   const effectiveCustomerId = customerId || urlCustomerId;
   
@@ -21,7 +21,7 @@ export const useCustomerLogs = (customerId?: string) => {
     setError(null);
     
     try {
-      const data = await customerApi.getLogs(effectiveCustomerId);
+      const data = await customerApi.getLogs(effectiveCustomerId, options);
       setLogs(data);
     } catch (error) {
       console.error('Failed to fetch logs:', error);
@@ -30,7 +30,7 @@ export const useCustomerLogs = (customerId?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [effectiveCustomerId]);
+  }, [effectiveCustomerId, options]);
 
   useEffect(() => {
     fetchLogs();

@@ -57,23 +57,23 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       year: new Date().getFullYear(),
       color: "",
       status: VehicleStatus.AVAILABLE,
-      // mileage: null, // COMMENTED OUT - Backend validation error
-      fuelType: undefined,
-      // transmission: '', // COMMENTED OUT - Backend validation error
-      // condition: '', // COMMENTED OUT - Backend validation error
-      legalOwner: "",
+      // mileage: null,
+      fuelType: '',
+      // transmission: '',
+      // condition: '',
+      legalOwner: '',
       isLiquidAsset: false,
-      purchaseDate: undefined,
-      // purchasePrice: null, // COMMENTED OUT - Backend validation error
-      // registrationDate: null, // COMMENTED OUT - Backend validation error
-      // registrationExpiryDate: null, // COMMENTED OUT - Backend validation error
-      // insuranceProvider: '', // COMMENTED OUT - Backend validation error
-      // insurancePolicyNumber: '', // COMMENTED OUT - Backend validation error
-      // insuranceExpiryDate: null, // COMMENTED OUT - Backend validation error
-      currentValuation: undefined,
-      marketValue: undefined,
-      depreciatedValue: undefined,
-      ...initialData,
+      purchaseDate: null,
+      // purchasePrice: null,
+      // registrationDate: null,
+      // registrationExpiryDate: null,
+      // insuranceProvider: '',
+      // insurancePolicyNumber: '',
+      // insuranceExpiryDate: null,
+      currentValuation: null,
+      marketValue: null,
+      depreciatedValue: null,
+      ...initialData
     },
     // @ts-ignore - Validation schema mismatch due to commented out fields
     resolver: yupResolver(validationSchema),
@@ -184,23 +184,23 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         year: new Date().getFullYear(),
         color: "",
         status: VehicleStatus.AVAILABLE,
-        // mileage: undefined, // COMMENTED OUT - Backend validation error
-        fuelType: undefined,
-        // transmission: undefined, // COMMENTED OUT - Backend validation error
-        // condition: undefined, // COMMENTED OUT - Backend validation error
-        legalOwner: "",
+        // mileage: null,
+        fuelType: '',
+        // transmission: '',
+        // condition: '',
+        legalOwner: '',
         isLiquidAsset: false,
-        purchaseDate: undefined,
-        // purchasePrice: undefined, // COMMENTED OUT - Backend validation error
-        // registrationDate: undefined, // COMMENTED OUT - Backend validation error
-        // registrationExpiryDate: undefined, // COMMENTED OUT - Backend validation error
-        // insuranceProvider: undefined, // COMMENTED OUT - Backend validation error
-        // insurancePolicyNumber: "", // COMMENTED OUT - Backend validation error
-        // insuranceExpiryDate: undefined, // COMMENTED OUT - Backend validation error
-        currentValuation: undefined,
-        marketValue: undefined,
-        depreciatedValue: undefined,
-        ...initialData,
+        // purchaseDate: null,
+        // purchasePrice: null,
+        // registrationDate: null,
+        // registrationExpiryDate: null,
+        // insuranceProvider: '',
+        // insurancePolicyNumber: '',
+        // insuranceExpiryDate: null,
+        currentValuation: null,
+        marketValue: null,
+        depreciatedValue: null,
+        ...initialData
       });
     }
   }, [initialData, reset]);
@@ -234,22 +234,6 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <FormProvider {...methods}>
         <Paper elevation={2} sx={{ p: 4 }}>
-          {/* Header */}
-          <Box mb={4}>
-            <Typography
-              variant="h4"
-              component="h1"
-              gutterBottom
-              fontWeight="bold"
-            >
-              {isEdit ? "Edit Vehicle" : "Add New Vehicle"}
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {isEdit
-                ? "Update vehicle information"
-                : "Enter vehicle details in the form below"}
-            </Typography>
-          </Box>
 
           {/* Stepper */}
           <Box mb={4}>
