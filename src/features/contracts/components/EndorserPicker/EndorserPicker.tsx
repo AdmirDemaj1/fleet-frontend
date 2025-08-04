@@ -31,8 +31,8 @@ import {
 import { useGetEndorsersQuery } from '../../api/contractApi';
 import { EndorserPickerProps, EndorserSummary } from '../../types/contract.types';
 import { CustomerCreationModal } from '../../../../shared/components';
-import { CreateCustomerDto } from '../../../customers/types/customer.types';
-import { customerApi } from '../../../customers/api/customerApi';
+import { CreateCustomerDto, CreateEndorserDto, CustomerType } from '../../../customers/types/customer.types';
+import { endorserApi } from '../../../customers/api/endorserApi';
 
 // Simple debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -181,40 +181,72 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
 
   const handleCreateEndorser = useCallback(async (customerData: CreateCustomerDto) => {
     try {
+      console.log('📋 Received customer data for endorser creation:', JSON.stringify(customerData, null, 2));
       setState(prev => ({ ...prev, isCreatingEndorser: true }));
       
-      const newEndorser = await customerApi.create(customerData);
+      // Transform customer data to endorser data
+      let endorserData: CreateEndorserDto;
       
-      // Transform the created customer to match our enhanced endorser type
-      let enhancedEndorser: EnhancedEndorserSummary;
-      
-      if (newEndorser.type === 'individual') {
-        const individualCustomer = newEndorser as any; // Individual customer
-        enhancedEndorser = {
-          id: newEndorser.id || '',
-          firstName: individualCustomer.firstName || '',
-          lastName: individualCustomer.lastName || '',
-          idNumber: individualCustomer.idNumber || '',
-          email: newEndorser.email || '',
-          phone: newEndorser.phone || '',
+      // Handle direct endorser details (if the form was configured for endorsers)
+      if (customerData.endorserDetails) {
+        endorserData = customerData.endorserDetails;
+      }
+      // Handle individual customer data (transform to endorser)
+      else if (customerData.individualDetails) {
+        const individual = customerData.individualDetails;
+        endorserData = {
+          type: CustomerType.ENDORSER,
+          firstName: individual.firstName,
+          lastName: individual.lastName,
+          idNumber: individual.idNumber,
+          dateOfBirth: individual.dateOfBirth,
+          address: individual.address,
+          phone: individual.phone,
+          email: individual.email,
+          secondaryPhone: individual.secondaryPhone,
+          secondaryEmail: individual.secondaryEmail,
+          additionalNotes: individual.additionalNotes,
           relationshipToCustomer: 'Endorser',
-          isVerified: true,
-          status: 'active'
-        };
-      } else {
-        const businessCustomer = newEndorser as any; // Business customer
-        enhancedEndorser = {
-          id: newEndorser.id || '',
-          firstName: businessCustomer.legalName || '',
-          lastName: '',
-          idNumber: businessCustomer.nuisNipt || '',
-          email: newEndorser.email || '',
-          phone: newEndorser.phone || '',
-          relationshipToCustomer: 'Endorser',
-          isVerified: true,
-          status: 'active'
+          active: true
         };
       }
+      // Handle business customer data (transform to endorser)
+      else if (customerData.businessDetails) {
+        const business = customerData.businessDetails;
+        endorserData = {
+          type: CustomerType.ENDORSER,
+          firstName: business.legalName,
+          lastName: '',
+          idNumber: business.nuisNipt,
+          dateOfBirth: '', // Business entities don't have birth dates
+          address: business.address,
+          phone: business.phone,
+          email: business.email,
+          secondaryPhone: business.secondaryPhone,
+          secondaryEmail: business.secondaryEmail,
+          additionalNotes: business.additionalNotes,
+          relationshipToCustomer: 'Business Endorser',
+          active: true
+        };
+      }
+      else {
+        throw new Error('No valid customer data provided. Please ensure individual, business, or endorser details are included.');
+      }
+      
+      const newEndorser = await endorserApi.createEndorser(endorserData);
+      
+      // Transform the created endorser to match our enhanced endorser type
+      const enhancedEndorser: EnhancedEndorserSummary = {
+        id: newEndorser.id || '',
+        firstName: newEndorser.firstName || '',
+        lastName: newEndorser.lastName || '',
+        idNumber: newEndorser.idNumber || '',
+        email: newEndorser.email || '',
+        phone: newEndorser.phone || '',
+        relationshipToCustomer: newEndorser.relationshipToCustomer || 'Endorser',
+        isVerified: true,
+        status: 'active'
+      };
 
       // Select the newly created endorser
       setState(prev => ({ 
@@ -234,7 +266,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
       console.error('Failed to create endorser:', error);
       setState(prev => ({ ...prev, isCreatingEndorser: false }));
     }
-  }, [customerApi, onEndorserSelect, refetch]);
+  }, [onEndorserSelect, refetch]);
 
   // Error handling
   if (apiError) {

@@ -1,5 +1,6 @@
 export const API_ENDPOINTS = {
     CUSTOMERS: '/customers',
+    ENDORSERS: '/endorsers',
     VEHICLES: '/vehicles',
     CONTRACTS: '/contracts',
     ASSETS: '/assets',
@@ -48,6 +49,7 @@ export const API_ENDPOINTS = {
   export const CUSTOMER_TYPE_LABELS = {
     individual: 'Individual',
     business: 'Business',
+    endorser: 'Endorser',
   };
   
   export const CONTRACT_STATUS_LABELS = {
