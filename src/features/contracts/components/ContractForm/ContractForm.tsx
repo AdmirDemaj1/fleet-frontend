@@ -34,6 +34,7 @@ import { CustomerPicker } from '../CustomerPicker/CustomerPicker';
 import { VehiclePicker } from '../VehiclePicker/VehiclePicker';
 import { EndorserPicker } from '../EndorserPicker/EndorserPicker';
 import { LoanForm } from '../LoanForm/LoanForm';
+import { ContractDetails } from '../ContractDetails/ContractDetails';
 
 // Steps configuration
 const STEPS = [
@@ -64,6 +65,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       endDate: '',
       totalAmount: 0,
       loanDetails: {
+        contractNumber: '',
+        startDate: '',
+        endDate: '',
         interestRate: 0,
         loanTermMonths: 0,
         monthlyPayment: 0,
@@ -73,6 +77,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       selectedEndorsers: [],
       collaterals: [],
       endorserCollaterals: [],
+      terms: {
+        paymentFrequency: 'monthly',
+        lateFeePercentage: 0,
+        additionalTerms: ''
+      },
       ...initialData
     },
     mode: 'onChange'
@@ -119,16 +128,13 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         vehicleIds: data.selectedVehicles,
         collaterals: data.collaterals,
         endorserCollaterals: data.endorserCollaterals,
-        terms: data.terms
+        terms: data.terms || {}
       };
 
       if (data.type === ContractType.LOAN && data.loanDetails) {
         submitData.loanDetails = {
           type: ContractType.LOAN,
-          contractNumber: data.contractNumber,
           customerId: data.customerId,
-          startDate: data.startDate,
-          endDate: data.endDate,
           totalAmount: data.totalAmount,
           ...data.loanDetails
         };
@@ -155,20 +161,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
 
       case 1: // Contract Details
-        return (
-          <Grid container spacing={3}>
-            {/* Contract type, dates, amount, etc. */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
-                Basic Contract Information
-              </Typography>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                This step will contain contract type selection, dates, amounts, and basic terms.
-                Implementation can be extended based on your specific requirements.
-              </Alert>
-            </Grid>
-          </Grid>
-        );
+        return <ContractDetails />;
 
       case 2: // Financial Details
         return (
@@ -180,12 +173,15 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   loanData.loanTermMonths !== undefined && 
                   loanData.monthlyPayment !== undefined) {
                 setValue('loanDetails', {
+                  contractNumber: (loanData as any).contractNumber || watchedData.loanDetails?.contractNumber || '',
+                  startDate: (loanData as any).startDate || watchedData.loanDetails?.startDate || '',
+                  endDate: (loanData as any).endDate || watchedData.loanDetails?.endDate || '',
                   interestRate: loanData.interestRate,
                   loanTermMonths: loanData.loanTermMonths,
                   monthlyPayment: loanData.monthlyPayment,
                   processingFee: loanData.processingFee,
                   earlyRepaymentPenalty: loanData.earlyRepaymentPenalty,
-                  paymentScheduleType: loanData.paymentScheduleType
+                  paymentScheduleType: loanData.paymentScheduleType || 'monthly_fixed'
                 }, { shouldValidate: true });
               }
             }}
@@ -295,9 +291,17 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       case 0:
         return !!watchedData.customerId;
       case 1:
-        return true; // Basic validation for contract details
+        return !!watchedData.contractNumber && 
+               !!watchedData.startDate && 
+               !!watchedData.endDate && 
+               watchedData.totalAmount > 0 &&
+               !!watchedData.terms; // Basic validation for contract details
       case 2:
-        return watchedData.loanDetails?.interestRate && watchedData.loanDetails?.loanTermMonths;
+        return watchedData.loanDetails?.contractNumber && 
+               watchedData.loanDetails?.startDate && 
+               watchedData.loanDetails?.endDate && 
+               watchedData.loanDetails?.interestRate && 
+               watchedData.loanDetails?.loanTermMonths;
       case 3:
         return true; // Vehicles are optional
       case 4:

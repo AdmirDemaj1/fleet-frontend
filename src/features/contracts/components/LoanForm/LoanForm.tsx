@@ -16,6 +16,9 @@ import {
   Chip,
   Paper
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { Controller, useFormContext } from 'react-hook-form';
+import dayjs from 'dayjs';
 import {
   Calculate,
   AccountBalance,
@@ -34,7 +37,14 @@ export const LoanForm: React.FC<LoanFormProps> = ({
   contractType,
   totalAmount = 0
 }) => {
+  const { control, formState: { errors: formErrors }, watch } = useFormContext();
+  const contractStartDate = watch('startDate');
+  const contractEndDate = watch('endDate');
+  
   const [localData, setLocalData] = useState(data || {
+    contractNumber: '',
+    startDate: '',
+    endDate: '', 
     interestRate: 0,
     loanTermMonths: 0,
     monthlyPayment: 0,
@@ -104,6 +114,83 @@ export const LoanForm: React.FC<LoanFormProps> = ({
       </Typography>
 
       <Grid container spacing={3}>
+        {/* Contract Number for Loan Details */}
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="loanDetails.contractNumber"
+            control={control}
+            rules={{ required: 'Loan contract number is required' }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                fullWidth
+                label="Loan Contract Number"
+                required
+                error={!!(formErrors.loanDetails as any)?.contractNumber}
+                helperText={(formErrors.loanDetails as any)?.contractNumber?.message as string || 'Unique loan agreement identifier'}
+                value={field.value || ''}
+              />
+            )}
+          />
+        </Grid>
+
+        {/* Loan Start Date */}
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="loanDetails.startDate"
+            control={control}
+            rules={{ required: 'Loan start date is required' }}
+            render={({ field: { value, onChange, ...field } }) => (
+              <DatePicker
+                {...field}
+                label="Loan Start Date"
+                value={value ? dayjs(value) : (contractStartDate ? dayjs(contractStartDate) : null)}
+                onChange={(newValue) => {
+                  onChange(newValue ? newValue.format('YYYY-MM-DD') : '');
+                }}
+                minDate={contractStartDate ? dayjs(contractStartDate) : dayjs()}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: true,
+                    error: !!(formErrors.loanDetails as any)?.startDate,
+                    helperText: (formErrors.loanDetails as any)?.startDate?.message as string || 'When loan payments begin'
+                  }
+                }}
+              />
+            )}
+          />
+        </Grid>
+
+        {/* Loan End Date */}
+        <Grid item xs={12} sm={6}>
+          <Controller
+            name="loanDetails.endDate"
+            control={control}
+            rules={{ required: 'Loan end date is required' }}
+            render={({ field: { value, onChange, ...field } }) => (
+              <DatePicker
+                {...field}
+                label="Loan End Date"
+                value={value ? dayjs(value) : (contractEndDate ? dayjs(contractEndDate) : null)}
+                onChange={(newValue) => {
+                  onChange(newValue ? newValue.format('YYYY-MM-DD') : '');
+                }}
+                minDate={contractStartDate ? dayjs(contractStartDate).add(1, 'day') : dayjs().add(1, 'day')}
+                maxDate={contractEndDate ? dayjs(contractEndDate) : undefined}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: true,
+                    error: !!(formErrors.loanDetails as any)?.endDate,
+                    helperText: (formErrors.loanDetails as any)?.endDate?.message as string || 'When loan is fully repaid'
+                  }
+                }}
+              />
+            )}
+          />
+        </Grid>
+
         {/* Interest Rate */}
         <Grid item xs={12} sm={6}>
           <TextField
