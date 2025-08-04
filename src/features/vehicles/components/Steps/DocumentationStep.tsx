@@ -2,47 +2,38 @@ import React from 'react';
 import { 
   Grid, 
   Typography, 
-  Divider, 
   TextField, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  FormHelperText,
   Box,
   InputAdornment,
   Paper,
   Alert
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Controller, useFormContext } from 'react-hook-form';
-import { InsuranceCompany } from '../../types/vehicleType';
-import dayjs from 'dayjs';
 
 export const DocumentationStep: React.FC = () => {
-  const { control, formState: { errors }, watch } = useFormContext();
+  const { control, formState: { errors } } = useFormContext();
   
-  const insuranceCompanies = [
-    { 
-      value: InsuranceCompany.SIGMA, 
-      label: 'Sigma',
-      description: 'Sigma Insurance Company'
-    },
-    { 
-      value: InsuranceCompany.ALBSIG, 
-      label: 'Albsig',
-      description: 'Albanian Signal Insurance'
-    },
-    { 
-      value: InsuranceCompany.OTHER, 
-      label: 'Other',
-      description: 'Other insurance provider'
-    }
-  ];
+  // const insuranceCompanies = [
+  //   { 
+  //     value: InsuranceCompany.SIGMA, 
+  //     label: 'Sigma',
+  //     description: 'Sigma Insurance Company'
+  //   },
+  //   { 
+  //     value: InsuranceCompany.ALBSIG, 
+  //     label: 'Albsig',
+  //     description: 'Albanian Signal Insurance'
+  //   },
+  //   { 
+  //     value: InsuranceCompany.OTHER, 
+  //     label: 'Other',
+  //     description: 'Other insurance provider'
+  //   }
+  // ];
 
-  // Watch registration dates for validation
-  const registrationDate = watch('registrationDate');
-  const insuranceExpiryDate = watch('insuranceExpiryDate');
+  // // Watch registration dates for validation
+  // const registrationDate = watch('registrationDate');
+  // const insuranceExpiryDate = watch('insuranceExpiryDate');
   
   return (
     <Box>
@@ -58,8 +49,9 @@ export const DocumentationStep: React.FC = () => {
           </Box>
         </Grid>
         
+        {/* COMMENTED OUT - Backend validation error */}
         {/* Registration Section */}
-        <Grid item xs={12}>
+        {/* <Grid item xs={12}>
           <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
             <Typography variant="h6" gutterBottom color="primary" fontWeight="600">
               📋 Registration Information
@@ -126,10 +118,11 @@ export const DocumentationStep: React.FC = () => {
               </Grid>
             </Grid>
           </Paper>
-        </Grid>
+        </Grid> */}
         
+        {/* COMMENTED OUT - Backend validation error */}
         {/* Insurance Section */}
-        <Grid item xs={12}>
+        {/* <Grid item xs={12}>
           <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: 'blue.50' }}>
             <Typography variant="h6" gutterBottom color="primary" fontWeight="600">
               🛡️ Insurance Information
@@ -239,7 +232,7 @@ export const DocumentationStep: React.FC = () => {
               )}
             </Grid>
           </Paper>
-        </Grid>
+        </Grid> */}
         
         {/* Valuation Section */}
         <Grid item xs={12}>

@@ -11,13 +11,11 @@ import {
   FormHelperText,
   FormControlLabel,
   Checkbox,
-  Box,
-  Chip,
-  InputAdornment
+  Box
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Controller, useFormContext } from 'react-hook-form';
-import { FuelType, ConditionStatus } from '../../types/vehicleType';
+import { FuelType } from '../../types/vehicleType';
 import dayjs from 'dayjs';
 
 export const DetailsStep: React.FC = () => {
@@ -56,45 +54,48 @@ export const DetailsStep: React.FC = () => {
     }
   ];
 
-  const conditionTypes = [
-    { 
-      value: ConditionStatus.EXCELLENT, 
-      label: 'Excellent',
-      color: 'success' as const,
-      description: 'Like new condition'
-    },
-    { 
-      value: ConditionStatus.GOOD, 
-      label: 'Good',
-      color: 'info' as const,
-      description: 'Minor wear, well maintained'
-    },
-    { 
-      value: ConditionStatus.FAIR, 
-      label: 'Fair',
-      color: 'warning' as const,
-      description: 'Some wear and tear'
-    },
-    { 
-      value: ConditionStatus.POOR, 
-      label: 'Poor',
-      color: 'error' as const,
-      description: 'Significant wear or damage'
-    },
-    { 
-      value: ConditionStatus.NEEDS_REPAIR, 
-      label: 'Needs Repair',
-      color: 'error' as const,
-      description: 'Requires immediate attention'
-    }
-  ];
+  // Commented out unused arrays for commented out fields
+  // const conditionTypes = [...];
+  // const conditionTypes = [
+  //   { 
+  //     value: ConditionStatus.EXCELLENT, 
+  //     label: 'Excellent',
+  //     color: 'success' as const,
+  //     description: 'Like new condition'
+  //   },
+  //   { 
+  //     value: ConditionStatus.GOOD, 
+  //     label: 'Good',
+  //     color: 'info' as const,
+  //     description: 'Minor wear, well maintained'
+  //   },
+  //   { 
+  //     value: ConditionStatus.FAIR, 
+  //     label: 'Fair',
+  //     color: 'warning' as const,
+  //     description: 'Some wear and tear'
+  //   },
+  //   { 
+  //     value: ConditionStatus.POOR, 
+  //     label: 'Poor',
+  //     color: 'error' as const,
+  //     description: 'Significant wear or damage'
+  //   },
+  //   { 
+  //     value: ConditionStatus.NEEDS_REPAIR, 
+  //     label: 'Needs Repair',
+  //     color: 'error' as const,
+  //     description: 'Requires immediate attention'
+  //   }
+  // ];
 
-  const transmissionTypes = [
-    { value: 'automatic', label: 'Automatic', description: 'Automatic transmission' },
-    { value: 'manual', label: 'Manual', description: 'Manual transmission' },
-    { value: 'semi-automatic', label: 'Semi-Automatic', description: 'Semi-automatic transmission' },
-    { value: 'cvt', label: 'CVT', description: 'Continuously Variable Transmission' }
-  ];
+  // const transmissionTypes = [
+  //   { value: 'automatic', label: 'Automatic', description: 'Automatic transmission' },
+  //   { value: 'manual', label: 'Manual', description: 'Manual transmission' },
+  //   { value: 'semi-automatic', label: 'Semi-Automatic', description: 'Semi-automatic transmission' },
+  //   { value: 'cvt', label: 'CVT', description: 'Continuously Variable Transmission' }
+  // ];
+  // const transmissionTypes = [...];
 
   return (
     <Box>
@@ -117,7 +118,8 @@ export const DetailsStep: React.FC = () => {
           </Typography>
         </Grid>
         
-        <Grid item xs={12} sm={6}>
+        {/* COMMENTED OUT - Backend validation error */}
+        {/* <Grid item xs={12} sm={6}>
           <Controller
             name="mileage"
             control={control}
@@ -142,7 +144,7 @@ export const DetailsStep: React.FC = () => {
               />
             )}
           />
-        </Grid>
+        </Grid> */}
         
         <Grid item xs={12} sm={6}>
           <Controller
@@ -185,7 +187,8 @@ export const DetailsStep: React.FC = () => {
           />
         </Grid>
         
-        <Grid item xs={12} sm={6}>
+        {/* COMMENTED OUT - Backend validation error */}
+        {/* <Grid item xs={12} sm={6}>
           <Controller
             name="transmission"
             control={control}
@@ -221,9 +224,10 @@ export const DetailsStep: React.FC = () => {
               </FormControl>
             )}
           />
-        </Grid>
+        </Grid> */}
         
-        <Grid item xs={12} sm={6}>
+        {/* COMMENTED OUT - Backend validation error */}
+        {/* <Grid item xs={12} sm={6}>
           <Controller
             name="condition"
             control={control}
@@ -264,7 +268,7 @@ export const DetailsStep: React.FC = () => {
               </FormControl>
             )}
           />
-        </Grid>
+        </Grid> */}
         
         <Grid item xs={12}>
           <Divider sx={{ my: 2 }} />
@@ -363,7 +367,8 @@ export const DetailsStep: React.FC = () => {
           />
         </Grid>
         
-        <Grid item xs={12} sm={6}>
+        {/* COMMENTED OUT - Backend validation error */}
+        {/* <Grid item xs={12} sm={6}>
           <Controller
             name="purchasePrice"
             control={control}
@@ -388,7 +393,7 @@ export const DetailsStep: React.FC = () => {
               />
             )}
           />
-        </Grid>
+        </Grid> */}
       </Grid>
     </Box>
   );
