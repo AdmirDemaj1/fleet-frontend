@@ -24,3 +24,15 @@ Build the application in production mode by running:
 npm run build
 ```
 
+- To run in production mode:
+
+```sh
+npm run dev -- --mode production
+```
+
+- To run in dev mode:
+
+```sh
+npm run dev -- --mode development
+```
+
