@@ -288,7 +288,9 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
                 <TableRow 
                   key={invoice.id} 
                   hover
+                  onClick={() => navigate(`/payments/${invoice.id}`)}
                   sx={{ 
+                    cursor: 'pointer',
                     transition: 'all 0.2s',
                     '&:hover': {
                       backgroundColor: alpha(theme.palette.primary.main, 0.02)
@@ -323,7 +325,10 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
                   <TableCell align="right">
                     <IconButton
                       size="small"
-                      onClick={(event) => openMenu(event, invoice)}
+                      onClick={(event) => {
+                        event.stopPropagation(); // Prevent row click
+                        openMenu(event, invoice);
+                      }}
                     >
                       <MoreVertIcon fontSize="small" />
                     </IconButton>
@@ -428,22 +433,22 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
       >
         <MenuItem onClick={() => {
           if (selectedInvoice) {
-            navigate(`/invoices/${selectedInvoice.id}`);
+            navigate(`/payments/${selectedInvoice.id}`);
           }
           closeMenu();
         }}>
           <Visibility fontSize="small" sx={{ mr: 1 }} />
-          View Details
+          View Payment Details
         </MenuItem>
         
         <MenuItem onClick={() => {
           if (selectedInvoice) {
-            navigate(`/invoices/${selectedInvoice.id}/edit`);
+            navigate(`/payments/${selectedInvoice.id}/edit`);
           }
           closeMenu();
         }}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} />
-          Edit Invoice
+          Edit Payment
         </MenuItem>
 
         {selectedInvoice?.status === 'pending' && (
@@ -470,7 +475,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           sx={{ color: 'error.main' }}
         >
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          Delete Invoice
+          Delete Payment
         </MenuItem>
       </Menu>
 
@@ -500,8 +505,8 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
         open={deleteDialogOpen}
         onConfirm={() => handleDeleteInvoice(invoiceToDelete!)}
         onCancel={closeDeleteDialog}
-        title="Delete Invoice"
-        message={`Are you sure you want to delete invoice #${invoiceToDelete}?`}
+        title="Delete Payment"
+        message={`Are you sure you want to delete payment #${invoiceToDelete}?`}
       />
 
       {/* Notification Snackbar */}
