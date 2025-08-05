@@ -44,12 +44,14 @@ import {
 import { CustomerPicker } from '../CustomerPicker/CustomerPicker';
 import { VehiclePicker } from '../VehiclePicker/VehiclePicker';
 import { EndorserPicker } from '../EndorserPicker/EndorserPicker';
+import { CollateralForm } from '../CollateralForm/CollateralForm';
 
 // Steps configuration
 const STEPS = [
   { id: 'customer', label: 'Select Customer', description: 'Choose the customer for this contract' },
   { id: 'contract', label: 'Contract Details', description: 'Basic contract information and financial terms' },
   { id: 'vehicles', label: 'Vehicles', description: 'Select vehicles for this contract' },
+  { id: 'collaterals', label: 'Collaterals', description: 'Add additional vehicle collaterals' },
   { id: 'endorsers', label: 'Endorsers', description: 'Add guarantors and endorsers' },
   { id: 'review', label: 'Review & Submit', description: 'Review all details before submission' }
 ];
@@ -148,8 +150,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
     try {
       setSubmitError('');
       
-      // Transform form data to CreateContractDto
-      const submitData: CreateContractDto = {
+      // Transform form data to match backend CreateContractDto exactly
+      const submitData: any = {
         type: data.type,
         contractNumber: data.contractNumber,
         customerId: data.customerId,
@@ -157,19 +159,34 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         endDate: data.endDate,
         totalAmount: data.totalAmount,
         interestRate: data.loanDetails?.interestRate || 0,
-        vehicleIds: data.selectedVehicles,
-        collaterals: data.collaterals || [],
-        endorserCollaterals: data.endorserCollaterals?.map(collateral => ({
+        vehicleIds: data.selectedVehicles || [],
+        collaterals: data.collaterals?.map(collateral => ({
+          type: 'vehicle',
           description: collateral.description,
           value: collateral.value,
-          endorserId: collateral.endorserId,
-          guaranteedAmount: collateral.guaranteedAmount,
-          guaranteeType: collateral.guaranteeType || 'personal_guarantee',
-          requiresNotarization: collateral.requiresNotarization,
-          guaranteeExpirationDate: collateral.guaranteeExpirationDate,
-          legalDocumentReference: collateral.legalDocumentReference
+          active: collateral.active,
+          make: collateral.make,
+          model: collateral.model,
+          year: collateral.year,
+          licensePlate: collateral.licensePlate,
+          vinNumber: collateral.vinNumber,
+          color: collateral.color,
+          engineNumber: collateral.engineNumber,
+          registrationCertificate: collateral.registrationCertificate,
+          insurancePolicy: collateral.insurancePolicy
         })) || [],
-        terms: data.terms
+        endorserCollaterals: data.selectedEndorsers?.map(endorserId => ({
+          type: 'endorser',
+          description: `Personal guarantee by endorser ${endorserId}`,
+          value: data.totalAmount * 0.5, // Default to 50% of contract amount
+          endorserId: endorserId,
+          guaranteedAmount: data.totalAmount * 0.5,
+          guaranteeType: 'personal_guarantee',
+          requiresNotarization: false,
+          guaranteeExpirationDate: data.endDate,
+          legalDocumentReference: `GUARANTEE-${data.contractNumber}-${endorserId}`
+        })) || [],
+        terms: data.terms || {}
       };
 
       // Add loan details if it's a loan contract
@@ -477,7 +494,18 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           />
         );
 
-      case 3: // Endorsers
+      case 3: // Collaterals
+        return (
+          <CollateralForm
+            collaterals={watchedData.collaterals || []}
+            onCollateralsChange={(collaterals) => {
+              setValue('collaterals', collaterals, { shouldValidate: true });
+            }}
+            error={errors.collaterals?.message}
+          />
+        );
+
+      case 4: // Endorsers
         return (
           <EndorserPicker
             selectedEndorserIds={watchedData.selectedEndorsers}
@@ -492,7 +520,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           />
         );
 
-      case 4: // Review
+      case 5: // Review
         return (
           <Box>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -604,6 +632,31 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 </Card>
               </Grid>
               
+              {/* Collaterals */}
+              <Grid item xs={12} md={6}>
+                <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" gutterBottom color="primary" sx={{ fontWeight: 600 }}>
+                      Collaterals ({watchedData.collaterals?.length || 0})
+                    </Typography>
+                    {!watchedData.collaterals || watchedData.collaterals.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">No collaterals added</Typography>
+                    ) : (
+                      <Box>
+                        <Typography variant="body2" color="success.main" sx={{ fontWeight: 600 }}>
+                          {watchedData.collaterals.length} collateral(s) added
+                        </Typography>
+                        {watchedData.collaterals.map((collateral: any, index: number) => (
+                          <Typography key={index} variant="caption" color="text.secondary" display="block">
+                            {collateral.description || `${collateral.make} ${collateral.model}`} - ${collateral.value?.toLocaleString()}
+                          </Typography>
+                        ))}
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+
               {/* Endorsers */}
               <Grid item xs={12} md={6}>
                 <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
@@ -680,7 +733,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
       case 2: // Vehicles
         return true; // Vehicles are optional but recommended
-      case 3: // Endorsers
+      case 3: // Collaterals
+        return true; // Collaterals are optional
+      case 4: // Endorsers
         return true; // Endorsers are optional
       default:
         return true;

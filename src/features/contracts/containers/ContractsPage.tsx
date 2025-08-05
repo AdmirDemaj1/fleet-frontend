@@ -4,14 +4,34 @@ import {
   Typography,
   Button,
   Container,
-  Paper,
   Grid
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { ContractList } from '../components/ContractList';
+import { ContractListFilters } from '../components/ContractList/ContractListFilters';
+import { useContracts } from '../hooks/useContracts';
 
 export const ContractsPage: React.FC = () => {
   const navigate = useNavigate();
+  
+  const {
+    contracts,
+    isLoading,
+    page,
+    rowsPerPage,
+    totalCount,
+    type,
+    status,
+    search,
+    handlePageChange,
+    handleRowsPerPageChange,
+    handleTypeChange,
+    handleStatusChange,
+    handleSearchChange,
+    handleDeleteContract,
+    resetFilters
+  } = useContracts();
 
   const handleCreateContract = () => {
     navigate('/contracts/create');
@@ -50,39 +70,28 @@ export const ContractsPage: React.FC = () => {
           </Grid>
 
           <Grid item xs={12}>
-            <Paper 
-              sx={{ 
-                p: 4,
-                textAlign: 'center',
-                bgcolor: 'background.paper',
-                border: 1,
-                borderColor: 'divider',
-                borderRadius: 2
-              }}
-            >
-              <Typography 
-                variant="h6" 
-                color="text.secondary" 
-                gutterBottom
-              >
-                No contracts found
-              </Typography>
-              <Typography 
-                variant="body2" 
-                color="text.secondary" 
-                sx={{ mb: 3 }}
-              >
-                Get started by creating your first contract
-              </Typography>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={handleCreateContract}
-                size="large"
-              >
-                Create Your First Contract
-              </Button>
-            </Paper>
+            <ContractListFilters
+              search={search}
+              type={type}
+              status={status}
+              onSearchChange={handleSearchChange}
+              onTypeChange={handleTypeChange}
+              onStatusChange={handleStatusChange}
+              onReset={resetFilters}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <ContractList
+              contracts={contracts}
+              loading={isLoading}
+              totalCount={totalCount}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              onDelete={handleDeleteContract}
+            />
           </Grid>
         </Grid>
       </Box>

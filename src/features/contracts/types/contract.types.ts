@@ -211,12 +211,12 @@ export interface ContractResponse {
   type: ContractType;
   status: ContractStatus;
   customerId: string;
-  startDate: Date;
-  endDate: Date;
-  totalAmount: number;
-  remainingAmount: number;
-  createdAt: Date;
-  updatedAt: Date;
+  startDate: string;
+  endDate: string;
+  totalAmount: string;
+  remainingAmount: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CustomerSummary {
