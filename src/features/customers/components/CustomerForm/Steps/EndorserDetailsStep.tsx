@@ -362,13 +362,18 @@ export const EndorserDetailsStep: React.FC = () => {
             <Controller
               name="endorserDetails.guaranteedAmount"
               control={control}
-              defaultValue=""
+              defaultValue={0}
               render={({ field }) => (
                 <TextField
                   {...field}
                   label="Maximum Guaranteed Amount"
                   type="number"
                   fullWidth
+                  value={field.value || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    field.onChange(value);
+                  }}
                   inputProps={{ min: 0, step: 0.01 }}
                   error={!!getNestedError('endorserDetails.guaranteedAmount')}
                   helperText={getNestedError('endorserDetails.guaranteedAmount')?.message || 'Maximum amount this endorser can guarantee'}

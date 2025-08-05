@@ -149,7 +149,6 @@ export interface CreateContractDto {
   
   // Endorser guarantees
   endorserCollaterals?: {
-    type: 'endorser';
     description: string;
     value: number;
     endorserId: string;

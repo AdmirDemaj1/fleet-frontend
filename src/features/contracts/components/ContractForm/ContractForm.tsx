@@ -159,6 +159,16 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         interestRate: data.loanDetails?.interestRate || 0,
         vehicleIds: data.selectedVehicles,
         collaterals: data.collaterals || [],
+        endorserCollaterals: data.endorserCollaterals?.map(collateral => ({
+          description: collateral.description,
+          value: collateral.value,
+          endorserId: collateral.endorserId,
+          guaranteedAmount: collateral.guaranteedAmount,
+          guaranteeType: collateral.guaranteeType || 'personal_guarantee',
+          requiresNotarization: collateral.requiresNotarization,
+          guaranteeExpirationDate: collateral.guaranteeExpirationDate,
+          legalDocumentReference: collateral.legalDocumentReference
+        })) || [],
         terms: data.terms
       };
 
@@ -186,6 +196,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           type: data.type,
           contractNumber: data.contractNumber,
           customerId: data.customerId,
+          startDate: data.startDate,
+          endDate: data.endDate,
           totalAmount: data.totalAmount,
           residualValue: data.leasingDetails.residualValue,
           leaseTermMonths: data.leasingDetails.leaseTermMonths,

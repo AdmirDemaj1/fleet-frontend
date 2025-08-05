@@ -89,24 +89,24 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         secondaryEmail: '',
         additionalNotes: ''
       } : undefined,
-      endorserDetails: customerType === CustomerType.ENDORSER ? {
-        type: CustomerType.ENDORSER,
-        firstName: '',
-        lastName: '',
-        idNumber: '',
-        dateOfBirth: '',
-        address: '',
-        phone: '',
-        email: '',
-        secondaryPhone: '',
-        secondaryEmail: '',
-        additionalNotes: '',
-        guaranteedAmount: undefined,
-        relationshipToCustomer: '',
-        financialInformation: undefined,
-        active: true,
-        notes: ''
-      } : undefined,
+              endorserDetails: customerType === CustomerType.ENDORSER ? {
+          type: CustomerType.ENDORSER,
+          firstName: '',
+          lastName: '',
+          idNumber: '',
+          dateOfBirth: '',
+          address: '',
+          phone: '',
+          email: '',
+          secondaryPhone: '',
+          secondaryEmail: '',
+          additionalNotes: '',
+          guaranteedAmount: 0,
+          relationshipToCustomer: '',
+          financialInformation: undefined,
+          active: true,
+          notes: ''
+        } : undefined,
       ...initialData
     },
     mode: 'onChange',
@@ -184,7 +184,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           secondaryPhone: '',
           secondaryEmail: '',
           additionalNotes: '',
-          guaranteedAmount: undefined,
+          guaranteedAmount: 0,
           relationshipToCustomer: '',
           financialInformation: undefined,
           active: true,
@@ -277,7 +277,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       }
       
       // Transform form data to DTO (remove customerType and handle nulls)
-      const transformedData: CreateCustomerDto = {
+      const transformedData: any = {
         individualDetails: data.individualDetails ? {
           ...data.individualDetails,
           secondaryPhone: data.individualDetails.secondaryPhone || undefined,
@@ -292,11 +292,17 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           mainShareholders: data.businessDetails.mainShareholders || undefined
         } : undefined,
         endorserDetails: data.endorserDetails ? {
-          ...data.endorserDetails,
+          firstName: data.endorserDetails.firstName,
+          lastName: data.endorserDetails.lastName,
+          idNumber: data.endorserDetails.idNumber,
+          dateOfBirth: data.endorserDetails.dateOfBirth,
+          address: data.endorserDetails.address,
+          phone: data.endorserDetails.phone,
+          email: data.endorserDetails.email,
           secondaryPhone: data.endorserDetails.secondaryPhone || undefined,
           secondaryEmail: data.endorserDetails.secondaryEmail || undefined,
           additionalNotes: data.endorserDetails.additionalNotes || undefined,
-          guaranteedAmount: data.endorserDetails.guaranteedAmount || undefined,
+          guaranteedAmount: data.endorserDetails.guaranteedAmount || 0,
           relationshipToCustomer: data.endorserDetails.relationshipToCustomer || undefined,
           financialInformation: data.endorserDetails.financialInformation || undefined,
           active: data.endorserDetails.active ?? true,
@@ -357,7 +363,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           secondaryPhone: '',
           secondaryEmail: '',
           additionalNotes: '',
-          guaranteedAmount: undefined,
+          guaranteedAmount: 0,
           relationshipToCustomer: '',
           financialInformation: undefined,
           active: true,
