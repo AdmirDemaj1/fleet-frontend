@@ -9,7 +9,8 @@ export default defineConfig(({ mode }) => ({
     host: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_DEV_API_URL || 'http://localhost:3000',
+        target: process.env.VITE_DEV_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
+        // target: process.env.VITE_DEV_API_URL || 'http://localhost:3000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       }

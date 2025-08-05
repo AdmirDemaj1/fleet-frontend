@@ -15,7 +15,8 @@ import {
 export const paymentsApi = createApi({
   reducerPath: 'paymentsApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'http://localhost:3000/payments',
+    baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/payments',
+    // baseUrl: 'http://localhost:3000/payments',
     prepareHeaders: (headers) => {
       headers.set('Accept', 'application/json');
       headers.set('Content-Type', 'application/json');
