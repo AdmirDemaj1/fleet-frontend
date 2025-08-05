@@ -23,7 +23,6 @@ export const useAuditLogs = (entityType?: string, entityId?: string) => {
     const params: FindAuditLogsDto = {
       limit: rowsPerPage,
       offset: page * rowsPerPage,
-      sortOrder: order,
       search: filters.search || undefined,
       eventTypes: filters.eventType ? [filters.eventType] : undefined,
       entityType: filters.entityType || undefined,
@@ -35,7 +34,7 @@ export const useAuditLogs = (entityType?: string, entityId?: string) => {
     if (entityId) params.entityId = entityId;
     
     return params;
-  }, [filters, page, rowsPerPage, order, entityId]);
+  }, [filters, page, rowsPerPage, entityId]);
 
   // API query
   const { 

@@ -39,6 +39,9 @@ const PaymentsPage: React.FC = () => {
     refetch
   } = usePayments();
 
+  console.log('Payments data:', payments);
+  console.log('Payments type:', typeof payments);
+  console.log('Is array:', Array.isArray(payments));
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const handleRefresh = async () => {
@@ -67,7 +70,14 @@ const PaymentsPage: React.FC = () => {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error ? String(error) : 'Failed to load payments. Please try again.'}
+          <Typography variant="h6" gutterBottom>
+            Failed to load payments
+          </Typography>
+          <Typography variant="body2">
+            {error ? (
+              typeof error === 'object' ? JSON.stringify(error, null, 2) : String(error)
+            ) : 'Please try again.'}
+          </Typography>
         </Alert>
         <Button variant="contained" onClick={handleRefresh} startIcon={<Refresh />}>
           Retry
@@ -215,7 +225,7 @@ const PaymentsPage: React.FC = () => {
 
       {/* Table */}
       <PaymentTable
-        payments={payments}
+        payments={Array.isArray(payments) ? payments : []}
         loading={isLoading}
         page={page}
         pageSize={rowsPerPage}

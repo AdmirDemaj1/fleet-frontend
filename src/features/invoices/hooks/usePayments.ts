@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useGetPaymentsQuery } from '../api/paymentsApi';
-import { PaymentFilters, PaymentQueryParams } from '../types/invoice.types';
+import { PaymentFilters, PaymentQueryParams, Payment, PaymentStatus, PaymentType } from '../types/invoice.types';
 
 interface UsePaymentsOptions {
   initialFilters?: PaymentFilters;

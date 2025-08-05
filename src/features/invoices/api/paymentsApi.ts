@@ -15,8 +15,8 @@ import {
 export const paymentsApi = createApi({
   reducerPath: 'paymentsApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/payments',
-    // baseUrl: 'http://localhost:3000/payments',
+    baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app',
+    // baseUrl: 'http://localhost:3000',
     prepareHeaders: (headers) => {
       headers.set('Accept', 'application/json');
       headers.set('Content-Type', 'application/json');
@@ -35,13 +35,13 @@ export const paymentsApi = createApi({
           }
         });
 
-        return `?${searchParams.toString()}`;
+        return `/payments?${searchParams.toString()}`;
       },
       providesTags: ['Payment'],
     }),
 
     getPaymentById: builder.query<Payment, string>({
-      query: (id) => `/${id}`,
+      query: (id) => `/payments/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Payment', id }],
     }),
 
@@ -58,7 +58,7 @@ export const paymentsApi = createApi({
         if (limit) searchParams.append('limit', String(limit));
         if (offset) searchParams.append('offset', String(offset));
 
-        return `/contract/${contractId}?${searchParams.toString()}`;
+        return `/payments/contract/${contractId}?${searchParams.toString()}`;
       },
       providesTags: (_result, _error, { contractId }) => [
         { type: 'Payment', id: `contract-${contractId}` }
@@ -87,7 +87,7 @@ export const paymentsApi = createApi({
 
     createPayment: builder.mutation<Payment, CreatePaymentDto>({
       query: (paymentData) => ({
-        url: '',
+        url: '/payments',
         method: 'POST',
         body: paymentData,
       }),
@@ -96,7 +96,7 @@ export const paymentsApi = createApi({
 
     updatePayment: builder.mutation<Payment, { id: string; data: UpdatePaymentDto }>({
       query: ({ id, data }) => ({
-        url: `/${id}`,
+        url: `/payments/${id}`,
         method: 'PUT',
         body: data,
       }),
@@ -108,7 +108,7 @@ export const paymentsApi = createApi({
 
     deletePayment: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/${id}`,
+        url: `/payments/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: (_result, _error, id) => [
@@ -119,7 +119,7 @@ export const paymentsApi = createApi({
 
     registerPayment: builder.mutation<Payment, { contractId: string; data: RegisterPaymentDto }>({
       query: ({ contractId, data }) => ({
-        url: `/register/${contractId}`,
+        url: `/payments/register/${contractId}`,
         method: 'POST',
         body: data,
       }),
@@ -128,7 +128,7 @@ export const paymentsApi = createApi({
 
     markPaymentAsPaid: builder.mutation<Payment, { id: string; data: MarkPaymentPaidDto }>({
       query: ({ id, data }) => ({
-        url: `/${id}/mark-paid`,
+        url: `/payments/${id}/mark-paid`,
         method: 'PATCH',
         body: data,
       }),
@@ -144,7 +144,7 @@ export const paymentsApi = createApi({
       data: MarkPaymentPaidWithCreditDto 
     }>({
       query: ({ id, data }) => ({
-        url: `/${id}/mark-paid-with-credit`,
+        url: `/payments/${id}/mark-paid-with-credit`,
         method: 'PATCH',
         body: data,
       }),
@@ -156,7 +156,7 @@ export const paymentsApi = createApi({
     }),
 
     getCustomerCreditBalance: builder.query<CustomerCreditBalance, string>({
-      query: (customerId) => `/customer/${customerId}/credit-balance`,
+      query: (customerId) => `/payments/customer/${customerId}/credit-balance`,
       providesTags: (_result, _error, customerId) => [
         { type: 'CustomerCredit', id: customerId }
       ],

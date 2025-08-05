@@ -16,8 +16,7 @@ const initialState: AuditState = {
   selectedLog: null,
   filters: {
     limit: 10,
-    offset: 0,
-    sortOrder: 'desc'
+    offset: 0
   },
   loading: false,
   error: null,

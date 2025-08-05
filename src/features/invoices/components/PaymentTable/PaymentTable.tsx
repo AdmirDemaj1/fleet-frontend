@@ -118,8 +118,22 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
   );
 
   const renderPaymentRow = (payment: Payment) => {
+    // Check if payment is actually a Payment object
+    if (!payment || typeof payment !== 'object' || !payment.id) {
+      console.error('Invalid payment object:', payment);
+      return (
+        <TableRow>
+          <TableCell colSpan={10}>
+            <Typography variant="body2" color="error">
+              Invalid payment data
+            </Typography>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
     const statusConfig = PAYMENT_STATUS_CONFIG[payment.status];
-    const StatusIcon = statusConfig.icon;
+    const StatusIcon = statusConfig?.icon;
     const paymentMethodInfo = getPaymentMethodInfo(payment.paymentMethod);
     const overdue = isOverdue(payment);
     const daysPastDue = overdue ? getDaysPastDue(payment.dueDate) : 0;

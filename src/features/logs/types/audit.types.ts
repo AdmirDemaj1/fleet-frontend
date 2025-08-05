@@ -37,7 +37,6 @@ export interface AuditLogResponseDto {
     entityType?: string;
     userId?: string;
     eventTypes?: string[];
-    sortOrder?: 'asc' | 'desc';
     startDate?: string;
     endDate?: string;
   }
@@ -47,7 +46,6 @@ export interface AuditLogResponseDto {
     limit?: number;
     offset?: number;
     search?: string;
-    sortOrder?: 'asc' | 'desc';
     eventTypes?: string[];
     startDate?: string;
     endDate?: string;
