@@ -27,8 +27,21 @@ export const useRecentInvoices = (customerId: string) => {
         offset: 0
       });
       
+      // Handle different response structures
+      let invoicesArray: any[];
+      if (Array.isArray(data)) {
+        invoicesArray = data;
+      } else if (data && typeof data === 'object' && 'invoices' in data && Array.isArray((data as any).invoices)) {
+        invoicesArray = (data as any).invoices;
+      } else if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as any).data)) {
+        invoicesArray = (data as any).data;
+      } else {
+        console.warn('Unexpected invoices response structure:', data);
+        invoicesArray = [];
+      }
+      
       // Ensure we only take the first 5 invoices (fallback if API doesn't respect limit)
-      const limitedData = data.slice(0, 5);
+      const limitedData = invoicesArray.slice(0, 5);
       
       // Transform the data to match the expected format
       const transformedInvoices: RecentInvoice[] = limitedData.map(invoice => {
@@ -51,6 +64,7 @@ export const useRecentInvoices = (customerId: string) => {
     } catch (error) {
       console.error('Failed to fetch recent invoices:', error);
       setError(error instanceof Error ? error.message : 'Failed to load recent invoices');
+      setInvoices([]); // Ensure invoices is always an array
     } finally {
       setLoading(false);
     }

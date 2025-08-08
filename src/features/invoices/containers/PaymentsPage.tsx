@@ -15,6 +15,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { PaymentFilters, PaymentTable } from '../components';
 import { usePayments } from '../hooks/usePayments';
+import { PaymentStatus } from '../types/invoice.types';
 
 const PaymentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +43,8 @@ const PaymentsPage: React.FC = () => {
   console.log('Payments data:', payments);
   console.log('Payments type:', typeof payments);
   console.log('Is array:', Array.isArray(payments));
+  console.log('Payment statuses:', payments.map(p => p.status));
+  console.log('Pending count:', payments.filter(p => p.status === 'pending').length);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const handleRefresh = async () => {

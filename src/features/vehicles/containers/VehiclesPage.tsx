@@ -42,13 +42,13 @@ export const VehiclesPage: React.FC = () => {
       setLoading(true);
       const params: VehicleQueryParams = {
         ...filters,
-        page: page,
+        offset: page * rowsPerPage,
         limit: rowsPerPage
       };
       
-      const { vehicles, total } = await vehicleApi.getVehicles(params);
-      setVehicles(vehicles);
-      setTotalCount(total);
+      const response = await vehicleApi.getVehicles(params);
+      setVehicles(response.vehicles || []);
+      setTotalCount(response.total || 0);
       setError(null);
     } catch (err) {
       console.error('Error fetching vehicles:', err);
@@ -150,7 +150,7 @@ export const VehiclesPage: React.FC = () => {
             variant="outlined"
             startIcon={<Download />}
             onClick={handleExport}
-            disabled={vehicles.length === 0}
+            disabled={!vehicles || vehicles.length === 0}
           >
             Export
           </Button>

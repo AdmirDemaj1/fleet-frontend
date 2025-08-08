@@ -35,6 +35,8 @@ const getIcon = (title: string) => {
 };
 
 export const MetricCard: React.FC<MetricCardProps> = ({ metric, loading = false }) => {
+  console.log('MetricCard props:', { metric, loading });
+  
   const IconComponent = metric.icon || getIcon(metric.title);
   const isPositiveChange = (metric.change || 0) >= 0;
   const theme = useTheme();

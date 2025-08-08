@@ -87,7 +87,19 @@ export interface VehicleQueryParams {
   year?: number;
   isLiquidAsset?: boolean;
   search?: string;
-  page?: number;
+  offset?: number;
+  limit?: number;
+}
+
+export interface VehicleFilters {
+  status?: VehicleStatus;
+  legalOwner?: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  isLiquidAsset?: boolean;
+  search?: string;
+  offset?: number;
   limit?: number;
 }
 

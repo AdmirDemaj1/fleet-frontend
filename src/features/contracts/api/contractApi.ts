@@ -13,8 +13,8 @@ import {
 export const contractApi = createApi({
   reducerPath: 'contractApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
-    // baseUrl: 'http://localhost:3000/',
+    // baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
+    baseUrl: 'http://localhost:3000/',
     prepareHeaders: (headers) => {
       // Add authorization header if needed
       const token = localStorage.getItem('authToken');
@@ -93,9 +93,22 @@ export const contractApi = createApi({
         params: params,
       }),
       providesTags: ['Customer'],
-      transformResponse: (response: any[]) => {
+      transformResponse: (response: any) => {
+        // Handle different response structures
+        let customersArray: any[];
+        if (Array.isArray(response)) {
+          customersArray = response;
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          customersArray = response.data;
+        } else if (response && typeof response === 'object' && 'customers' in response && Array.isArray(response.customers)) {
+          customersArray = response.customers;
+        } else {
+          console.warn('Unexpected customers response structure:', response);
+          customersArray = [];
+        }
+        
         // Transform the response to match CustomerSummary interface
-        return response.map(customer => ({
+        return customersArray.map(customer => ({
           id: customer.id,
           name: customer.type === 'individual' 
             ? `${customer.firstName} ${customer.lastName}`.trim()
@@ -136,9 +149,20 @@ export const contractApi = createApi({
       }),
       providesTags: ['Vehicle'],
       transformResponse: (response: any) => {
-        // Handle both array response and paginated response
-        const vehicles = Array.isArray(response) ? response : response.vehicles || [];
-        return vehicles.map((vehicle: any) => ({
+        // Handle different response structures
+        let vehiclesArray: any[];
+        if (Array.isArray(response)) {
+          vehiclesArray = response;
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          vehiclesArray = response.data;
+        } else if (response && typeof response === 'object' && 'vehicles' in response && Array.isArray(response.vehicles)) {
+          vehiclesArray = response.vehicles;
+        } else {
+          console.warn('Unexpected vehicles response structure:', response);
+          vehiclesArray = [];
+        }
+        
+        return vehiclesArray.map((vehicle: any) => ({
           id: vehicle.id,
           make: vehicle.make,
           model: vehicle.model,
@@ -175,8 +199,21 @@ export const contractApi = createApi({
         params: params,
       }),
       providesTags: ['Endorser'],
-      transformResponse: (response: any[]) => {
-        return response.map(endorser => ({
+      transformResponse: (response: any) => {
+        // Handle different response structures
+        let endorsersArray: any[];
+        if (Array.isArray(response)) {
+          endorsersArray = response;
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          endorsersArray = response.data;
+        } else if (response && typeof response === 'object' && 'endorsers' in response && Array.isArray(response.endorsers)) {
+          endorsersArray = response.endorsers;
+        } else {
+          console.warn('Unexpected endorsers response structure:', response);
+          endorsersArray = [];
+        }
+        
+        return endorsersArray.map(endorser => ({
           id: endorser.id,
           firstName: endorser.firstName,
           lastName: endorser.lastName,

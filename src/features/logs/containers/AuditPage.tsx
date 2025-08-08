@@ -445,18 +445,22 @@ const AuditPage: React.FC = () => {
                               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                                 Metadata
                               </Typography>
-                              <Box sx={{ 
-                                fontFamily: 'monospace', 
-                                fontSize: '0.75rem',
-                                bgcolor: theme.palette.background.paper,
-                                p: 1,
-                                borderRadius: 1,
-                                border: `1px solid ${theme.palette.divider}`,
-                                maxHeight: 200,
-                                overflow: 'auto'
-                              }}>
-                                <pre style={{ margin: 0 }}>{JSON.stringify(log.metadata, null, 2)}</pre>
-                              </Box>
+                              <Typography 
+                                component="pre"
+                                sx={{ 
+                                  fontFamily: 'monospace', 
+                                  fontSize: '0.75rem',
+                                  bgcolor: theme.palette.background.paper,
+                                  p: 1,
+                                  borderRadius: 1,
+                                  border: `1px solid ${theme.palette.divider}`,
+                                  maxHeight: 200,
+                                  overflow: 'auto',
+                                  margin: 0
+                                }}
+                              >
+                                {JSON.stringify(log.metadata, null, 2)}
+                              </Typography>
                             </Box>
                           )}
 
@@ -473,18 +477,22 @@ const AuditPage: React.FC = () => {
                                     <Typography variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
                                       Previous Values
                                     </Typography>
-                                    <Box sx={{ 
-                                      fontFamily: 'monospace', 
-                                      fontSize: '0.75rem',
-                                      bgcolor: alpha(theme.palette.error.main, 0.05),
-                                      p: 1,
-                                      borderRadius: 1,
-                                      border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
-                                      maxHeight: 200,
-                                      overflow: 'auto'
-                                    }}>
-                                      <pre style={{ margin: 0 }}>{JSON.stringify(log.oldValues, null, 2)}</pre>
-                                    </Box>
+                                    <Typography 
+                                      component="pre"
+                                      sx={{ 
+                                        fontFamily: 'monospace', 
+                                        fontSize: '0.75rem',
+                                        bgcolor: alpha(theme.palette.error.main, 0.05),
+                                        p: 1,
+                                        borderRadius: 1,
+                                        border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                                        maxHeight: 200,
+                                        overflow: 'auto',
+                                        margin: 0
+                                      }}
+                                    >
+                                      {JSON.stringify(log.oldValues, null, 2)}
+                                    </Typography>
                                   </Grid>
                                 )}
 
@@ -494,18 +502,22 @@ const AuditPage: React.FC = () => {
                                     <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
                                       {log.oldValues ? 'New Values' : 'Created Values'}
                                     </Typography>
-                                    <Box sx={{ 
-                                      fontFamily: 'monospace', 
-                                      fontSize: '0.75rem',
-                                      bgcolor: alpha(theme.palette.success.main, 0.05),
-                                      p: 1,
-                                      borderRadius: 1,
-                                      border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-                                      maxHeight: 200,
-                                      overflow: 'auto'
-                                    }}>
-                                      <pre style={{ margin: 0 }}>{JSON.stringify(log.newValues, null, 2)}</pre>
-                                    </Box>
+                                    <Typography 
+                                      component="pre"
+                                      sx={{ 
+                                        fontFamily: 'monospace', 
+                                        fontSize: '0.75rem',
+                                        bgcolor: alpha(theme.palette.success.main, 0.05),
+                                        p: 1,
+                                        borderRadius: 1,
+                                        border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                                        maxHeight: 200,
+                                        overflow: 'auto',
+                                        margin: 0
+                                      }}
+                                    >
+                                      {JSON.stringify(log.newValues, null, 2)}
+                                    </Typography>
                                   </Grid>
                                 )}
                               </Grid>

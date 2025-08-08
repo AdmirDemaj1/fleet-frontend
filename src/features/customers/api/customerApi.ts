@@ -1,5 +1,5 @@
-import { api } from '../../../shared/utils/api';
-import { API_ENDPOINTS } from '../../../shared/utils/constants';
+import { api } from "../../../shared/utils/api";
+import { API_ENDPOINTS } from "../../../shared/utils/constants";
 import {
   Customer,
   CustomerDetailed,
@@ -8,52 +8,78 @@ import {
   CustomerFilters,
   ContractSummary,
   CollateralSummary,
-} from '../types/customer.types';
-import { CustomerLog } from '../types/customerLogs.types';
+} from "../types/customer.types";
+import { CustomerLog } from "../types/customerLogs.types";
 
 export const customerApi = {
-  getAll: async (filters?: CustomerFilters): Promise<{ data: Customer[]; total: number }> => {
+  getAll: async (
+    filters?: CustomerFilters
+  ): Promise<{ data: Customer[]; total: number }> => {
     const params = new URLSearchParams();
-    if (filters?.type) params.append('type', filters.type);
-    if (filters?.search) params.append('search', filters.search);
-    if (filters?.limit) params.append('limit', filters.limit.toString());
-    if (filters?.offset) params.append('offset', filters.offset.toString());
-    if (filters?.hasVehicles !== undefined) params.append('hasVehicles', filters.hasVehicles.toString());
-    if (filters?.hasContracts !== undefined) params.append('hasContracts', filters.hasContracts.toString());
-    if (filters?.hasCollaterals !== undefined) params.append('hasCollaterals', filters.hasCollaterals.toString());
-    
-    console.log('API Request URL:', `${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`);
-    console.log('Filters being sent:', filters);
-    
+    if (filters?.type) params.append("type", filters.type);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.limit) params.append("limit", filters.limit.toString());
+    if (filters?.offset) params.append("offset", filters.offset.toString());
+    if (filters?.hasVehicles !== undefined)
+      params.append("hasVehicles", filters.hasVehicles.toString());
+    if (filters?.hasContracts !== undefined)
+      params.append("hasContracts", filters.hasContracts.toString());
+    if (filters?.hasCollaterals !== undefined)
+      params.append("hasCollaterals", filters.hasCollaterals.toString());
+
+    console.log(
+      "API Request URL:",
+      `${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`
+    );
+    console.log("Filters being sent:", filters);
+
     try {
-      const response = await api.get<Customer[]>(`${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`);
-      
-      console.log('API Response:', response);
-      console.log('Response Headers:', response.headers);
-      
-      // The API returns an array directly, not an object with a data property
-      const processedCustomers = response.data.map(customer => ({
+      const response = await api.get<Customer[]>(
+        `${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`
+      );
+
+      console.log("API Response:", response);
+      console.log("Response Headers:", response.headers);
+
+      // Handle different response structures
+      let customersArray: Customer[];
+      if (Array.isArray(response.data)) {
+        // The API returns an array directly
+        customersArray = response.data;
+      } else if (response.data && typeof response.data === 'object' && 'customers' in response.data && Array.isArray((response.data as any).customers)) {
+        // The API returns an object with a customers array
+        customersArray = (response.data as any).customers;
+      } else if (response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray((response.data as any).data)) {
+        // The API returns an object with a data array
+        customersArray = (response.data as any).data;
+      } else {
+        // Fallback to empty array
+        console.warn("Unexpected response structure:", response.data);
+        customersArray = [];
+      }
+
+      const processedCustomers = customersArray.map((customer) => ({
         ...customer,
         // Convert string dates to Date objects if needed
         createdAt: customer.createdAt,
-        updatedAt: customer.updatedAt
+        updatedAt: customer.updatedAt,
       }));
-      
+
       // Try multiple ways to get the total count
       let total = 0;
-      
+
       // Method 1: Check x-total-count header (common standard)
-      if (response.headers['x-total-count']) {
-        total = parseInt(response.headers['x-total-count'], 10);
+      if (response.headers["x-total-count"]) {
+        total = parseInt(response.headers["x-total-count"], 10);
       }
       // Method 2: Check total-count header
-      else if (response.headers['total-count']) {
-        total = parseInt(response.headers['total-count'], 10);
+      else if (response.headers["total-count"]) {
+        total = parseInt(response.headers["total-count"], 10);
       }
       // Method 3: Check if response has pagination info
-      else if (response.headers['content-range']) {
+      else if (response.headers["content-range"]) {
         // Parse Content-Range header like "items 0-9/100"
-        const match = response.headers['content-range'].match(/\/(\d+)$/);
+        const match = response.headers["content-range"].match(/\/(\d+)$/);
         if (match) {
           total = parseInt(match[1], 10);
         }
@@ -63,17 +89,41 @@ export const customerApi = {
         // Make a separate request to get the total count without limit/offset
         try {
           const countParams = new URLSearchParams();
-          if (filters?.type) countParams.append('type', filters.type);
-          if (filters?.search) countParams.append('search', filters.search);
-          if (filters?.hasVehicles !== undefined) countParams.append('hasVehicles', filters.hasVehicles.toString());
-          if (filters?.hasContracts !== undefined) countParams.append('hasContracts', filters.hasContracts.toString());
-          if (filters?.hasCollaterals !== undefined) countParams.append('hasCollaterals', filters.hasCollaterals.toString());
+          if (filters?.type) countParams.append("type", filters.type);
+          if (filters?.search) countParams.append("search", filters.search);
+          if (filters?.hasVehicles !== undefined)
+            countParams.append("hasVehicles", filters.hasVehicles.toString());
+          if (filters?.hasContracts !== undefined)
+            countParams.append("hasContracts", filters.hasContracts.toString());
+          if (filters?.hasCollaterals !== undefined)
+            countParams.append(
+              "hasCollaterals",
+              filters.hasCollaterals.toString()
+            );
+
+          const countResponse = await api.get<Customer[]>(
+            `${API_ENDPOINTS.CUSTOMERS}?${countParams.toString()}`
+          );
           
-          const countResponse = await api.get<Customer[]>(`${API_ENDPOINTS.CUSTOMERS}?${countParams.toString()}`);
-          total = countResponse.data.length;
-          console.log('Got total count from separate request:', total);
+          // Handle different response structures for count
+          let countArray: Customer[];
+          if (Array.isArray(countResponse.data)) {
+            countArray = countResponse.data;
+          } else if (countResponse.data && typeof countResponse.data === 'object' && 'customers' in countResponse.data && Array.isArray((countResponse.data as any).customers)) {
+            countArray = (countResponse.data as any).customers;
+          } else if (countResponse.data && typeof countResponse.data === 'object' && 'data' in countResponse.data && Array.isArray((countResponse.data as any).data)) {
+            countArray = (countResponse.data as any).data;
+          } else {
+            countArray = [];
+          }
+          
+          total = countArray.length;
+          console.log("Got total count from separate request:", total);
         } catch (countError) {
-          console.warn('Failed to get count, using fallback estimation:', countError);
+          console.warn(
+            "Failed to get count, using fallback estimation:",
+            countError
+          );
           // Fallback estimation
           if (processedCustomers.length === filters.limit) {
             total = (filters.offset || 0) + processedCustomers.length + 1;
@@ -86,22 +136,24 @@ export const customerApi = {
       else {
         total = processedCustomers.length;
       }
-      
-      console.log('Calculated total:', total);
-      console.log('Processed customers count:', processedCustomers.length);
-      
+
+      console.log("Calculated total:", total);
+      console.log("Processed customers count:", processedCustomers.length);
+
       return {
         data: processedCustomers,
-        total: total
+        total: total,
       };
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error("API request failed:", error);
       throw error;
     }
   },
 
   getById: async (id: string): Promise<CustomerDetailed> => {
-    const response = await api.get<CustomerDetailed>(`${API_ENDPOINTS.CUSTOMERS}/${id}`);
+    const response = await api.get<CustomerDetailed>(
+      `${API_ENDPOINTS.CUSTOMERS}/${id}`
+    );
     return response.data;
   },
 
@@ -118,7 +170,10 @@ export const customerApi = {
   },
 
   update: async (id: string, data: UpdateCustomerDto): Promise<Customer> => {
-    const response = await api.put<Customer>(`${API_ENDPOINTS.CUSTOMERS}/${id}`, data);
+    const response = await api.put<Customer>(
+      `${API_ENDPOINTS.CUSTOMERS}/${id}`,
+      data
+    );
     return response.data;
   },
 
@@ -131,10 +186,13 @@ export const customerApi = {
     options?: { active?: boolean; limit?: number; offset?: number }
   ): Promise<ContractSummary[]> => {
     const params = new URLSearchParams();
-    if (options?.active !== undefined) params.append('active', options.active.toString());
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
-    const response = await api.get<ContractSummary[]>(`/customers/${id}/contracts?${params.toString()}`);
+    if (options?.active !== undefined)
+      params.append("active", options.active.toString());
+    if (options?.limit) params.append("limit", options.limit.toString());
+    if (options?.offset) params.append("offset", options.offset.toString());
+    const response = await api.get<ContractSummary[]>(
+      `/customers/${id}/contracts?${params.toString()}`
+    );
     return response.data;
   },
 
@@ -143,10 +201,13 @@ export const customerApi = {
     options?: { active?: boolean; limit?: number; offset?: number }
   ): Promise<CollateralSummary[]> => {
     const params = new URLSearchParams();
-    if (options?.active !== undefined) params.append('active', options.active.toString());
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
-    const response = await api.get<CollateralSummary[]>(`/customers/${id}/collateral?${params.toString()}`);
+    if (options?.active !== undefined)
+      params.append("active", options.active.toString());
+    if (options?.limit) params.append("limit", options.limit.toString());
+    if (options?.offset) params.append("offset", options.offset.toString());
+    const response = await api.get<CollateralSummary[]>(
+      `/customers/${id}/collateral?${params.toString()}`
+    );
     return response.data;
   },
 
@@ -155,35 +216,39 @@ export const customerApi = {
     options?: { type?: string; limit?: number; offset?: number }
   ): Promise<CustomerLog[]> => {
     const params = new URLSearchParams();
-    if (options?.type) params.append('type', options.type);
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
-    const response = await api.get<CustomerLog[]>(`/audit/customer/${id}?${params.toString()}`);
+    if (options?.type) params.append("type", options.type);
+    if (options?.limit) params.append("limit", options.limit.toString());
+    if (options?.offset) params.append("offset", options.offset.toString());
+    const response = await api.get<CustomerLog[]>(
+      `/audit/customer/${id}?${params.toString()}`
+    );
     return response.data;
   },
 
   getInvoices: async (
     id: string,
-    options?: { 
-      status?: string; 
+    options?: {
+      status?: string;
       type?: string;
       dateRange?: string;
       amountRange?: string;
-      limit?: number; 
-      offset?: number 
+      limit?: number;
+      offset?: number;
     }
   ): Promise<any[]> => {
     const params = new URLSearchParams();
-    if (options?.status) params.append('status', options.status);
-    if (options?.type) params.append('type', options.type);
-    if (options?.dateRange) params.append('dateRange', options.dateRange);
-    if (options?.amountRange) params.append('amountRange', options.amountRange);
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
-    
+    if (options?.status) params.append("status", options.status);
+    if (options?.type) params.append("type", options.type);
+    if (options?.dateRange) params.append("dateRange", options.dateRange);
+    if (options?.amountRange) params.append("amountRange", options.amountRange);
+    if (options?.limit) params.append("limit", options.limit.toString());
+    if (options?.offset) params.append("offset", options.offset.toString());
+
     const queryString = params.toString();
-    const url = queryString ? `/customers/${id}/payments?${queryString}` : `/customers/${id}/payments`;
+    const url = queryString
+      ? `/customers/${id}/payments?${queryString}`
+      : `/customers/${id}/payments`;
     const response = await api.get<any[]>(url);
     return response.data;
-  }
+  },
 };

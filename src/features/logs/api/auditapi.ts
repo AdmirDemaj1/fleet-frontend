@@ -7,8 +7,8 @@ import { API_ENDPOINTS } from '../../../shared/utils/constants';
 export const auditApi = createApi({
   reducerPath: 'auditApi',
   baseQuery: fetchBaseQuery({ 
-    baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
-    // baseUrl: 'http://localhost:3000/',
+    // baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
+    baseUrl: 'http://localhost:3000/',
     prepareHeaders: (headers) => {
       const token = localStorage.getItem('authToken');
       if (token) {
@@ -36,10 +36,29 @@ export const auditApi = createApi({
           endDate: params.endDate,
         },
       }),
-      transformResponse: (response: AuditLogResponseDto[], meta) => {
+      transformResponse: (response: any, meta) => {
+        // Handle different response structures
+        let logsArray: AuditLogResponseDto[];
+        let total: number;
+        
+        if (Array.isArray(response)) {
+          logsArray = response;
+          total = parseInt(meta?.response?.headers.get('X-Total-Count') || '0', 10);
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          logsArray = response.data;
+          total = response.meta?.total || logsArray.length;
+        } else if (response && typeof response === 'object' && 'logs' in response && Array.isArray(response.logs)) {
+          logsArray = response.logs;
+          total = response.meta?.total || logsArray.length;
+        } else {
+          console.warn('Unexpected audit logs response structure:', response);
+          logsArray = [];
+          total = 0;
+        }
+        
         return {
-          data: response,
-          total: parseInt(meta?.response?.headers.get('X-Total-Count') || '0', 10),
+          data: logsArray,
+          total: total,
         };
       },
     }),
@@ -59,10 +78,29 @@ export const auditApi = createApi({
           endDate: params.endDate,
         },
       }),
-      transformResponse: (response: AuditLogResponseDto[], meta) => {
+      transformResponse: (response: any, meta) => {
+        // Handle different response structures
+        let logsArray: AuditLogResponseDto[];
+        let total: number;
+        
+        if (Array.isArray(response)) {
+          logsArray = response;
+          total = parseInt(meta?.response?.headers.get('X-Total-Count') || '0', 10);
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          logsArray = response.data;
+          total = response.meta?.total || logsArray.length;
+        } else if (response && typeof response === 'object' && 'logs' in response && Array.isArray(response.logs)) {
+          logsArray = response.logs;
+          total = response.meta?.total || logsArray.length;
+        } else {
+          console.warn('Unexpected customer logs response structure:', response);
+          logsArray = [];
+          total = 0;
+        }
+        
         return {
-          data: response,
-          total: parseInt(meta?.response?.headers.get('X-Total-Count') || '0', 10),
+          data: logsArray,
+          total: total,
         };
       },
     }),

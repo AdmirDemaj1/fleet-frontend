@@ -96,7 +96,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
     handleRequestSort,
     handlePageChange,
     handleRowsPerPageChange
-  } = useInvoicesTable(invoices, filters);
+  } = useInvoicesTable(invoices || [], filters);
 
   // Event handlers
   const handleClearFilters = () => {
@@ -125,7 +125,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
   };
 
   // Loading state - following customer list pattern
-  if (loading && invoices.length === 0) {
+  if (loading && (!invoices || invoices.length === 0)) {
     return (
       <Paper 
         elevation={2}
@@ -170,7 +170,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
   }
 
   // Error state
-  if (error && !invoices.length) {
+  if (error && (!invoices || !invoices.length)) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error" sx={{ mb: 2 }}>

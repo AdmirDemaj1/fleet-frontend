@@ -25,7 +25,7 @@ export const paymentsApi = createApi({
   }),
   tagTypes: ['Payment', 'CustomerCredit'],
   endpoints: (builder) => ({
-    getPayments: builder.query<Payment[], PaymentQueryParams>({
+    getPayments: builder.query<{ payments: Payment[]; total: number }, PaymentQueryParams>({
       query: (params = {}) => {
         const searchParams = new URLSearchParams();
         
@@ -38,6 +38,33 @@ export const paymentsApi = createApi({
         return `/payments?${searchParams.toString()}`;
       },
       providesTags: ['Payment'],
+      transformResponse: (response: any) => {
+        console.log('Payments API response:', response);
+        
+        // Handle different response structures
+        let paymentsArray: Payment[];
+        let total: number;
+        
+        if (Array.isArray(response)) {
+          paymentsArray = response;
+          total = response.length;
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          paymentsArray = response.data;
+          total = response.meta?.total || paymentsArray.length;
+        } else if (response && typeof response === 'object' && 'payments' in response && Array.isArray(response.payments)) {
+          paymentsArray = response.payments;
+          total = response.meta?.total || paymentsArray.length;
+        } else {
+          console.warn('Unexpected payments response structure:', response);
+          paymentsArray = [];
+          total = 0;
+        }
+        
+        console.log('Transformed payments:', paymentsArray);
+        console.log('Total count:', total);
+        
+        return { payments: paymentsArray, total };
+      },
     }),
 
     getPaymentById: builder.query<Payment, string>({
@@ -63,6 +90,22 @@ export const paymentsApi = createApi({
       providesTags: (_result, _error, { contractId }) => [
         { type: 'Payment', id: `contract-${contractId}` }
       ],
+      transformResponse: (response: any) => {
+        // Handle different response structures
+        let paymentsArray: Payment[];
+        if (Array.isArray(response)) {
+          paymentsArray = response;
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          paymentsArray = response.data;
+        } else if (response && typeof response === 'object' && 'payments' in response && Array.isArray(response.payments)) {
+          paymentsArray = response.payments;
+        } else {
+          console.warn('Unexpected payments response structure:', response);
+          paymentsArray = [];
+        }
+        
+        return paymentsArray;
+      },
     }),
 
     getPaymentsByCustomer: builder.query<Payment[], { 
@@ -83,6 +126,22 @@ export const paymentsApi = createApi({
       providesTags: (_result, _error, { customerId }) => [
         { type: 'Payment', id: `customer-${customerId}` }
       ],
+      transformResponse: (response: any) => {
+        // Handle different response structures
+        let paymentsArray: Payment[];
+        if (Array.isArray(response)) {
+          paymentsArray = response;
+        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          paymentsArray = response.data;
+        } else if (response && typeof response === 'object' && 'payments' in response && Array.isArray(response.payments)) {
+          paymentsArray = response.payments;
+        } else {
+          console.warn('Unexpected payments response structure:', response);
+          paymentsArray = [];
+        }
+        
+        return paymentsArray;
+      },
     }),
 
     createPayment: builder.mutation<Payment, CreatePaymentDto>({

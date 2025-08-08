@@ -4,14 +4,31 @@ import { Vehicle, VehicleQueryParams, VehicleStatus, VehicleStatistics } from '.
 export const vehicleApi = {
   // Get all vehicles with filtering and pagination
   getVehicles: async (params: VehicleQueryParams): Promise<{ vehicles: Vehicle[], total: number }> => {
-    // Convert zero-based page index to one-based for the API
+    // Use offset-based pagination directly
     const apiParams = { ...params };
-    if (apiParams.page !== undefined) {
-      apiParams.page = apiParams.page + 1; // Convert from 0-based to 1-based
+    
+    const response = await api.get<any>('/vehicles', { params: apiParams });
+    
+    // Handle the backend response structure
+    let vehicles: Vehicle[];
+    let total: number;
+    
+    if (response.data && response.data.data && Array.isArray(response.data.data)) {
+      // Backend returns { data: [...], meta: {...} }
+      vehicles = response.data.data;
+      total = response.data.meta?.total || vehicles.length;
+    } else if (Array.isArray(response.data)) {
+      // Direct array response (fallback)
+      vehicles = response.data;
+      total = vehicles.length;
+    } else {
+      // Unexpected structure
+      console.warn('Unexpected vehicles response structure:', response.data);
+      vehicles = [];
+      total = 0;
     }
     
-    const response = await api.get<{ vehicles: Vehicle[], total: number }>('/vehicles', { params: apiParams });
-    return response.data;
+    return { vehicles, total };
   },
 
   // Get a single vehicle by ID

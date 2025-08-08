@@ -24,6 +24,10 @@ export const DashboardPage: React.FC = () => {
   const theme = useTheme();
   const { data, loading, error, refreshData } = useDashboard();
   
+  console.log('Dashboard data:', data);
+  console.log('Dashboard loading:', loading);
+  console.log('Dashboard error:', error);
+  
   if (error) {
     return (
       <Container maxWidth="xl" sx={{ py: 4 }}>

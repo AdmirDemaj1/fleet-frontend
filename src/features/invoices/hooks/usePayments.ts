@@ -1,13 +1,19 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useGetPaymentsQuery } from '../api/paymentsApi';
-import { PaymentFilters, PaymentQueryParams, Payment, PaymentStatus, PaymentType } from '../types/invoice.types';
+import { useState, useCallback, useMemo } from "react";
+import { useGetPaymentsQuery } from "../api/paymentsApi";
+import {
+  PaymentFilters,
+  PaymentQueryParams,
+  Payment,
+  PaymentStatus,
+  PaymentType,
+} from "../types/invoice.types";
 
 interface UsePaymentsOptions {
   initialFilters?: PaymentFilters;
   initialPage?: number;
   initialRowsPerPage?: number;
   initialSortBy?: string;
-  initialSortOrder?: 'asc' | 'desc';
+  initialSortOrder?: "asc" | "desc";
 }
 
 export const usePayments = (options: UsePaymentsOptions = {}) => {
@@ -15,8 +21,8 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
     initialFilters = {},
     initialPage = 0,
     initialRowsPerPage = 25,
-    initialSortBy = 'createdAt',
-    initialSortOrder = 'desc'
+    initialSortBy = "createdAt",
+    initialSortOrder = "desc",
   } = options;
 
   // State
@@ -24,25 +30,31 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
   const [page, setPage] = useState(initialPage);
   const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage);
   const [sortBy, setSortBy] = useState(initialSortBy);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(initialSortOrder);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(initialSortOrder);
 
   // Build query parameters
-  const queryParams = useMemo((): PaymentQueryParams => ({
-    ...filters,
-    limit: rowsPerPage,
-    offset: page * rowsPerPage,
-    sortBy,
-    sortOrder
-  }), [filters, page, rowsPerPage, sortBy, sortOrder]);
+  const queryParams = useMemo(
+    (): PaymentQueryParams => ({
+      ...filters,
+      limit: rowsPerPage,
+      offset: page * rowsPerPage,
+      sortBy,
+      sortOrder,
+    }),
+    [filters, page, rowsPerPage, sortBy, sortOrder]
+  );
 
   // API Query
   const {
-    data: payments = [],
+    data: paymentsResponse,
     isLoading,
     isError,
     error,
-    refetch
+    refetch,
   } = useGetPaymentsQuery(queryParams);
+
+  // Extract payments from response
+  const payments = paymentsResponse?.payments || [];
 
   // Handlers
   const handleFiltersChange = useCallback((newFilters: PaymentFilters) => {
@@ -64,26 +76,31 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
     setPage(0); // Reset to first page when page size changes
   }, []);
 
-  const handleSortChange = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortBy(field);
-    setSortOrder(order);
-    setPage(0); // Reset to first page when sort changes
-  }, []);
+  const handleSortChange = useCallback(
+    (field: string, order: "asc" | "desc") => {
+      setSortBy(field);
+      setSortOrder(order);
+      setPage(0); // Reset to first page when sort changes
+    },
+    []
+  );
 
-  // Calculate total count (this would ideally come from the API response)
+  // Use the total count from API response, fallback to estimation if not available
   const totalCount = useMemo(() => {
-    // Since the API doesn't return total count, we'll estimate it
-    // In a real implementation, the API should return pagination metadata
+    if (paymentsResponse?.total !== undefined) {
+      return paymentsResponse.total;
+    }
+    // Fallback estimation if API doesn't return total
     if (payments.length < rowsPerPage) {
       return page * rowsPerPage + payments.length;
     }
     return (page + 1) * rowsPerPage + 1; // Assume there's at least one more page
-  }, [payments.length, page, rowsPerPage]);
+  }, [paymentsResponse?.total, payments.length, page, rowsPerPage]);
 
   // Check if we have active filters
   const hasActiveFilters = useMemo(() => {
-    return Object.values(filters).some(value => 
-      value !== undefined && value !== null && value !== ''
+    return Object.values(filters).some(
+      (value) => value !== undefined && value !== null && value !== ""
     );
   }, [filters]);
 
@@ -94,7 +111,7 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
     isError,
     error,
     totalCount,
-    
+
     // State
     filters,
     page,
@@ -102,7 +119,7 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
     sortBy,
     sortOrder,
     hasActiveFilters,
-    
+
     // Handlers
     handleFiltersChange,
     handleClearFilters,
@@ -110,8 +127,8 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
     handleRowsPerPageChange,
     handleSortChange,
     refetch,
-    
+
     // Utilities
-    queryParams
+    queryParams,
   };
 };

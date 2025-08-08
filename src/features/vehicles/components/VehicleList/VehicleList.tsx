@@ -155,7 +155,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
           <TableBody>
             {loading ? (
               <VehicleListSkeleton rowsPerPage={rowsPerPage} />
-            ) : vehicles.length > 0 ? (
+            ) : vehicles && vehicles.length > 0 ? (
               vehicles.map((vehicle) => (
                 <TableRow
                   key={vehicle.id}

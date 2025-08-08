@@ -196,41 +196,36 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ title, activities, l
                   </Avatar>
                 </ListItemAvatar>
                 
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {activity.title}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box sx={{ color: statusColor }}>
-                          {statusIcon}
-                        </Box>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatTimeAgo(activity.timestamp)}
-                        </Typography>
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {activity.title}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ color: statusColor }}>
+                        {statusIcon}
                       </Box>
-                    </Box>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {activity.description}
+                      <Typography variant="caption" color="text.secondary">
+                        {formatTimeAgo(activity.timestamp)}
                       </Typography>
-                      <Chip
-                        label={activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          fontSize: '0.7rem',
-                          height: 20,
-                          borderColor: statusColor,
-                          color: statusColor
-                        }}
-                      />
                     </Box>
-                  }
-                />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {activity.description}
+                  </Typography>
+                  <Chip
+                    label={activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      fontSize: '0.7rem',
+                      height: 20,
+                      borderColor: statusColor,
+                      color: statusColor,
+                      alignSelf: 'flex-start'
+                    }}
+                  />
+                </Box>
               </ListItem>
             );
           })}

@@ -29,11 +29,26 @@ export const useInvoices = (customerId?: string) => {
     
     try {
       const data = await customerApi.getInvoices(effectiveCustomerId);
-      setInvoices(data);
+      
+      // Handle different response structures
+      let invoicesArray: Invoice[];
+      if (Array.isArray(data)) {
+        invoicesArray = data;
+      } else if (data && typeof data === 'object' && 'invoices' in data && Array.isArray((data as any).invoices)) {
+        invoicesArray = (data as any).invoices;
+      } else if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as any).data)) {
+        invoicesArray = (data as any).data;
+      } else {
+        console.warn('Unexpected invoices response structure:', data);
+        invoicesArray = [];
+      }
+      
+      setInvoices(invoicesArray);
     } catch (error) {
       console.error('Failed to fetch invoices:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load invoices';
       setError(errorMessage);
+      setInvoices([]); // Ensure invoices is always an array
     } finally {
       setLoading(false);
     }

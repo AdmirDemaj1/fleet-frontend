@@ -49,7 +49,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
 
   // Transform and get the 5 most recent logs for display
   const recentLogs: LogEntry[] = useMemo(() => {
-    if (!logs || logs.length === 0) return [];
+    if (!logs || !Array.isArray(logs) || logs.length === 0) return [];
     
     // Helper function to determine log severity based on event type
     const getSeverityFromEventType = (eventType: string): 'info' | 'warning' | 'error' => {

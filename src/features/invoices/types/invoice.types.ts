@@ -105,6 +105,19 @@ export interface PaymentQueryParams extends PaymentFilters {
   page?: number;
 }
 
+export interface PaginatedPaymentsResponse {
+  data: Payment[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    offset: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
 export interface PaymentTableRow extends Payment {
   contractNumber?: string;
   customerName?: string;

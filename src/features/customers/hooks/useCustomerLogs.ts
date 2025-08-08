@@ -22,11 +22,24 @@ export const useCustomerLogs = (customerId?: string, options?: { limit?: number;
     
     try {
       const data = await customerApi.getLogs(effectiveCustomerId, options);
-      setLogs(data);
+      // Handle different response structures
+      let logsArray: CustomerLog[];
+      if (Array.isArray(data)) {
+        logsArray = data;
+      } else if (data && typeof data === 'object' && 'logs' in data && Array.isArray((data as any).logs)) {
+        logsArray = (data as any).logs;
+      } else if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as any).data)) {
+        logsArray = (data as any).data;
+      } else {
+        console.warn('Unexpected logs response structure:', data);
+        logsArray = [];
+      }
+      setLogs(logsArray);
     } catch (error) {
       console.error('Failed to fetch logs:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load logs';
       setError(errorMessage);
+      setLogs([]); // Ensure logs is always an array
     } finally {
       setLoading(false);
     }
