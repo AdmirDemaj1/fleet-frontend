@@ -159,6 +159,18 @@ export interface CreateContractDto {
     legalDocumentReference?: string;
   }[];
   
+  // Required documents
+  documents?: {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+    category: string;
+    isRequired: boolean;
+    status: string;
+    uploadedAt: string;
+  }[];
+  
   // Contract terms
   terms?: Record<string, any>;
 }
@@ -201,6 +213,7 @@ export interface ContractFormData {
   selectedEndorsers: string[];
   collaterals: VehicleCollateral[];
   endorserCollaterals: EndorserCollateral[];
+  documents: any[]; // Will be ContractDocument[] when imported
   terms?: Record<string, any>;
 }
 
