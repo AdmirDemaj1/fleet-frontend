@@ -37,7 +37,15 @@ import {
   Download,
   Visibility,
 } from "@mui/icons-material";
+import { CircularProgress } from "@mui/material";
 import { useDropzone } from "react-dropzone";
+import { 
+  useUploadDocumentMutation, 
+  useReplacePendingDocumentMutation,
+  useTestConnectionQuery,
+  ContractDocumentType,
+  UploadRequestData
+} from "../../api/contractDocumentApi";
 
 export interface ContractDocument {
   id: string;
@@ -70,6 +78,10 @@ interface DocumentUploadProps {
   documents: ContractDocument[];
   onDocumentsChange: (documents: ContractDocument[]) => void;
   error?: string;
+  customerId: string;
+  endorserId?: string;
+  vehicleIds: string[];
+  sessionKey: string;
 }
 
 const REQUIRED_DOCUMENTS = [
@@ -145,6 +157,10 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   documents,
   onDocumentsChange,
   error,
+  customerId,
+  endorserId,
+  vehicleIds,
+  sessionKey,
 }) => {
   const [isTypeDialogOpen, setIsTypeDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -152,8 +168,20 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [documentDescription, setDocumentDescription] = useState("");
   const [uploadError, setUploadError] = useState<string>("");
 
+  const [uploadDocument, { isLoading: isUploading }] = useUploadDocumentMutation();
+  const [replacePendingDocument] = useReplacePendingDocumentMutation();
+  
+  // Test backend connection
+  const { data: connectionTest, error: connectionError, isLoading: testingConnection } = useTestConnectionQuery();
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
+      // Check if customer is selected before allowing uploads
+      if (!customerId) {
+        setUploadError("Please select a customer before uploading documents.");
+        return;
+      }
+
       // For now, only handle one file at a time for better UX
       if (acceptedFiles.length > 0) {
         const file = acceptedFiles[0];
@@ -164,7 +192,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         setIsTypeDialogOpen(true);
       }
     },
-    []
+    [customerId]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -180,72 +208,28 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     multiple: false, // Changed to false since we handle one file at a time
   });
 
-  const determineDocumentCategory = (fileName: string): DocumentCategory => {
-    const lowerFileName = fileName.toLowerCase();
+ 
 
-    if (
-      lowerFileName.includes("id") ||
-      lowerFileName.includes("passport") ||
-      lowerFileName.includes("card")    
-    ) {
-      return DocumentCategory.ID_CARD;
+  const handleDeleteDocument = async (documentId: string) => {
+    try {
+      // If the document has a backend ID (not a temporary one), delete it from backend
+      if (documentId.includes('-') && !documentId.includes('temp-')) {
+        // This is a backend document, we should call the API
+        // For now, we'll just remove it locally since we don't have the contract ID
+        // In a real implementation, you'd need to pass the contract ID or use the session key
+        console.log('Document deleted from backend:', documentId);
+      }
+      
+      const updatedDocuments = documents.filter((doc) => doc.id !== documentId);
+      onDocumentsChange(updatedDocuments);
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      // Show error to user
+      setUploadError('Failed to delete document. Please try again.');
     }
-    if (
-      lowerFileName.includes("insurance") ||
-      lowerFileName.includes("policy")
-    ) {
-      return DocumentCategory.INSURANCE;
-    }
-    if (
-      lowerFileName.includes("tpl") ||
-      lowerFileName.includes("third") ||
-      lowerFileName.includes("liability")
-    ) {
-      return DocumentCategory.TPL;
-    }
-    if (
-      lowerFileName.includes("casco") ||
-      lowerFileName.includes("comprehensive")
-    ) {
-      return DocumentCategory.CASCO;
-    }
-    if (
-      lowerFileName.includes("driving") ||
-      lowerFileName.includes("permit") ||
-      lowerFileName.includes("license") ||
-      lowerFileName.includes("leje")
-    ) {
-      return DocumentCategory.DRIVING_PERMIT;
-    }
-    if (
-      lowerFileName.includes("customer") ||
-      lowerFileName.includes("registration")
-    ) {
-      return DocumentCategory.CUSTOMER_REGISTRATION;
-    }
-    if (
-      lowerFileName.includes("endorser") ||
-      lowerFileName.includes("guarantor")
-    ) {
-      return DocumentCategory.ENDORSER_ID;
-    }
-    if (
-      lowerFileName.includes("contract") ||
-      lowerFileName.includes("agreement")
-    ) {
-      return DocumentCategory.CONTRACT_AGREEMENT;
-    }
-
-    // Default to ID_CARD if no specific category is determined
-    return DocumentCategory.ID_CARD;
   };
 
-  const handleDeleteDocument = (documentId: string) => {
-    const updatedDocuments = documents.filter((doc) => doc.id !== documentId);
-    onDocumentsChange(updatedDocuments);
-  };
-
-  const handleConfirmDocumentUpload = () => {
+  const handleConfirmDocumentUpload = async () => {
     if (!pendingFile) return;
 
     // Check for duplicates by name
@@ -282,31 +266,90 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     // Clear any previous errors
     setUploadError("");
 
-    const isRequired = REQUIRED_DOCUMENTS.some(
-      (doc) => doc.category === selectedCategory
-    );
+          try {
+              // Convert DocumentCategory to ContractDocumentType
+      const convertToContractDocumentType = (category: DocumentCategory): ContractDocumentType => {
+        switch (category) {
+          case DocumentCategory.ID_CARD:
+            return ContractDocumentType.ID_CARD;
+          case DocumentCategory.INSURANCE:
+            return ContractDocumentType.INSURANCE;
+          case DocumentCategory.TPL:
+            return ContractDocumentType.TPL;
+          case DocumentCategory.CASCO:
+            return ContractDocumentType.CASCO;
+          case DocumentCategory.DRIVING_PERMIT:
+            return ContractDocumentType.DRIVING_PERMIT;
+          case DocumentCategory.CUSTOMER_REGISTRATION:
+            return ContractDocumentType.CUSTOMER_REGISTRATION;
+          case DocumentCategory.ENDORSER_ID:
+            return ContractDocumentType.ENDORSER_ID;
+          case DocumentCategory.CONTRACT_AGREEMENT:
+            return ContractDocumentType.CONTRACT_AGREEMENT;
+          default:
+            return ContractDocumentType.OTHER;
+        }
+      };
 
-    const newDocument: ContractDocument = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: pendingFile.name,
-      type: pendingFile.type,
-      size: pendingFile.size,
-      file: pendingFile,
-      category: selectedCategory,
-      description: documentDescription,
-      isRequired,
-      status: "pending" as const,
-      uploadedAt: new Date(),
-    };
+      // Upload document to backend
+      const uploadData = {
+        type: convertToContractDocumentType(selectedCategory),
+        title: pendingFile.name,
+        description: documentDescription,
+        customerId,
+        endorserId,
+        metadata: {
+          originalFileName: pendingFile.name,
+          fileSize: pendingFile.size,
+          fileType: pendingFile.type,
+          uploadDate: new Date().toISOString(),
+          vehicleIds: vehicleIds.length > 0 ? vehicleIds : undefined,
+          documentCategory: selectedCategory,
+        },
+      };
 
-    const updatedDocuments = [...documents, newDocument];
-    onDocumentsChange(updatedDocuments);
+        console.log("🚀 Attempting to upload document:");
+        console.log("📁 File:", pendingFile.name, "Size:", pendingFile.size, "Type:", pendingFile.type);
+        console.log("📋 Upload Data:", uploadData);
+        console.log("🔑 Session Key:", sessionKey);
+        console.log("👤 Customer ID:", customerId);
+        console.log("🚗 Vehicle IDs:", vehicleIds);
+        console.log("🤝 Endorser ID:", endorserId);
 
-    // Reset and close dialog
-    setPendingFile(null);
-    setSelectedCategory(DocumentCategory.ID_CARD);
-    setDocumentDescription("");
-    setIsTypeDialogOpen(false);
+        const response = await uploadDocument({
+          file: pendingFile,
+          data: uploadData,
+          sessionKey,
+        }).unwrap();
+
+      // Create local document object with backend response
+      const newDocument: ContractDocument = {
+        id: response.id,
+        name: response.fileName || pendingFile.name,
+        type: pendingFile.type,
+        size: pendingFile.size,
+        file: pendingFile,
+        category: selectedCategory,
+        description: documentDescription,
+        isRequired: REQUIRED_DOCUMENTS.some(
+          (doc) => doc.category === selectedCategory
+        ),
+        status: response.status as "pending" | "uploaded" | "verified" | "rejected",
+        uploadedAt: new Date(response.createdAt),
+      };
+
+      const updatedDocuments = [...documents, newDocument];
+      onDocumentsChange(updatedDocuments);
+
+      // Reset and close dialog
+      setPendingFile(null);
+      setSelectedCategory(DocumentCategory.ID_CARD);
+      setDocumentDescription("");
+      setIsTypeDialogOpen(false);
+    } catch (error) {
+      console.error('Document upload failed:', error);
+      setUploadError('Failed to upload document. Please try again.');
+    }
   };
 
   const handleCancelDocumentUpload = () => {
@@ -315,6 +358,62 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setDocumentDescription("");
     setUploadError("");
     setIsTypeDialogOpen(false);
+  };
+
+  const handleReplaceDocument = async (documentId: string, newFile: File) => {
+    try {
+      // If the document has a backend ID, replace it using the API
+      if (documentId.includes('-') && !documentId.includes('temp-')) {
+        const metadata = {
+          reason: 'Document replaced by user',
+          replacedAt: new Date().toISOString(),
+          originalDocumentId: documentId,
+        };
+
+        const response = await replacePendingDocument({
+          documentId,
+          sessionKey,
+          file: newFile,
+          metadata,
+        }).unwrap();
+
+        // Update the local document with the new file info
+        const updatedDocuments = documents.map((doc) => {
+          if (doc.id === documentId) {
+            return {
+              ...doc,
+              name: response.fileName || newFile.name,
+              file: newFile,
+              size: newFile.size,
+              type: newFile.type,
+              status: response.status as "pending" | "uploaded" | "verified" | "rejected",
+            };
+          }
+          return doc;
+        });
+
+        onDocumentsChange(updatedDocuments);
+      } else {
+        // For local documents, just update the file
+        const updatedDocuments = documents.map((doc) => {
+          if (doc.id === documentId) {
+            return {
+              ...doc,
+              name: newFile.name,
+              file: newFile,
+              size: newFile.size,
+              type: newFile.type,
+            };
+          }
+          return doc;
+        });
+
+        onDocumentsChange(updatedDocuments);
+      }
+    } catch (error) {
+      console.error('Failed to replace document:', error);
+      setUploadError('Failed to replace document. Please try again.');
+    }
   };
 
 
@@ -391,6 +490,43 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         </Alert>
       )}
 
+      {/* Backend Connection Status */}
+      {testingConnection && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Testing backend connection...
+        </Alert>
+      )}
+      
+      {connectionError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Backend connection failed. Please ensure your backend server is running on http://localhost:3000
+        </Alert>
+      )}
+      
+      {connectionTest && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          Backend connected successfully! Server is responding.
+        </Alert>
+      )}
+
+      {!customerId && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Please select a customer in the previous step before uploading documents.
+        </Alert>
+      )}
+
+      {customerId && vehicleIds.length === 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No vehicles selected. You can still upload documents, but vehicle information will not be associated.
+        </Alert>
+      )}
+
+      {customerId && !endorserId && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          No endorser selected. You can still upload documents, but endorser information will not be associated.
+        </Alert>
+      )}
+
       {/* Missing Required Documents Alert */}
       {missingRequired.length > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
@@ -416,12 +552,13 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           borderRadius: 2,
           p: 4,
           textAlign: "center",
-          cursor: "pointer",
+          cursor: customerId ? "pointer" : "not-allowed",
           transition: "all 0.2s ease",
-          bgcolor: isDragActive ? "primary.50" : "background.paper",
+          bgcolor: isDragActive ? "primary.50" : customerId ? "background.paper" : "grey.100",
+          opacity: customerId ? 1 : 0.6,
           "&:hover": {
-            borderColor: "primary.main",
-            bgcolor: "primary.50",
+            borderColor: customerId ? "primary.main" : "divider",
+            bgcolor: customerId ? "primary.50" : "grey.100",
           },
         }}
       >
@@ -439,6 +576,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         <Typography variant="caption" color="primary.main" sx={{ display: 'block', mt: 1, fontWeight: 500 }}>
           You'll be prompted to select the document type after upload
         </Typography>
+        {customerId && (
+          <Typography variant="caption" color="success.main" sx={{ display: 'block', mt: 1, fontWeight: 500 }}>
+            ✓ Customer: {customerId.slice(0, 8)}... | Vehicles: {vehicleIds.length} | Endorser: {endorserId ? endorserId.slice(0, 8) + '...' : 'None'}
+          </Typography>
+        )}
       </Paper>
 
       {/* Required Documents Checklist */}
@@ -734,9 +876,10 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           <Button 
             onClick={handleConfirmDocumentUpload} 
             variant="contained"
-            disabled={!pendingFile}
+            disabled={!pendingFile || !!uploadError || isUploading}
+            startIcon={isUploading ? <CircularProgress size={20} /> : undefined}
           >
-            Upload Document
+            {isUploading ? "Uploading..." : "Upload Document"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -738,6 +738,10 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               setValue("documents", documents, { shouldValidate: true });
             }}
             error={errors.documents?.message}
+            customerId={watchedData.customerId || ""}
+            endorserId={watchedData.selectedEndorsers?.[0]} // Use first endorser if available
+            vehicleIds={watchedData.selectedVehicles || []} // Pass selected vehicles
+            sessionKey={`contract-${watchedData.contractNumber || Date.now()}`} // Generate session key
           />
         );
 
@@ -1182,6 +1186,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       case 4: // Endorsers
         return true; // Endorsers are optional
       case 5: // Documents
+        // First check if customer is selected (required for document uploads)
+        if (!watchedData.customerId) {
+          return false;
+        }
+        
         // Check if all required documents are uploaded
         const requiredCategories = [
           "id_card",
