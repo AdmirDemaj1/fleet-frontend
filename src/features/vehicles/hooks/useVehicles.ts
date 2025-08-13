@@ -14,7 +14,7 @@ export const useVehicles = () => {
     const fetchVehicles = async () => {
       dispatch(setLoading(true));
       try {
-        // Construct query parameters from filters
+        // Construct query parameters from filters (limit supported, offset not supported)
         const queryParams = new URLSearchParams();
         if (filters.search) {
           queryParams.append('search', filters.search);
@@ -24,9 +24,6 @@ export const useVehicles = () => {
         }
         if (filters.limit) {
           queryParams.append('limit', String(filters.limit));
-        }
-        if (filters.offset) {
-          queryParams.append('offset', String(filters.offset));
         }
 
         const queryString = queryParams.toString();

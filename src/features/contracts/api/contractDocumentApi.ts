@@ -76,10 +76,7 @@ export interface DocumentRequirementsDto {
 export const contractDocumentApi = createApi({
   reducerPath: "contractDocumentApi",
   baseQuery: fetchBaseQuery({
-    baseUrl:
-      process.env.NODE_ENV === "production"
-        ? "https://your-production-api.com/"
-        : "http://localhost:3000/", // Common NestJS port
+    baseUrl: getApiUrl(),
     prepareHeaders: (headers) => {
       // Add authorization header if needed
       const token = localStorage.getItem("authToken");

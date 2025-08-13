@@ -21,17 +21,24 @@ export interface EnvConfig {
  * Throws error if required environment variables are missing
  */
 export const getEnvConfig = (): EnvConfig => {
-  const apiUrl = import.meta.env.VITE_API_URL;
-  const mode = import.meta.env.MODE;
-  const isDevelopment = mode === 'development';
+  // Check for explicit mode override from environment variable
+  const explicitMode = import.meta.env.VITE_MODE;
+  console.log("🚀 ~ explicitMode:", explicitMode)
+  const mode = "production";
+
+  console.log("🚀 ~ mode:", mode)
+  const isDevelopment = false;
   const isProduction = mode === 'production';
   
-  // Validate required environment variables
-  if (!apiUrl) {
-    throw new Error(
-      'VITE_API_URL environment variable is required. ' +
-      'Please check your .env files or Vercel environment variables.'
-    );
+  // Determine API URL based on mode
+  let apiUrl: string;
+  if (isDevelopment) {
+    apiUrl = 'http://localhost:3000/';
+  } else if (isProduction) {
+    apiUrl = 'https://fleet-credit-system-oxtz.vercel.app/';
+  } else {
+    // Fallback for other modes (like preview)
+    apiUrl = import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/';
   }
 
   return {
@@ -65,6 +72,6 @@ export const isDev = envConfig.isDevelopment;
 export const isProd = envConfig.isProduction;
 
 /**
- * Get the API base URL
+ * Get the API base URL based on current mode
  */
 export const getApiUrl = () => envConfig.apiUrl;

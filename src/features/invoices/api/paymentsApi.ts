@@ -12,11 +12,12 @@ import {
   PaymentStatus
 } from '../types/invoice.types';
 
+import { getApiUrl } from '../../../shared/utils/env';
+
 export const paymentsApi = createApi({
   reducerPath: 'paymentsApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app',
-    // baseUrl: 'http://localhost:3000',
+    baseUrl: getApiUrl(),
     prepareHeaders: (headers) => {
       headers.set('Accept', 'application/json');
       headers.set('Content-Type', 'application/json');

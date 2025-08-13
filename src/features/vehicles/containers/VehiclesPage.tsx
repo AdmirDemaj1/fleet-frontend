@@ -42,7 +42,6 @@ export const VehiclesPage: React.FC = () => {
       setLoading(true);
       const params: VehicleQueryParams = {
         ...filters,
-        offset: page * rowsPerPage,
         limit: rowsPerPage
       };
       

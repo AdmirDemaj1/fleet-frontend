@@ -2,21 +2,19 @@ import { api } from '../../../shared/utils/api';
 import { Vehicle, VehicleQueryParams, VehicleStatus, VehicleStatistics } from '../types/vehicleType';
 
 export const vehicleApi = {
-  // Get all vehicles with filtering and pagination
+  // Get all vehicles with filtering (limit supported, offset not supported)
   getVehicles: async (params: VehicleQueryParams): Promise<{ vehicles: Vehicle[], total: number }> => {
-    // Use offset-based pagination directly
-    const apiParams = { ...params };
-    
-    const response = await api.get<any>('/vehicles', { params: apiParams });
+    // Backend supports limit but not offset
+    const response = await api.get<any>('/vehicles', { params });
     
     // Handle the backend response structure
     let vehicles: Vehicle[];
     let total: number;
     
-    if (response.data && response.data.data && Array.isArray(response.data.data)) {
-      // Backend returns { data: [...], meta: {...} }
-      vehicles = response.data.data;
-      total = response.data.meta?.total || vehicles.length;
+    if (response.data && response.data.vehicles && Array.isArray(response.data.vehicles)) {
+      // Backend returns { vehicles: [...], total: number }
+      vehicles = response.data.vehicles;
+      total = response.data.total || vehicles.length;
     } else if (Array.isArray(response.data)) {
       // Direct array response (fallback)
       vehicles = response.data;

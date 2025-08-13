@@ -87,7 +87,6 @@ export interface VehicleQueryParams {
   year?: number;
   isLiquidAsset?: boolean;
   search?: string;
-  offset?: number;
   limit?: number;
 }
 
@@ -99,7 +98,6 @@ export interface VehicleFilters {
   year?: number;
   isLiquidAsset?: boolean;
   search?: string;
-  offset?: number;
   limit?: number;
 }
 

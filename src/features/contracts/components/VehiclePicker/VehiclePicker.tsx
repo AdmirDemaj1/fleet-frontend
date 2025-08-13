@@ -96,7 +96,6 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
     refetch
   } = useGetAvailableVehiclesQuery({
     search: debouncedSearchTerm,
-    limit: 50,
     status: 'AVAILABLE'
   });
 

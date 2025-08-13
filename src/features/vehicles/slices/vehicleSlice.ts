@@ -18,8 +18,7 @@ const initialState: VehicleState = {
   error: null,
   selectedVehicle: null,
   filters: {
-    limit: 10,
-    offset: 0
+    limit: 10
   },
   totalCount: 0
 };
