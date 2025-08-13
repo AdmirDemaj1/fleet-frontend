@@ -7,8 +7,8 @@ import { API_ENDPOINTS } from '../../../shared/utils/constants';
 export const auditApi = createApi({
   reducerPath: 'auditApi',
   baseQuery: fetchBaseQuery({ 
-    // baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
-    baseUrl: 'http://localhost:3000/',
+    baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
+    // baseUrl: 'http://localhost:3000/',
     prepareHeaders: (headers) => {
       const token = localStorage.getItem('authToken');
       if (token) {

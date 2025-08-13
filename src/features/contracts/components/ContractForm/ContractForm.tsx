@@ -95,6 +95,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
 }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [submitError, setSubmitError] = useState<string>("");
+  const [sessionKey] = useState(() => `contract-${Date.now()}`); // Generate session key once when component mounts
 
   const methods = useForm<ContractFormData>({
     defaultValues: {
@@ -201,6 +202,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       try {
         setSubmitError("");
 
+        // Use the session key that was generated when contract creation started
+        
         // Transform form data to match backend CreateContractDto exactly
         const submitData: any = {
           type: data.type,
@@ -211,6 +214,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           totalAmount: data.totalAmount,
           interestRate: data.loanDetails?.interestRate || 0,
           vehicleIds: data.selectedVehicles || [],
+          sessionKey: sessionKey, // Same session key used in DocumentUpload
           collaterals:
             data.collaterals?.map((collateral) => ({
               type: "vehicle",
@@ -239,18 +243,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               guaranteeExpirationDate: data.endDate,
               legalDocumentReference: `GUARANTEE-${data.contractNumber}-${endorserId}`,
             })) || [],
-          documents:
-            data.documents?.map((doc) => ({
-              id: doc.id,
-              name: doc.name,
-              type: doc.type,
-              size: doc.size,
-              category: doc.category,
-              isRequired: doc.isRequired,
-              status: doc.status,
-              uploadedAt:
-                doc.uploadedAt?.toISOString() || new Date().toISOString(),
-            })) || [],
+          // Documents are handled separately via the document upload API
           terms: data.terms || {},
         };
 
@@ -741,7 +734,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             customerId={watchedData.customerId || ""}
             endorserId={watchedData.selectedEndorsers?.[0]} // Use first endorser if available
             vehicleIds={watchedData.selectedVehicles || []} // Pass selected vehicles
-            sessionKey={`contract-${watchedData.contractNumber || Date.now()}`} // Generate session key
+            sessionKey={sessionKey} // Use the session key generated when contract creation started
           />
         );
 

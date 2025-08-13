@@ -159,17 +159,10 @@ export interface CreateContractDto {
     legalDocumentReference?: string;
   }[];
   
-  // Required documents
-  documents?: {
-    id: string;
-    name: string;
-    type: string;
-    size: number;
-    category: string;
-    isRequired: boolean;
-    status: string;
-    uploadedAt: string;
-  }[];
+  // Documents are handled separately via the document upload API
+  
+  // Session key for linking uploaded documents to this contract
+  sessionKey: string;
   
   // Contract terms
   terms?: Record<string, any>;

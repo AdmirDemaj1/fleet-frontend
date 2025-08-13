@@ -13,8 +13,8 @@ import {
 export const contractApi = createApi({
   reducerPath: 'contractApi',
   baseQuery: fetchBaseQuery({
-    // baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
-    baseUrl: 'http://localhost:3000/',
+    baseUrl: import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/',
+    // baseUrl: 'http://localhost:3000/',
     prepareHeaders: (headers) => {
       // Add authorization header if needed
       const token = localStorage.getItem('authToken');
