@@ -45,7 +45,7 @@ import {
   useTestConnectionQuery,
   ContractDocumentType,
   UploadRequestData
-} from "../../api/contractDocumentApi";
+} from "../../../api/contractDocumentApi";
 
 export interface ContractDocument {
   id: string;

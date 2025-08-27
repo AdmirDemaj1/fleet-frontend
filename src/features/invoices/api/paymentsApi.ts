@@ -98,31 +98,63 @@ export const paymentsApi = createApi({
       providesTags: (_result, _error, id) => [{ type: 'Payment', id }],
     }),
 
-    getPaymentsByContract: builder.query<Payment[], { 
+    getPaymentsByContract: builder.query<{
+      data: Payment[];
+      meta: {
+        total: number;
+        page: number;
+        limit: number;
+        offset: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+      };
+    }, { 
       contractId: string; 
       status?: PaymentStatus; 
       limit?: number; 
+      page?: number;
       offset?: number; 
     }>({
-      query: ({ contractId, status, limit, offset }) => {
+      query: ({ contractId, status, limit, page, offset }) => {
         const searchParams = new URLSearchParams();
         
         if (status) searchParams.append('status', status);
         if (limit) searchParams.append('limit', String(limit));
+        if (page) searchParams.append('page', String(page));
         if (offset) searchParams.append('offset', String(offset));
 
-        return `/payments/contract/${contractId}?${searchParams.toString()}`;
+        const queryString = searchParams.toString();
+        console.log('Contract payments query:', `/payments/contract/${contractId}?${queryString}`);
+        return `/payments/contract/${contractId}?${queryString}`;
       },
-      providesTags: (_result, _error, { contractId }) => [
-        { type: 'Payment', id: `contract-${contractId}` }
+      providesTags: (_result, _error, { contractId, page, limit }) => [
+        { type: 'Payment', id: `contract-${contractId}-page-${page || 1}-limit-${limit || 10}` }
       ],
       transformResponse: (response: any) => {
-        // Handle different response structures
+        console.log('Contract payments API response:', response);
+        
+        // Handle paginated response structure with data and meta
+        if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          console.log('Using paginated response structure');
+          return {
+            data: response.data,
+            meta: response.meta || {
+              total: response.data.length,
+              page: 1,
+              limit: response.data.length,
+              offset: 0,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: false
+            }
+          };
+        }
+        
+        // Handle different response structures (fallback)
         let paymentsArray: Payment[];
         if (Array.isArray(response)) {
           paymentsArray = response;
-        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-          paymentsArray = response.data;
         } else if (response && typeof response === 'object' && 'payments' in response && Array.isArray(response.payments)) {
           paymentsArray = response.payments;
         } else {
@@ -130,7 +162,18 @@ export const paymentsApi = createApi({
           paymentsArray = [];
         }
         
-        return paymentsArray;
+        return {
+          data: paymentsArray,
+          meta: {
+            total: paymentsArray.length,
+            page: 1,
+            limit: paymentsArray.length,
+            offset: 0,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false
+          }
+        };
       },
     }),
 

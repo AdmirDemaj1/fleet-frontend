@@ -28,11 +28,11 @@ import {
   PersonAdd,
   Refresh
 } from '@mui/icons-material';
-import { useGetEndorsersQuery } from '../../api/contractApi';
-import { EndorserPickerProps, EndorserSummary } from '../../types/contract.types';
-import { CustomerCreationModal } from '../../../../shared/components';
-import { CreateCustomerDto, CreateEndorserDto, CustomerType } from '../../../customers/types/customer.types';
-import { endorserApi } from '../../../customers/api/endorserApi';
+import { useGetEndorsersQuery } from '../../../api/contractApi';
+import { EndorserPickerProps, EndorserSummary } from '../../../types/contract.types';
+import { CustomerCreationModal } from '../../../../../shared/components';
+import { CreateCustomerDto, CreateEndorserDto, CustomerType } from '../../../../customers/types/customer.types';
+import { endorserApi } from '../../../../customers/api/endorserApi';
 
 // Simple debounce hook
 const useDebounce = (value: string, delay: number) => {

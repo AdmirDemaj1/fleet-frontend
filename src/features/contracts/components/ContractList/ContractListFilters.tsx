@@ -315,7 +315,7 @@ export const ContractListFilters: React.FC<ContractListFiltersProps> = ({
                 size="small"
                 onDelete={() => onTypeChange(undefined)}
                 sx={{ borderRadius: 1.5 }}
-                icon={getContractTypeIcon(type)}
+                
               />
             )}
             

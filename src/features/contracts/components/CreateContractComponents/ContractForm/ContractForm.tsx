@@ -39,7 +39,7 @@ import {
   ContractFormData,
   CreateContractDto,
   ContractType,
-} from "../../types/contract.types";
+} from "../../../types/contract.types";
 
 import { CustomerPicker } from "../CustomerPicker/CustomerPicker";
 import { VehiclePicker } from "../VehiclePicker/VehiclePicker";

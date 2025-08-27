@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Controller, useFormContext } from 'react-hook-form';
-import { ContractType } from '../../types/contract.types';
+import { ContractType } from '../../../types/contract.types';
 import dayjs from 'dayjs';
 
 export const ContractDetails: React.FC = () => {

@@ -32,11 +32,11 @@ import {
 
 } from '@mui/icons-material';
 
-import { useGetCustomersQuery } from '../../api/contractApi';
-import { CustomerPickerProps, CustomerSummary } from '../../types/contract.types';
-import { customerApi } from '../../../customers/api/customerApi';
-import { CreateCustomerDto } from '../../../customers/types/customer.types';
-import { CustomerCreationModal } from '../../../../shared/components';
+import { useGetCustomersQuery } from '../../../api/contractApi';
+import { CustomerPickerProps, CustomerSummary } from '../../../types/contract.types';
+import { customerApi } from '../../../../customers/api/customerApi';
+import { CreateCustomerDto } from '../../../../customers/types/customer.types';
+import { CustomerCreationModal } from '../../../../../shared/components';
 
 // Simple debounce hook
 const useDebounce = (value: string, delay: number) => {
