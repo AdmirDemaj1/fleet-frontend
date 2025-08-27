@@ -1,6 +1,8 @@
 // Components
 export { ContractFilters } from './ContractFilters';
 export { VehicleFilters } from './VehicleFilters';
+export { CustomerAccountEdit } from './CustomerAccountEdit';
+export { CustomerSettingsPage } from './CustomerSettingsPage';
 export { default as CustomerAccountContracts } from './CustomerAccountContracts';
 export { default as CustomerAccountInvoices } from './CustomerAccountInvoices';
 export { default as CustomerAccountVehicles } from './CustomerAccountVehicles';

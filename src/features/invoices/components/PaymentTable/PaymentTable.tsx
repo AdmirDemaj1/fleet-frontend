@@ -77,12 +77,15 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
     }
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | string) => {
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(numericAmount)) return '$0.00';
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2
-    }).format(amount);
+    }).format(numericAmount);
   };
 
   const formatDate = (date: Date | string) => {
@@ -97,7 +100,8 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
 
   const isOverdue = (payment: Payment) => {
     if (payment.status === PaymentStatus.PAID) return false;
-    return new Date(payment.dueDate) < new Date();
+    const dueDate = typeof payment.dueDate === 'string' ? new Date(payment.dueDate) : payment.dueDate;
+    return dueDate < new Date();
   };
 
   const getDaysPastDue = (dueDate: Date | string) => {
@@ -160,7 +164,7 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {formatCurrency(payment.amount)}
           </Typography>
-          {payment.appliedAmount && payment.appliedAmount !== payment.amount && (
+          {payment.appliedAmount && parseFloat(String(payment.appliedAmount)) !== parseFloat(String(payment.amount)) && (
             <Typography variant="caption" color="text.secondary">
               Applied: {formatCurrency(payment.appliedAmount)}
             </Typography>

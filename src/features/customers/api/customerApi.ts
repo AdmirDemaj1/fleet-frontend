@@ -8,6 +8,7 @@ import {
   CustomerFilters,
   ContractSummary,
   CollateralSummary,
+  PaginatedResponse,
 } from "../types/customer.types";
 import { CustomerLog } from "../types/customerLogs.types";
 
@@ -34,111 +35,45 @@ export const customerApi = {
     console.log("Filters being sent:", filters);
 
     try {
-      const response = await api.get<Customer[]>(
+      const response = await api.get<PaginatedResponse<Customer>>(
         `${API_ENDPOINTS.CUSTOMERS}?${params.toString()}`
       );
 
       console.log("API Response:", response);
-      console.log("Response Headers:", response.headers);
 
-      // Handle different response structures
+      // The API returns a paginated response with data and meta fields
+      const responseData = response.data;
+      
+      // Handle the response structure
       let customersArray: Customer[];
-      if (Array.isArray(response.data)) {
-        // The API returns an array directly
-        customersArray = response.data;
-      } else if (response.data && typeof response.data === 'object' && 'customers' in response.data && Array.isArray((response.data as any).customers)) {
-        // The API returns an object with a customers array
-        customersArray = (response.data as any).customers;
-      } else if (response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray((response.data as any).data)) {
-        // The API returns an object with a data array
-        customersArray = (response.data as any).data;
+      let total: number;
+
+      if (responseData && typeof responseData === 'object' && 'data' in responseData && 'meta' in responseData) {
+        // Expected paginated response structure
+        customersArray = responseData.data || [];
+        total = responseData.meta?.total || 0;
+        console.log("Using paginated response structure - Total from meta:", total);
+      } else if (Array.isArray(responseData)) {
+        // Fallback: API returns array directly (backward compatibility)
+        customersArray = responseData;
+        total = customersArray.length;
+        console.log("Using array response structure - Total from array length:", total);
       } else {
-        // Fallback to empty array
-        console.warn("Unexpected response structure:", response.data);
+        // Unexpected structure
+        console.warn("Unexpected response structure:", responseData);
         customersArray = [];
+        total = 0;
       }
 
       const processedCustomers = customersArray.map((customer) => ({
         ...customer,
-        // Convert string dates to Date objects if needed
+        // Keep dates as strings since they come from API as strings
         createdAt: customer.createdAt,
         updatedAt: customer.updatedAt,
       }));
 
-      // Try multiple ways to get the total count
-      let total = 0;
-
-      // Method 1: Check x-total-count header (common standard)
-      if (response.headers["x-total-count"]) {
-        total = parseInt(response.headers["x-total-count"], 10);
-      }
-      // Method 2: Check total-count header
-      else if (response.headers["total-count"]) {
-        total = parseInt(response.headers["total-count"], 10);
-      }
-      // Method 3: Check if response has pagination info
-      else if (response.headers["content-range"]) {
-        // Parse Content-Range header like "items 0-9/100"
-        const match = response.headers["content-range"].match(/\/(\d+)$/);
-        if (match) {
-          total = parseInt(match[1], 10);
-        }
-      }
-      // Method 4: If we have limit/offset and got a full page, we need to get the total count
-      else if (filters?.limit && filters?.offset !== undefined) {
-        // Make a separate request to get the total count without limit/offset
-        try {
-          const countParams = new URLSearchParams();
-          if (filters?.type) countParams.append("type", filters.type);
-          if (filters?.search) countParams.append("search", filters.search);
-          if (filters?.hasVehicles !== undefined)
-            countParams.append("hasVehicles", filters.hasVehicles.toString());
-          if (filters?.hasContracts !== undefined)
-            countParams.append("hasContracts", filters.hasContracts.toString());
-          if (filters?.hasCollaterals !== undefined)
-            countParams.append(
-              "hasCollaterals",
-              filters.hasCollaterals.toString()
-            );
-
-          const countResponse = await api.get<Customer[]>(
-            `${API_ENDPOINTS.CUSTOMERS}?${countParams.toString()}`
-          );
-          
-          // Handle different response structures for count
-          let countArray: Customer[];
-          if (Array.isArray(countResponse.data)) {
-            countArray = countResponse.data;
-          } else if (countResponse.data && typeof countResponse.data === 'object' && 'customers' in countResponse.data && Array.isArray((countResponse.data as any).customers)) {
-            countArray = (countResponse.data as any).customers;
-          } else if (countResponse.data && typeof countResponse.data === 'object' && 'data' in countResponse.data && Array.isArray((countResponse.data as any).data)) {
-            countArray = (countResponse.data as any).data;
-          } else {
-            countArray = [];
-          }
-          
-          total = countArray.length;
-          console.log("Got total count from separate request:", total);
-        } catch (countError) {
-          console.warn(
-            "Failed to get count, using fallback estimation:",
-            countError
-          );
-          // Fallback estimation
-          if (processedCustomers.length === filters.limit) {
-            total = (filters.offset || 0) + processedCustomers.length + 1;
-          } else {
-            total = (filters.offset || 0) + processedCustomers.length;
-          }
-        }
-      }
-      // Method 5: Fallback to array length (no pagination)
-      else {
-        total = processedCustomers.length;
-      }
-
-      console.log("Calculated total:", total);
       console.log("Processed customers count:", processedCustomers.length);
+      console.log("Total count from API:", total);
 
       return {
         data: processedCustomers,

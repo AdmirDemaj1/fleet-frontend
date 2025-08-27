@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../app/store';
 import { customerApi } from '../api/customerApi';
@@ -10,7 +10,27 @@ export const useCustomers = () => {
     (state: RootState) => state.customers
   );
 
+  // Simple approach: track the last API call filters to prevent duplicates
+  const lastFiltersRef = useRef<string>('');
+
   const fetchCustomers = useCallback(async () => {
+    // Create a unique key for current filters
+    const filtersKey = JSON.stringify(filters);
+    
+    // Skip if same filters as last call
+    if (filtersKey === lastFiltersRef.current) {
+      console.log('Same filters as last call, skipping API request');
+      return;
+    }
+
+    // Skip if already loading
+    if (loading) {
+      console.log('Already loading, skipping API call');
+      return;
+    }
+
+    lastFiltersRef.current = filtersKey;
+    
     dispatch(setLoading(true));
     try {
       console.log('Fetching customers with filters:', filters);
@@ -23,7 +43,7 @@ export const useCustomers = () => {
     } finally {
       dispatch(setLoading(false));
     }
-  }, [dispatch, filters?.search, filters?.type, filters?.limit, filters?.offset, filters?.hasVehicles, filters?.hasContracts, filters?.hasCollaterals]);
+  }, [dispatch, filters, loading]);
 
   useEffect(() => {
     fetchCustomers();

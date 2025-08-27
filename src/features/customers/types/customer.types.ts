@@ -193,3 +193,18 @@ export enum CustomerType {
     hasContracts?: boolean;
     hasCollaterals?: boolean;
   }
+
+  export interface PaginationMeta {
+    total: number;
+    page: number;
+    limit: number;
+    offset: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }
+
+  export interface PaginatedResponse<T> {
+    data: T[];
+    meta: PaginationMeta;
+  }

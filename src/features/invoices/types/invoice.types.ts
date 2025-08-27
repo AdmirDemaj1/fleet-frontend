@@ -20,17 +20,17 @@ export interface Payment {
   id: string;
   contractId: string;
   customerId: string;
-  amount: number;
-  dueDate: Date;
-  paymentDate?: Date;
+  amount: number | string;
+  dueDate: Date | string;
+  paymentDate?: Date | string;
   status: PaymentStatus;
   type: PaymentType;
   notes?: string;
   paymentMethod?: string;
   transactionReference?: string;
-  createdAt: Date;
-  appliedAmount?: number;
-  creditedAmount?: number;
+  createdAt: Date | string;
+  appliedAmount?: number | string;
+  creditedAmount?: number | string;
 }
 
 export interface PaymentWithCreditResponse extends Payment {

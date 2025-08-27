@@ -1,37 +1,50 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
   Box,
-  Chip,
-  Divider,
+  Typography,
+  Grid,
   Button,
-  Skeleton,
+  Chip,
   Alert,
-  Paper,
+  Skeleton,
+  Divider,
+  useTheme,
   alpha,
-  useTheme
+  Paper,
+  LinearProgress,
+  Avatar,
+  Stack,
+  Tooltip,
+  IconButton
 } from '@mui/material';
 import {
   ArrowBack,
   Edit,
-  Delete,
-  BusinessCenter,
-  TrendingUp,
+  AttachMoney,
+  CalendarToday,
+  Schedule,
   Person,
+  Receipt,
   DirectionsCar,
   Security,
-  Receipt,
   History,
-  FileDownload,
+  TrendingUp,
+  CheckCircle,
+  Pending,
+  Error,
+  Warning,
   AccountBalance,
-  CalendarToday,
-  AttachMoney,
-  Schedule
+  Assignment,
+  Timeline,
+  EventNote,
+  FiberManualRecord,
+  Share,
+  Print,
+  Download,
+  Assessment,
+  Analytics,
+  Speed
 } from '@mui/icons-material';
 import { useGetContractQuery } from '../api/contractApi';
 import { ContractType, ContractStatus } from '../types/contract.types';
@@ -44,448 +57,759 @@ export const ContractDetailsPage: React.FC = () => {
 
   const { data: contract, isLoading, error } = useGetContractQuery(id!);
 
-  // Format date for display
+  // Enhanced formatting functions
   const formatDate = (dateString?: string): string => {
     if (!dateString) return 'N/A';
-    return dayjs(dateString).format('MMM D, YYYY');
+    return dayjs(dateString).format('MMM DD, YYYY');
   };
 
-  // Format currency
-  const formatCurrency = (amount: string): string => {
-    const numAmount = parseFloat(amount);
+  const formatCurrency = (amount: string | number): string => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(numAmount);
   };
 
-  // Get status color
-  const getStatusColor = (status: ContractStatus) => {
-    switch (status) {
-      case ContractStatus.ACTIVE:
-        return 'success';
-      case ContractStatus.DRAFT:
-        return 'warning';
-      case ContractStatus.COMPLETED:
-        return 'info';
-      case ContractStatus.CANCELLED:
-        return 'error';
-      default:
-        return 'default';
-    }
+  const formatPercentage = (value: number): string => {
+    return `${Math.round(value)}%`;
   };
 
-  // Get type color
-  const getTypeColor = (type: ContractType) => {
-    switch (type) {
-      case ContractType.LOAN:
-        return 'primary';
-      case ContractType.LEASING:
-        return 'secondary';
-      default:
-        return 'default';
-    }
-  };
+  // Enhanced contract configuration
+  const contractConfig = useMemo(() => {
+    if (!contract) return null;
 
+    const isLoan = contract.type === ContractType.LOAN;
+    const totalAmount = parseFloat(contract.totalAmount);
+    const remainingAmount = parseFloat(contract.remainingAmount);
+    const paidAmount = totalAmount - remainingAmount;
+    const progressPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
+
+    return {
+      isLoan,
+      totalAmount,
+      remainingAmount,
+      paidAmount,
+      progressPercentage,
+      type: {
+        icon: isLoan ? AccountBalance : TrendingUp,
+        color: isLoan ? 'primary' : 'secondary',
+        label: isLoan ? 'Loan Agreement' : 'Leasing Agreement',
+        description: isLoan 
+          ? 'Traditional financing with ownership transfer'
+          : 'Asset usage with flexible terms'
+      },
+      status: {
+        icon: contract.status === ContractStatus.ACTIVE ? CheckCircle :
+              contract.status === ContractStatus.DRAFT ? Pending :
+              contract.status === ContractStatus.COMPLETED ? CheckCircle :
+              contract.status === ContractStatus.CANCELLED ? Error : Warning,
+        color: contract.status === ContractStatus.ACTIVE ? 'success' :
+               contract.status === ContractStatus.DRAFT ? 'warning' :
+               contract.status === ContractStatus.COMPLETED ? 'info' :
+               contract.status === ContractStatus.CANCELLED ? 'error' : 'default',
+        label: contract.status.charAt(0).toUpperCase() + contract.status.slice(1)
+      }
+    };
+  }, [contract]);
+
+  // Enhanced loading state
   if (isLoading) {
     return (
-      <Container maxWidth="lg">
-        <Box sx={{ py: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <Skeleton variant="rectangular" width={40} height={40} sx={{ mr: 2 }} />
-            <Skeleton variant="text" width={200} height={32} />
-          </Box>
-          <Grid container spacing={3}>
-            {[...Array(6)].map((_, index) => (
-              <Grid item xs={12} md={6} key={index}>
-                <Skeleton variant="rectangular" height={200} />
-              </Grid>
-            ))}
-          </Grid>
+      <Box sx={{ p: 4, maxWidth: 1400, mx: 'auto' }}>
+        <Box sx={{ mb: 4 }}>
+          <Skeleton variant="text" width={300} height={40} sx={{ mb: 2 }} />
+          <Skeleton variant="text" width={200} height={24} />
         </Box>
-      </Container>
+        <Grid container spacing={3}>
+          {[...Array(6)].map((_, index) => (
+            <Grid item xs={12} md={6} lg={4} key={index}>
+              <Skeleton 
+                variant="rectangular" 
+                height={200} 
+                sx={{ borderRadius: 3 }}
+              />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
     );
   }
 
-  if (error || !contract) {
+  // Enhanced error state
+  if (error || !contract || !contractConfig) {
     return (
-      <Container maxWidth="lg">
-        <Box sx={{ py: 3 }}>
-          <Alert severity="error" sx={{ mb: 3 }}>
-            Failed to load contract details. Please try again.
-          </Alert>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBack />}
-            onClick={() => navigate('/contracts')}
-          >
-            Back to Contracts
-          </Button>
-        </Box>
-      </Container>
+      <Box sx={{ p: 4, maxWidth: 1400, mx: 'auto' }}>
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mb: 3,
+            borderRadius: 3,
+            '& .MuiAlert-message': { fontWeight: 500 }
+          }}
+        >
+          Failed to load contract details. Please try again.
+        </Alert>
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBack />}
+          onClick={() => navigate('/contracts')}
+          sx={{ 
+            borderRadius: 2,
+            px: 3,
+            py: 1.5,
+            textTransform: 'none',
+            fontWeight: 600
+          }}
+        >
+          Back to Contracts
+        </Button>
+      </Box>
     );
   }
 
-  const isLoan = contract.type === ContractType.LOAN;
   const isActive = contract.status === ContractStatus.ACTIVE;
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 3 }}>
-        {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBack />}
-            onClick={() => navigate('/contracts')}
-            sx={{ mr: 2 }}
+    <Box sx={{ p: 4 }}>
+      {/* Premium Header Section */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 3,
+        mb: 4
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box
+            sx={{
+              width: 72,
+              height: 72,
+              bgcolor: contractConfig.type.color === 'primary' ? theme.palette.primary.main : theme.palette.secondary.main,
+              borderRadius: 3,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mr: 3,
+              boxShadow: theme.shadows[4]
+            }}
           >
-            Back
-          </Button>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              {contract.contractNumber}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <Chip
-                label={isLoan ? 'Loan' : 'Leasing'}
-                color={getTypeColor(contract.type)}
-                variant="outlined"
-                size="small"
-              />
-              <Chip
-                label={contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
-                color={getStatusColor(contract.status)}
-                variant={isActive ? "filled" : "outlined"}
-                size="small"
-              />
-            </Box>
+            <contractConfig.type.icon sx={{ 
+              color: 'white', 
+              fontSize: 36
+            }} />
           </Box>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<Edit />}
-              onClick={() => navigate(`/contracts/${contract.id}/edit`)}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<Delete />}
-              onClick={() => {
-                // TODO: Implement delete functionality
-                console.log('Delete contract:', contract.id);
+          <Box>
+            <Typography 
+              variant="h3" 
+              sx={{ 
+                fontWeight: 800,
+                color: contractConfig.type.color === 'primary' ? theme.palette.primary.main : theme.palette.secondary.main,
+                mb: 1,
+                letterSpacing: '-0.02em'
               }}
             >
-              Delete
-            </Button>
+              {contract.contractNumber}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+              <Chip
+                icon={<contractConfig.type.icon />}
+                label={contractConfig.type.label}
+                color={contractConfig.type.color as any}
+                variant="filled"
+                sx={{ 
+                  fontWeight: 600,
+                  '& .MuiChip-icon': { fontSize: 16 }
+                }}
+              />
+              <Chip
+                icon={<contractConfig.status.icon />}
+                label={contractConfig.status.label}
+                color={contractConfig.status.color as any}
+                variant={isActive ? "filled" : "outlined"}
+                sx={{ fontWeight: 600 }}
+              />
+            </Box>
+            <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
+              {contractConfig.type.description}
+            </Typography>
           </Box>
         </Box>
+        
+        {/* Action Buttons */}
+        <Stack direction="row" spacing={2}>
+          <Tooltip title="Share Contract">
+            <IconButton 
+              sx={{ 
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
+              }}
+            >
+              <Share />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Print Contract">
+            <IconButton 
+              sx={{ 
+                bgcolor: alpha(theme.palette.info.main, 0.1),
+                '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) }
+              }}
+            >
+              <Print />
+            </IconButton>
+          </Tooltip>
+          <Button
+            variant="outlined"
+            startIcon={<Edit />}
+            onClick={() => navigate(`/contracts/${contract.id}/edit`)}
+            sx={{ 
+              borderRadius: 2,
+              px: 3,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 600,
+              borderColor: 'divider',
+              '&:hover': {
+                borderColor: 'primary.main',
+                bgcolor: alpha(theme.palette.primary.main, 0.05)
+              }
+            }}
+          >
+            Edit Contract
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Download />}
+            sx={{ 
+              borderRadius: 2,
+              px: 3,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: 3,
+              '&:hover': { boxShadow: 6 }
+            }}
+          >
+            Export PDF
+          </Button>
+        </Stack>
+      </Box>
 
-        <Grid container spacing={3}>
-          {/* Basic Information */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      bgcolor: alpha(
-                        isLoan 
-                          ? theme.palette.primary.main 
-                          : theme.palette.secondary.main,
-                        0.1
-                      ),
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mr: 2
-                    }}
-                  >
-                    {isLoan ? (
-                      <BusinessCenter sx={{ color: theme.palette.primary.main }} />
-                    ) : (
-                      <TrendingUp sx={{ color: theme.palette.secondary.main }} />
-                    )}
-                  </Box>
-                  <Typography variant="h6">Basic Information</Typography>
+      {/* Financial Overview Banner */}
+      <Paper
+        elevation={0}
+        sx={{
+          bgcolor: alpha(theme.palette.success.main, 0.1),
+          border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+          borderRadius: 3,
+          p: 4,
+          mb: 4
+        }}
+      >
+          <Grid container spacing={4} alignItems="center">
+            <Grid item xs={12} md={8}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <AttachMoney sx={{ fontSize: 32, color: 'success.main', mr: 2 }} />
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+                    {formatCurrency(contractConfig.totalAmount)}
+                  </Typography>
+                  <Typography variant="subtitle1" color="text.secondary">
+                    Total Contract Value
+                  </Typography>
                 </Box>
-                
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
+              </Box>
+              
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Payment Progress
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {formatPercentage(contractConfig.progressPercentage)}
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={contractConfig.progressPercentage}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    bgcolor: alpha(theme.palette.grey[500], 0.2),
+                    '& .MuiLinearProgress-bar': {
+                      borderRadius: 4,
+                      bgcolor: theme.palette.success.main
+                    }
+                  }}
+                />
+              </Box>
+              
+              <Grid container spacing={3}>
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">
+                    Amount Paid
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'success.main' }}>
+                    {formatCurrency(contractConfig.paidAmount)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">
+                    Remaining
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'warning.main' }}>
+                    {formatCurrency(contractConfig.remainingAmount)}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  bgcolor: 'background.paper',
+                  borderRadius: 3,
+                  p: 3,
+                  textAlign: 'center',
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    bgcolor: alpha(theme.palette.info.main, 0.1),
+                    color: 'info.main',
+                    mx: 'auto',
+                    mb: 2
+                  }}
+                >
+                  <Assessment sx={{ fontSize: 28 }} />
+                </Avatar>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                  Contract Health
+                </Typography>
+                <Chip
+                  label={contractConfig.progressPercentage > 80 ? 'Excellent' : 
+                        contractConfig.progressPercentage > 50 ? 'Good' : 
+                        contractConfig.progressPercentage > 20 ? 'Fair' : 'Needs Attention'}
+                  color={contractConfig.progressPercentage > 80 ? 'success' : 
+                        contractConfig.progressPercentage > 50 ? 'primary' : 
+                        contractConfig.progressPercentage > 20 ? 'warning' : 'error'}
+                  sx={{ fontWeight: 600 }}
+                />
+              </Paper>
+            </Grid>
+          </Grid>
+        </Paper>
+
+      <Grid container spacing={4}>
+        {/* Contract Information */}
+        <Grid item xs={12} lg={8}>
+          <Stack spacing={3}>
+            {/* Basic Information Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 4,
+                borderRadius: 3,
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                bgcolor: theme.palette.background.paper
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <Avatar
+                  sx={{
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    color: 'primary.main',
+                    mr: 2,
+                    width: 48,
+                    height: 48
+                  }}
+                >
+                  <Assignment />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    Contract Information
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Core contract details and identification
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <FiberManualRecord sx={{ fontSize: 8, mr: 1 }} />
                       Contract Number
                     </Typography>
-                    <Typography variant="body1" fontWeight={500}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       {contract.contractNumber}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
-                      Type
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <FiberManualRecord sx={{ fontSize: 8, mr: 1 }} />
+                      Contract Type
                     </Typography>
-                    <Typography variant="body1" fontWeight={500}>
-                      {isLoan ? 'Loan' : 'Leasing'}
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {contractConfig.type.label.split(' ')[0]}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <FiberManualRecord sx={{ fontSize: 8, mr: 1 }} />
                       Status
                     </Typography>
-                    <Typography variant="body1" fontWeight={500}>
-                      {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {contractConfig.status.label}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <FiberManualRecord sx={{ fontSize: 8, mr: 1 }} />
                       Customer ID
                     </Typography>
-                    <Typography variant="body1" fontWeight={500}>
-                      {contract.customerId?.slice(0, 8)}
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {contract.customerId?.slice(0, 8)}...
                     </Typography>
-                  </Grid>
+                  </Box>
                 </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
+              </Grid>
+            </Paper>
 
-          {/* Financial Information */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <AttachMoney sx={{ mr: 2, color: theme.palette.success.main }} />
-                  <Typography variant="h6">Financial Details</Typography>
+            {/* Timeline Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 4,
+                borderRadius: 3,
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                bgcolor: theme.palette.background.paper
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <Avatar
+                  sx={{
+                    bgcolor: alpha(theme.palette.info.main, 0.1),
+                    color: 'info.main',
+                    mr: 2,
+                    width: 48,
+                    height: 48
+                  }}
+                >
+                  <Timeline />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    Contract Timeline
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Key dates and milestones
+                  </Typography>
                 </Box>
-                
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
-                      Total Amount
-                    </Typography>
-                    <Typography variant="h6" color="success.main" fontWeight={600}>
-                      {formatCurrency(contract.totalAmount)}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
-                      Remaining Amount
-                    </Typography>
-                    <Typography variant="h6" color="warning.main" fontWeight={600}>
-                      {formatCurrency(contract.remainingAmount)}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
-                      Amount Paid
-                    </Typography>
-                    <Typography variant="body1" fontWeight={500}>
-                      {formatCurrency((parseFloat(contract.totalAmount) - parseFloat(contract.remainingAmount)).toString())}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
-                      Progress
-                    </Typography>
-                    <Typography variant="body1" fontWeight={500}>
-                      {Math.round(((parseFloat(contract.totalAmount) - parseFloat(contract.remainingAmount)) / parseFloat(contract.totalAmount)) * 100)}%
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
+              </Box>
 
-          {/* Dates */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <CalendarToday sx={{ mr: 2, color: theme.palette.info.main }} />
-                  <Typography variant="h6">Important Dates</Typography>
-                </Box>
-                
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <CalendarToday sx={{ fontSize: 14, mr: 1, color: 'success.main' }} />
                       Start Date
                     </Typography>
-                    <Typography variant="body1" fontWeight={500}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       {formatDate(contract.startDate)}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <EventNote sx={{ fontSize: 14, mr: 1, color: 'warning.main' }} />
                       End Date
                     </Typography>
-                    <Typography variant="body1" fontWeight={500}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       {formatDate(contract.endDate)}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Schedule sx={{ fontSize: 14, mr: 1, color: 'info.main' }} />
                       Created
                     </Typography>
-                    <Typography variant="body1" fontWeight={500}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       {formatDate(contract.createdAt)}
                     </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <History sx={{ fontSize: 14, mr: 1, color: 'secondary.main' }} />
                       Last Updated
                     </Typography>
-                    <Typography variant="body1" fontWeight={500}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       {formatDate(contract.updatedAt)}
                     </Typography>
-                  </Grid>
+                  </Box>
                 </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
+              </Grid>
 
-          {/* Quick Actions */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Schedule sx={{ mr: 2, color: theme.palette.primary.main }} />
-                  <Typography variant="h6">Quick Actions</Typography>
-                </Box>
-                
-                <Grid container spacing={1}>
-                  <Grid item xs={6}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<Person />}
-                      onClick={() => navigate(`/customers/${contract.customerId}`)}
-                      size="small"
-                    >
-                      View Customer
-                    </Button>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<Receipt />}
-                      onClick={() => navigate(`/contracts/${contract.id}/payments`)}
-                      size="small"
-                    >
-                      Payments
-                    </Button>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<DirectionsCar />}
-                      onClick={() => navigate(`/contracts/${contract.id}/vehicles`)}
-                      size="small"
-                    >
-                      Vehicles
-                    </Button>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<Security />}
-                      onClick={() => navigate(`/contracts/${contract.id}/collaterals`)}
-                      size="small"
-                    >
-                      Collaterals
-                    </Button>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<History />}
-                      onClick={() => navigate(`/contracts/${contract.id}/logs`)}
-                      size="small"
-                    >
-                      Activity Logs
-                    </Button>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<FileDownload />}
-                      onClick={() => navigate(`/contracts/${contract.id}/export`)}
-                      size="small"
-                    >
-                      Export Data
-                    </Button>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Contract Timeline */}
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Contract Timeline
+              <Box sx={{ mt: 3, p: 3, bgcolor: alpha(theme.palette.info.main, 0.05), borderRadius: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+                  Contract Duration
                 </Typography>
-                <Divider sx={{ mb: 2 }} />
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box
-                    sx={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: '50%',
-                      bgcolor: theme.palette.success.main,
-                      mr: 2
-                    }}
-                  />
-                  <Typography variant="body2">
-                    Contract created on {formatDate(contract.createdAt)}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <LinearProgress
+                      variant="determinate"
+                      value={Math.min(100, dayjs().diff(dayjs(contract.startDate), 'day') / dayjs(contract.endDate).diff(dayjs(contract.startDate), 'day') * 100)}
+                      sx={{
+                        height: 6,
+                        borderRadius: 3,
+                        bgcolor: alpha(theme.palette.grey[500], 0.2),
+                        '& .MuiLinearProgress-bar': {
+                          borderRadius: 3,
+                          bgcolor: theme.palette.info.main
+                        }
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'info.main' }}>
+                    {dayjs(contract.endDate).diff(dayjs(contract.startDate), 'month')} months
                   </Typography>
                 </Box>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box
-                    sx={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: '50%',
-                      bgcolor: theme.palette.info.main,
-                      mr: 2
-                    }}
-                  />
-                  <Typography variant="body2">
-                    Contract period: {formatDate(contract.startDate)} - {formatDate(contract.endDate)}
-                  </Typography>
-                </Box>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Box
-                    sx={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: '50%',
-                      bgcolor: theme.palette.warning.main,
-                      mr: 2
-                    }}
-                  />
-                  <Typography variant="body2">
-                    Last updated on {formatDate(contract.updatedAt)}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+              </Box>
+            </Paper>
+          </Stack>
         </Grid>
-      </Box>
-    </Container>
+
+        {/* Actions Sidebar */}
+        <Grid item xs={12} lg={4}>
+          <Stack spacing={3}>
+            {/* Quick Actions */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                bgcolor: theme.palette.background.paper
+              }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
+                Quick Actions
+              </Typography>
+              
+              <Stack spacing={2}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<Person />}
+                  onClick={() => navigate(`/customers/${contract.customerId}`)}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    borderRadius: 2,
+                    py: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderColor: alpha(theme.palette.divider, 0.3),
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: alpha(theme.palette.primary.main, 0.05)
+                    }
+                  }}
+                >
+                  View Customer Profile
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<Receipt />}
+                  onClick={() => navigate(`/contracts/${contract.id}/payments`)}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    borderRadius: 2,
+                    py: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderColor: alpha(theme.palette.divider, 0.3),
+                    '&:hover': {
+                      borderColor: 'success.main',
+                      bgcolor: alpha(theme.palette.success.main, 0.05)
+                    }
+                  }}
+                >
+                  Payment History
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<DirectionsCar />}
+                  onClick={() => navigate(`/contracts/${contract.id}/vehicles`)}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    borderRadius: 2,
+                    py: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderColor: alpha(theme.palette.divider, 0.3),
+                    '&:hover': {
+                      borderColor: 'info.main',
+                      bgcolor: alpha(theme.palette.info.main, 0.05)
+                    }
+                  }}
+                >
+                  Vehicle Details
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<Security />}
+                  onClick={() => navigate(`/contracts/${contract.id}/collaterals`)}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    borderRadius: 2,
+                    py: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderColor: alpha(theme.palette.divider, 0.3),
+                    '&:hover': {
+                      borderColor: 'warning.main',
+                      bgcolor: alpha(theme.palette.warning.main, 0.05)
+                    }
+                  }}
+                >
+                  Collateral Information
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<Analytics />}
+                  onClick={() => navigate(`/contracts/${contract.id}/analytics`)}
+                  sx={{
+                    justifyContent: 'flex-start',
+                    borderRadius: 2,
+                    py: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderColor: alpha(theme.palette.divider, 0.3),
+                    '&:hover': {
+                      borderColor: 'secondary.main',
+                      bgcolor: alpha(theme.palette.secondary.main, 0.05)
+                    }
+                  }}
+                >
+                  Performance Analytics
+                </Button>
+              </Stack>
+            </Paper>
+
+            {/* Contract Metrics */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                bgcolor: theme.palette.background.paper
+              }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
+                Key Metrics
+              </Typography>
+              
+              <Stack spacing={3}>
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Payment Compliance
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
+                      98%
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={98}
+                    sx={{
+                      height: 4,
+                      borderRadius: 2,
+                      bgcolor: alpha(theme.palette.grey[500], 0.2),
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 2,
+                        bgcolor: 'success.main'
+                      }
+                    }}
+                  />
+                </Box>
+
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Risk Score
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'warning.main' }}>
+                      Low
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={25}
+                    sx={{
+                      height: 4,
+                      borderRadius: 2,
+                      bgcolor: alpha(theme.palette.grey[500], 0.2),
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 2,
+                        bgcolor: 'warning.main'
+                      }
+                    }}
+                  />
+                </Box>
+
+                <Divider />
+
+                <Box sx={{ textAlign: 'center' }}>
+                  <Avatar
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      bgcolor: alpha(theme.palette.primary.main, 0.1),
+                      color: 'primary.main',
+                      mx: 'auto',
+                      mb: 2
+                    }}
+                  >
+                    <Speed sx={{ fontSize: 24 }} />
+                  </Avatar>
+                  <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                    A+
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Contract Rating
+                  </Typography>
+                </Box>
+              </Stack>
+            </Paper>
+          </Stack>
+        </Grid>
+      </Grid>
+    </Box>
   );
 }; 

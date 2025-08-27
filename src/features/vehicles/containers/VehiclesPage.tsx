@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { 
   Typography, 
   Box, 
@@ -17,45 +18,71 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { VehicleList } from '../components/VehicleList/VehicleList';
 import { VehicleFilters } from '../components/VehicleList/VehicleListFilters';
+import { useVehicles } from '../hooks/useVehicles';
+import { setFilters } from '../slices/vehicleSlice';
 import { vehicleApi } from '../api/vehicleApi';
-import { Vehicle, VehicleQueryParams, VehicleStatistics } from '../types/vehicleType';
+import { VehicleQueryParams, VehicleStatistics, VehicleStatus } from '../types/vehicleType';
+import { useDebounce } from '../../../shared/hooks/useDebounce';
 
 // Export as named export
 export const VehiclesPage: React.FC = () => {
   const navigate = useNavigate();
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useDispatch();
+  const { vehicles, loading, error, totalCount } = useVehicles();
+  
   const [stats, setStats] = useState<VehicleStatistics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Pagination
+  // Pagination state
   const [page, setPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   
-  // Filters
-  const [filters, setFilters] = useState<VehicleQueryParams>({});
+  // Filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<VehicleStatus | ''>('');
+  const [legalOwnerFilter, setLegalOwnerFilter] = useState('');
+  const [makeFilter, setMakeFilter] = useState('');
+  const [modelFilter, setModelFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState<number | undefined>(undefined);
+  const [isLiquidAssetFilter, setIsLiquidAssetFilter] = useState<boolean | undefined>(undefined);
 
-  const fetchVehicles = async () => {
-    try {
-      setLoading(true);
-      const params: VehicleQueryParams = {
-        ...filters,
-        limit: rowsPerPage
-      };
-      
-      const response = await vehicleApi.getVehicles(params);
-      setVehicles(response.vehicles || []);
-      setTotalCount(response.total || 0);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching vehicles:', err);
-      setError('Failed to load vehicles. Please try again later.');
-    } finally {
-      setLoading(false);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Single effect to handle all filter changes
+  React.useEffect(() => {
+    // Reset page when filters change (except for page/rowsPerPage changes)
+    const filtersChanged = (
+      debouncedSearchTerm !== '' ||
+      statusFilter !== '' ||
+      legalOwnerFilter !== '' ||
+      makeFilter !== '' ||
+      modelFilter !== '' ||
+      yearFilter !== undefined ||
+      isLiquidAssetFilter !== undefined
+    );
+
+    const targetPage = filtersChanged && page > 0 ? 0 : page;
+    
+    if (filtersChanged && page > 0) {
+      setPage(0);
     }
-  };
+
+    const timeoutId = setTimeout(() => {
+      dispatch(setFilters({
+        search: debouncedSearchTerm || undefined,
+        status: statusFilter || undefined,
+        legalOwner: legalOwnerFilter || undefined,
+        make: makeFilter || undefined,
+        model: modelFilter || undefined,
+        year: yearFilter,
+        isLiquidAsset: isLiquidAssetFilter,
+        limit: rowsPerPage,
+        offset: targetPage * rowsPerPage,
+      }));
+    }, 50); // Small delay to batch updates
+
+    return () => clearTimeout(timeoutId);
+  }, [debouncedSearchTerm, statusFilter, legalOwnerFilter, makeFilter, modelFilter, yearFilter, isLiquidAssetFilter, page, rowsPerPage, dispatch]);
 
   const fetchStats = async () => {
     try {
@@ -67,17 +94,14 @@ export const VehiclesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchVehicles();
-  }, [page, rowsPerPage, filters]);
-
-  useEffect(() => {
     fetchStats();
   }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([fetchVehicles(), fetchStats()]);
+      await fetchStats();
+      // The vehicles will be refetched automatically through the hook
     } finally {
       setIsRefreshing(false);
     }
@@ -93,8 +117,14 @@ export const VehiclesPage: React.FC = () => {
   };
 
   const handleFilterChange = (newFilters: VehicleQueryParams) => {
-    setFilters(newFilters);
-    setPage(0); // Reset to first page when filters change
+    // Update individual filter states
+    setSearchTerm(newFilters.search || '');
+    setStatusFilter(newFilters.status || '');
+    setLegalOwnerFilter(newFilters.legalOwner || '');
+    setMakeFilter(newFilters.make || '');
+    setModelFilter(newFilters.model || '');
+    setYearFilter(newFilters.year);
+    setIsLiquidAssetFilter(newFilters.isLiquidAsset);
   };
 
   const handleAddVehicle = () => {
@@ -109,10 +139,15 @@ export const VehiclesPage: React.FC = () => {
     if (window.confirm('Are you sure you want to delete this vehicle?')) {
       try {
         await vehicleApi.deleteVehicle(id);
-        fetchVehicles(); // Refresh the list
+        // The vehicles will be refetched automatically through the hook
+        
+        // If we deleted the last item on the current page and we're not on the first page,
+        // go back to the previous page
+        if (vehicles.length === 1 && page > 0) {
+          setPage(page - 1);
+        }
       } catch (error) {
         console.error('Error deleting vehicle:', error);
-        setError('Failed to delete vehicle. Please try again later.');
       }
     }
   };
@@ -284,8 +319,16 @@ export const VehiclesPage: React.FC = () => {
 
       {/* Filters */}
       <VehicleFilters 
-        filters={filters} 
-        onFilterChange={handleFilterChange} 
+        filters={{
+          search: searchTerm,
+          status: statusFilter || undefined,
+          legalOwner: legalOwnerFilter || undefined,
+          make: makeFilter || undefined,
+          model: modelFilter || undefined,
+          year: yearFilter,
+          isLiquidAsset: isLiquidAssetFilter
+        }}
+        onFilterChange={handleFilterChange}
       />
 
       {/* Error Display */}

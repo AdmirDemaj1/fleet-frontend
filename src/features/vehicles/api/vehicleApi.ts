@@ -1,32 +1,64 @@
 import { api } from '../../../shared/utils/api';
-import { Vehicle, VehicleQueryParams, VehicleStatus, VehicleStatistics } from '../types/vehicleType';
+import { Vehicle, VehicleQueryParams, VehicleStatus, VehicleStatistics, PaginatedVehicleResponse } from '../types/vehicleType';
 
 export const vehicleApi = {
-  // Get all vehicles with filtering (limit supported, offset not supported)
+  // Get all vehicles with filtering
   getVehicles: async (params: VehicleQueryParams): Promise<{ vehicles: Vehicle[], total: number }> => {
-    // Backend supports limit but not offset
-    const response = await api.get<any>('/vehicles', { params });
+    const queryParams = new URLSearchParams();
     
-    // Handle the backend response structure
-    let vehicles: Vehicle[];
-    let total: number;
-    
-    if (response.data && response.data.vehicles && Array.isArray(response.data.vehicles)) {
-      // Backend returns { vehicles: [...], total: number }
-      vehicles = response.data.vehicles;
-      total = response.data.total || vehicles.length;
-    } else if (Array.isArray(response.data)) {
-      // Direct array response (fallback)
-      vehicles = response.data;
-      total = vehicles.length;
-    } else {
-      // Unexpected structure
-      console.warn('Unexpected vehicles response structure:', response.data);
-      vehicles = [];
-      total = 0;
+    if (params.status) queryParams.append('status', params.status);
+    if (params.legalOwner) queryParams.append('legalOwner', params.legalOwner);
+    if (params.make) queryParams.append('make', params.make);
+    if (params.model) queryParams.append('model', params.model);
+    if (params.year) queryParams.append('year', params.year.toString());
+    if (params.isLiquidAsset !== undefined) queryParams.append('isLiquidAsset', params.isLiquidAsset.toString());
+    if (params.search) queryParams.append('search', params.search);
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.offset !== undefined) queryParams.append('offset', params.offset.toString());
+
+    console.log('Vehicle API Request URL:', `/vehicles?${queryParams.toString()}`);
+    console.log('Vehicle Filters being sent:', params);
+
+    try {
+      const response = await api.get<PaginatedVehicleResponse>(`/vehicles?${queryParams.toString()}`);
+      
+      console.log('Vehicle API Response:', response);
+
+      // Handle the response structure
+      const responseData = response.data;
+      let vehicles: Vehicle[];
+      let total: number;
+
+      if (responseData && typeof responseData === 'object' && 'data' in responseData && 'meta' in responseData) {
+        // Expected paginated response structure
+        vehicles = responseData.data || [];
+        total = responseData.meta?.total || 0;
+        console.log('Using paginated response structure - Total from meta:', total);
+      } else if (responseData && typeof responseData === 'object' && 'vehicles' in responseData) {
+        // Legacy response structure { vehicles: [...], total: number }
+        vehicles = (responseData as any).vehicles || [];
+        total = (responseData as any).total || vehicles.length;
+        console.log('Using legacy response structure - Total:', total);
+      } else if (Array.isArray(responseData)) {
+        // Fallback: API returns array directly
+        vehicles = responseData;
+        total = vehicles.length;
+        console.log('Using array response structure - Total from array length:', total);
+      } else {
+        // Unexpected structure
+        console.warn('Unexpected response structure:', responseData);
+        vehicles = [];
+        total = 0;
+      }
+
+      console.log('Processed vehicles count:', vehicles.length);
+      console.log('Total count from API:', total);
+
+      return { vehicles, total };
+    } catch (error) {
+      console.error('Vehicle API request failed:', error);
+      throw error;
     }
-    
-    return { vehicles, total };
   },
 
   // Get a single vehicle by ID

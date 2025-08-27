@@ -26,32 +26,53 @@ export const paymentsApi = createApi({
   }),
   tagTypes: ['Payment', 'CustomerCredit'],
   endpoints: (builder) => ({
-    getPayments: builder.query<{ payments: Payment[]; total: number }, PaymentQueryParams>({
+    getPayments: builder.query<{ payments: Payment[]; total: number; meta: any }, PaymentQueryParams>({
       query: (params = {}) => {
         const searchParams = new URLSearchParams();
         
-        Object.entries(params).forEach(([key, value]) => {
+        // Set default limit if not provided
+        const queryParams = {
+          limit: 10,
+          ...params
+        };
+        
+        Object.entries(queryParams).forEach(([key, value]) => {
           if (value !== undefined && value !== null && value !== '') {
             searchParams.append(key, String(value));
           }
         });
 
+        console.log('Payment API request URL:', `/payments?${searchParams.toString()}`);
         return `/payments?${searchParams.toString()}`;
       },
       providesTags: ['Payment'],
       transformResponse: (response: any) => {
         console.log('Payments API response:', response);
         
-        // Handle different response structures
+        // Handle paginated response structure with data and meta
+        if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          const paymentsArray = response.data;
+          const meta = response.meta || {};
+          const total = meta.total || paymentsArray.length;
+          
+          console.log('Transformed payments:', paymentsArray);
+          console.log('Meta information:', meta);
+          console.log('Total count:', total);
+          
+          return { 
+            payments: paymentsArray, 
+            total,
+            meta
+          };
+        }
+        
+        // Fallback for other response structures
         let paymentsArray: Payment[];
         let total: number;
         
         if (Array.isArray(response)) {
           paymentsArray = response;
           total = response.length;
-        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-          paymentsArray = response.data;
-          total = response.meta?.total || paymentsArray.length;
         } else if (response && typeof response === 'object' && 'payments' in response && Array.isArray(response.payments)) {
           paymentsArray = response.payments;
           total = response.meta?.total || paymentsArray.length;
@@ -61,10 +82,14 @@ export const paymentsApi = createApi({
           total = 0;
         }
         
-        console.log('Transformed payments:', paymentsArray);
-        console.log('Total count:', total);
+        console.log('Transformed payments (fallback):', paymentsArray);
+        console.log('Total count (fallback):', total);
         
-        return { payments: paymentsArray, total };
+        return { 
+          payments: paymentsArray, 
+          total,
+          meta: response?.meta || {}
+        };
       },
     }),
 

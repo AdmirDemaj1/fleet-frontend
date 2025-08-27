@@ -88,6 +88,7 @@ export interface VehicleQueryParams {
   isLiquidAsset?: boolean;
   search?: string;
   limit?: number;
+  offset?: number;
 }
 
 export interface VehicleFilters {
@@ -99,6 +100,22 @@ export interface VehicleFilters {
   isLiquidAsset?: boolean;
   search?: string;
   limit?: number;
+  offset?: number;
+}
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  offset: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface PaginatedVehicleResponse {
+  data: Vehicle[];
+  meta: PaginationMeta;
 }
 
 export interface VehicleStatistics {

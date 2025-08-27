@@ -60,10 +60,6 @@ const PaymentsPage: React.FC = () => {
     navigate(`/customers/${customerId}`);
   };
 
-  const handleCreatePayment = () => {
-    navigate('/payments/create');
-  };
-
   const handleExport = () => {
     // TODO: Implement export functionality
     console.log('Export payments');

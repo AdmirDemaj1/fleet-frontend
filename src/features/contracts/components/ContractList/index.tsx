@@ -90,7 +90,7 @@ export const ContractList: React.FC<ContractListProps> = ({
           </Box>
           <Divider sx={{ mb: 2 }} />
           <Box sx={{ display: "flex", mb: 1.5 }}>
-            {["20%", "15%", "15%", "20%", "15%", "15%"].map((width, i) => (
+            {["25%", "15%", "15%", "20%", "15%", "10%"].map((width, i) => (
               <Skeleton
                 key={i}
                 variant="text"
@@ -111,7 +111,7 @@ export const ContractList: React.FC<ContractListProps> = ({
                   index < 4 ? `1px solid ${theme.palette.divider}` : "none",
               }}
             >
-              {["20%", "15%", "15%", "20%", "15%", "15%"].map((width, i) => (
+              {["25%", "15%", "15%", "20%", "15%", "10%"].map((width, i) => (
                 <Skeleton
                   key={i}
                   variant="text"
@@ -152,13 +152,7 @@ export const ContractList: React.FC<ContractListProps> = ({
           <TableHead>
             <TableRow>
               <TableCell>
-                <TableSortLabel
-                  active={orderBy === "contractNumber"}
-                  direction={orderBy === "contractNumber" ? order : "asc"}
-                  onClick={() => handleRequestSort("contractNumber")}
-                >
-                  Contract Number
-                </TableSortLabel>
+                Contract Number
               </TableCell>
               <TableCell>
                 <TableSortLabel
@@ -184,10 +178,9 @@ export const ContractList: React.FC<ContractListProps> = ({
                   direction={orderBy === "totalAmount" ? order : "asc"}
                   onClick={() => handleRequestSort("totalAmount")}
                 >
-                  Total Amount
+                  Amount
                 </TableSortLabel>
               </TableCell>
-              <TableCell>Start Date</TableCell>
               <TableCell>
                 <TableSortLabel
                   active={orderBy === "createdAt"}
@@ -210,7 +203,7 @@ export const ContractList: React.FC<ContractListProps> = ({
             ))}
             {contracts.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                   <Box
                     sx={{
                       display: "flex",
