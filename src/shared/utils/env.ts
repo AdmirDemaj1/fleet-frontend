@@ -34,8 +34,11 @@ export const getEnvConfig = (): EnvConfig => {
   let apiUrl: string;
   if (isDevelopment) {
     apiUrl = 'http://localhost:3000/';
+    console.log("🚀 ~ url it should be pulling:", apiUrl)
   } else if (isProduction) {
+    
     apiUrl = 'https://fleet-credit-system-oxtz.vercel.app/';
+    console.log("🚀 ~ url it should be pulling:", apiUrl)
   } else {
     // Fallback for other modes (like preview)
     apiUrl = import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/';

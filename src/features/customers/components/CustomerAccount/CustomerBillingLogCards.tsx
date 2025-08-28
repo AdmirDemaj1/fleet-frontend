@@ -21,6 +21,7 @@ import {
   ArrowForward as ArrowForwardIcon,
   Assignment as LogIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { CustomerBillingAndLogsCardsProps, LogEntry } from '../../types/customerBillingCards.types';
 import { CARD_CONSTANTS } from '../../constants/billingCardsConstants';
 import { useBillingCards } from '../../hooks/useBillingCards';
@@ -34,6 +35,8 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
   invoicesLoading = false,
   invoicesError = null
 }) => {
+  const navigate = useNavigate();
+  
   const {
     theme,
     handleInvoicesClick,
@@ -43,6 +46,11 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
     getLogSeverityIcon,
     formatInvoiceNumber
   } = useBillingCards(customerId, onInvoicesClick, onLogsClick);
+
+  // Handle invoice click to navigate to invoice details
+  const handleInvoiceClick = (invoiceId: string) => {
+    navigate(`/payments/${invoiceId}`);
+  };
 
   // Fetch customer logs - get recent activity (default amount)
   const { logs, loading: logsLoading, error: logsError } = useCustomerLogs(customerId);
@@ -147,11 +155,18 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                 recentInvoices.map((invoice, index) => (
                   <React.Fragment key={invoice.id}>
                     <ListItem 
+                      button
                       sx={{ 
                         py: 0.75, 
                         px: 1.5,
-                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) }
+                        cursor: 'pointer',
+                        '&:hover': { 
+                          bgcolor: alpha(theme.palette.primary.main, 0.08),
+                          transform: 'translateX(2px)',
+                          transition: 'all 0.2s ease-in-out'
+                        }
                       }}
+                      onClick={() => handleInvoiceClick(invoice.id)}
                     >
                       <ListItemIcon sx={{ minWidth: 32 }}>
                         {getInvoiceStatusIcon(invoice.status)}
@@ -163,11 +178,11 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
                             fontWeight="medium" 
                             sx={{ 
                               lineHeight: 0.87,
-                              cursor: 'help',
                               fontFamily: 'monospace',
-                              fontSize: '0.8rem'
+                              fontSize: '0.8rem',
+                              color: 'primary.main'
                             }}
-                            title={`Full ID: ${invoice.id}`}
+                            title={`Click to view invoice details. Full ID: ${invoice.id}`}
                           >
                             {formatInvoiceNumber(invoice.id)}
                           </Typography>

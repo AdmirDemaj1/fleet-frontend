@@ -63,7 +63,19 @@ export const contractApi = createApi({
       providesTags: (_result, _error, id) => [{ type: 'Contract', id }],
     }),
 
-    getContracts: builder.query<ContractResponse[], {
+    getContracts: builder.query<{
+      contracts: ContractResponse[];
+      total: number;
+      meta: {
+        total: number;
+        page: number;
+        limit: number;
+        offset: number;
+        totalPages: number;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+      };
+    }, {
       type?: ContractType;
       status?: ContractStatus;
       limit?: number;
@@ -75,6 +87,62 @@ export const contractApi = createApi({
         params: params,
       }),
       providesTags: ['Contract'],
+      transformResponse: (response: any) => {
+        console.log('Contracts API response:', response);
+        
+        // Handle paginated response structure with data and meta
+        if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          const contractsArray = response.data;
+          const meta = response.meta || {};
+          const total = meta.total || contractsArray.length;
+          
+          console.log('Transformed contracts:', contractsArray);
+          console.log('Meta information:', meta);
+          console.log('Total count:', total);
+          
+          return { 
+            contracts: contractsArray, 
+            total,
+            meta: {
+              total: meta.total || total,
+              page: meta.page || 1,
+              limit: meta.limit || contractsArray.length,
+              offset: meta.offset || 0,
+              totalPages: meta.totalPages || Math.ceil(total / (meta.limit || contractsArray.length)),
+              hasNextPage: meta.hasNextPage || false,
+              hasPreviousPage: meta.hasPreviousPage || false,
+            }
+          };
+        }
+        
+        // Fallback for other response structures
+        let contractsArray: ContractResponse[];
+        if (Array.isArray(response)) {
+          contractsArray = response;
+        } else if (response && typeof response === 'object' && 'contracts' in response && Array.isArray(response.contracts)) {
+          contractsArray = response.contracts;
+        } else {
+          console.warn('Unexpected contracts response structure:', response);
+          contractsArray = [];
+        }
+        
+        console.log('Transformed contracts (fallback):', contractsArray);
+        const total = contractsArray.length;
+        
+        return { 
+          contracts: contractsArray, 
+          total,
+          meta: {
+            total,
+            page: 1,
+            limit: total,
+            offset: 0,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+          }
+        };
+      },
     }),
 
     // Customer endpoints (for picker)

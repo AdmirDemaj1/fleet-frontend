@@ -32,7 +32,7 @@ export const useContracts = (options: UseContractsOptions = {}) => {
 
   // Fetch contracts data
   const {
-    data: contracts = [],
+    data,
     isLoading,
     error,
     refetch,
@@ -43,6 +43,11 @@ export const useContracts = (options: UseContractsOptions = {}) => {
     offset,
     search: search.trim() || undefined,
   });
+
+  // Extract contracts and pagination info from response
+  const contracts = data?.contracts || [];
+  const totalCount = data?.total || 0;
+  const meta = data?.meta;
 
   // Handle page change
   const handlePageChange = useCallback((newPage: number) => {
@@ -104,7 +109,7 @@ export const useContracts = (options: UseContractsOptions = {}) => {
     // Pagination
     page,
     rowsPerPage,
-    totalCount: contracts.length, // This should come from API response with total count
+    totalCount, // Now using the totalCount from API response
 
     // Filters
     type,

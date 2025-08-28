@@ -307,10 +307,12 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                   hover
                   sx={{ 
                     transition: 'all 0.2s',
+                    cursor: 'pointer',
                     '&:hover': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.02)
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04)
                     }
                   }}
+                  onClick={() => navigate(`/contracts/${contract.id}`)}
                 >
                   <TableCell>
                     <Typography variant="body2" fontWeight={600} color="primary">
@@ -346,7 +348,10 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                   <TableCell align="right">
                     <IconButton
                       size="small"
-                      onClick={(event) => openMenu(event, contract)}
+                      onClick={(event) => {
+                        event.stopPropagation(); // Prevent row click when clicking the menu
+                        openMenu(event, contract);
+                      }}
                     >
                       <MoreVertIcon fontSize="small" />
                     </IconButton>

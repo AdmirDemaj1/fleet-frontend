@@ -258,10 +258,7 @@ export const ContractList: React.FC<ContractListProps> = ({
       <TablePagination
         component="div"
         count={totalCount || 0}
-        page={Math.min(
-          page,
-          Math.max(0, Math.ceil((totalCount || 0) / rowsPerPage) - 1)
-        )}
+        page={page}
         onPageChange={(_, newPage) => {
           console.log(
             "Page change requested:",
