@@ -23,7 +23,7 @@ import {
   People as PeopleIcon,
   DirectionsCar as VehiclesIcon,
   Description as ContractsIcon,
-  AccountBalance as AssetsIcon,
+  PersonAdd as EndorsersIcon,
   Article as ArticleIcon,
   BusinessCenter,
   ExpandLess,
@@ -87,10 +87,10 @@ const menuItems: MenuItem[] = [
     path: '/payments' 
   },
   { 
-    id: 'assets',
-    text: 'Assets', 
-    icon: <AssetsIcon />, 
-    path: '/assets' 
+    id: 'endorsers',
+    text: 'Endorsers', 
+    icon: <EndorsersIcon />, 
+    path: '/endorsers' 
   },
   {
     id: 'Audit',

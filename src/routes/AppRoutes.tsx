@@ -17,6 +17,7 @@ import  CustomerVehiclesPage  from '../features/customers/containers/Account/Cus
 import { DashboardPage } from '../features/dashboard/containers/DashboardPage';
 import { ContractsPage, CreateContractPage, ContractDetailsPage } from '../features/contracts/containers';
 import { PaymentsPage , PaymentDetailPage } from '../features/invoices/containers';
+import { EndorsersPage, EndorserDetailsPage } from '../features/endorsers/containers';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -38,11 +39,10 @@ export const AppRoutes: React.FC = () => {
         </Route>
 
         <Route path="endorsers">
-          <Route index element={<div> endrorsers Page</div>} />
-          <Route path="new" element={<CreateCustomerPage />} />
-          <Route path=":id" element={<div>view Endorser Page</div>}>
-          <Route path="edit" element={<div>edit Vehicle Page</div>} />
-          </Route>
+          <Route index element={<EndorsersPage />} />
+          <Route path="create" element={<div>Create Endorser Page</div>} />
+          <Route path=":id" element={<EndorserDetailsPage />} />
+          <Route path=":id/edit" element={<div>Edit Endorser Page</div>} />
         </Route>
 
         <Route path="vehicles">

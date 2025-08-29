@@ -40,33 +40,32 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
   const theme = useTheme();
   const navigate = useNavigate();
   
-  // Direct pagination state management
+  // Direct pagination state management - using offset instead of page
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
 
-  // Enhanced pagination handlers with explicit logging
+  // Calculate offset from page
+  const offset = page * rowsPerPage;
+
+  // Enhanced pagination handlers
   const handlePageChange = React.useCallback((_event: unknown, newPage: number) => {
-    console.log('🔄 Page change requested:', { from: page, to: newPage });
     setPage(newPage);
-  }, [page]);
+  }, []);
 
   const handleRowsPerPageChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const newRowsPerPage = parseInt(event.target.value, 10);
-    console.log('📄 Rows per page change:', { from: rowsPerPage, to: newRowsPerPage });
     setRowsPerPage(newRowsPerPage);
     setPage(0); // Reset to first page
-  }, [rowsPerPage]);
+  }, []);
 
-  // Create a unique query key to force re-fetching
+  // Create a unique query key using offset instead of page
   const queryKey = React.useMemo(() => {
-    const key = {
+    return {
       contractId,
-      page: page + 1,
+      offset,
       limit: rowsPerPage
     };
-    console.log('🔑 Query key generated:', key);
-    return key;
-  }, [contractId, page, rowsPerPage]);
+  }, [contractId, offset, rowsPerPage]);
 
   const { data: paymentsResponse, isLoading, error, isFetching } = useGetPaymentsByContractQuery(queryKey, {
     // Force refetch when parameters change
@@ -75,24 +74,6 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
 
   const payments = paymentsResponse?.data || [];
   const totalCount = paymentsResponse?.meta?.total || 0;
-
-  // Debug logging
-  React.useEffect(() => {
-    console.log('🔍 Component state:', { 
-      page, 
-      rowsPerPage, 
-      apiPage: page + 1,
-      isLoading,
-      isFetching,
-      paymentsCount: payments.length,
-      totalCount
-    });
-  }, [page, rowsPerPage, isLoading, isFetching, payments.length, totalCount]);
-
-  // Track API response changes
-  React.useEffect(() => {
-    console.log('📡 API Response changed:', paymentsResponse);
-  }, [paymentsResponse]);
 
   const formatCurrency = (amount: string | number): string => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -236,9 +217,6 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
                 ? `Showing ${Math.min(page * rowsPerPage + 1, totalCount)}-${Math.min((page + 1) * rowsPerPage, totalCount)} of ${totalCount} payments`
                 : 'Payment schedule and history'
               }
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              Debug: Page {page + 1}, Limit {rowsPerPage}, Loading: {isLoading ? 'Yes' : 'No'}, Fetching: {isFetching ? 'Yes' : 'No'}
             </Typography>
           </Box>
         </Box>
