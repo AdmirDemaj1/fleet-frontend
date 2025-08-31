@@ -121,6 +121,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         paymentScheduleType: "monthly_fixed",
       },
       selectedVehicles: [],
+      selectedVehicleData: [], // Initialize vehicle data array
       selectedEndorsers: [],
       collaterals: [],
       endorserCollaterals: [],
@@ -748,6 +749,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 shouldValidate: true,
               });
             }}
+            onVehicleDataChange={(vehicleData) => {
+              setValue("selectedVehicleData", vehicleData, {
+                shouldValidate: false, // Optional field
+              });
+            }}
             error={errors.selectedVehicles?.message}
           />
         );
@@ -791,6 +797,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             customerId={watchedData.customerId || undefined}
             endorserId={watchedData.selectedEndorsers?.[0]} // Use first endorser if available
             vehicleIds={watchedData.selectedVehicles || []} // Pass selected vehicles
+            vehicleData={watchedData.selectedVehicleData || []} // Pass full vehicle data including documents
             sessionKey={sessionKey}
             onSessionKeyChange={handleSessionKeyChange} // Backend will generate session key on first upload
           />

@@ -47,6 +47,8 @@ import {
   useRemovePendingDocumentMutation,
 } from "../../../api/contractDocumentApi";
 import { useNotification } from "../../../../../shared/hooks/useNotification";
+import { VehicleSummary } from "../../../types/contract.types";
+import { getApiUrl } from "../../../../../shared/utils/env";
 
 export interface ContractDocument {
   id: string;
@@ -84,6 +86,7 @@ interface DocumentUploadProps {
   customerId?: string; // Made optional since API no longer requires it
   endorserId?: string;
   vehicleIds: string[];
+  vehicleData?: VehicleSummary[]; // Full vehicle data including documents
   sessionKey: string | null;
   onSessionKeyChange: (sessionKey: string) => void;
 }
@@ -188,6 +191,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   customerId,
   endorserId,
   vehicleIds,
+  vehicleData = [],
   sessionKey,
   onSessionKeyChange,
 }) => {
@@ -204,6 +208,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   );
   const [documentToDelete, setDocumentToDelete] =
     useState<ContractDocument | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<any | null>(null); // For vehicle document preview
 
   const [uploadDocument, { isLoading: isUploading }] =
     useUploadDocumentMutation();
@@ -651,6 +656,22 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
   const missingRequired = requiredDocuments.filter((doc) => doc.isRequired);
 
+  // Helper function to properly join URLs
+  const buildFullUrl = useCallback((relativePath: string) => {
+    const baseUrl = getApiUrl().replace(/\/$/, ''); // Remove trailing slash
+    const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+    return `${baseUrl}${path}`;
+  }, []);
+
+  // Handle vehicle document preview
+  const handlePreviewVehicleDocument = useCallback((document: any) => {
+    console.log('🔍 Opening vehicle document preview:', document);
+    console.log('  📄 Preview URL:', document.previewUrl);
+    console.log('  📥 Download URL:', document.downloadUrl);
+    console.log('  🌐 Full Preview URL:', buildFullUrl(document.previewUrl || document.downloadUrl));
+    setPreviewDocument(document);
+  }, [buildFullUrl]);
+
   return (
     <Box>
       <Typography
@@ -667,6 +688,89 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         After uploading each file, you'll be prompted to select the appropriate
         document category. Documents will be reviewed and verified by our team.
       </Typography>
+
+      {/* Vehicle Documents Section */}
+      {vehicleData && vehicleData.length > 0 && vehicleData.some(v => v.documents && v.documents.length > 0) && (
+        <Card sx={{ mb: 3, border: '2px solid', borderColor: 'success.main', bgcolor: 'success.50' }}>
+          <CardContent>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: "flex", alignItems: "center", gap: 1, color: 'success.main' }}
+            >
+              <CheckCircle />
+              Vehicle Documents (Already Available)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              The following documents are already associated with the selected vehicle(s):
+            </Typography>
+            
+            {vehicleData.map((vehicle) => (
+              vehicle.documents && vehicle.documents.length > 0 && (
+                <Box key={vehicle.id} sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                    📋 {vehicle.year} {vehicle.make} {vehicle.model} - {vehicle.licensePlate}
+                  </Typography>
+                  <Grid container spacing={1}>
+                    {vehicle.documents.map((doc) => (
+                      <Grid item xs={12} sm={6} md={4} key={doc.id}>
+                        <Card 
+                          variant="outlined" 
+                          sx={{ 
+                            p: 1, 
+                            border: '1px solid', 
+                            borderColor: 'success.main',
+                            bgcolor: 'success.50',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1
+                          }}
+                        >
+                          <CheckCircle color="success" fontSize="small" />
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                fontWeight: 600,
+                                display: 'block',
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {doc.type}
+                            </Typography>
+                            <Typography 
+                              variant="caption" 
+                              color="text.secondary"
+                              sx={{ 
+                                display: 'block',
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {doc.title}
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handlePreviewVehicleDocument(doc)}
+                            sx={{ ml: 'auto' }}
+                          >
+                            <Visibility fontSize="small" />
+                          </IconButton>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -1196,6 +1300,95 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               ) : (
                 "Delete"
               )}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Vehicle Document Preview Dialog */}
+      {previewDocument && (
+        <Dialog
+          open={!!previewDocument}
+          onClose={() => setPreviewDocument(null)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Visibility />
+            Vehicle Document Preview
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                {previewDocument.type}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {previewDocument.title}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Created: {new Date(previewDocument.createdAt).toLocaleDateString()}
+              </Typography>
+            </Box>
+            
+            {/* Preview action buttons */}
+            {(previewDocument.previewUrl || previewDocument.downloadUrl) && (
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                gap: 2,
+                mt: 2,
+                p: 3,
+                border: '1px solid', 
+                borderColor: 'divider',
+                borderRadius: 2,
+                bgcolor: 'background.paper'
+              }}>
+                <Typography variant="body2" color="text.secondary">
+                  Document preview options:
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {previewDocument.previewUrl && (
+                    <Button
+                      variant="contained"
+                      startIcon={<Visibility />}
+                      onClick={() => {
+                        window.open(buildFullUrl(previewDocument.previewUrl), '_blank');
+                      }}
+                    >
+                      Open Preview
+                    </Button>
+                  )}
+                  
+                  {previewDocument.downloadUrl && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<Download />}
+                      onClick={() => {
+                        window.open(buildFullUrl(previewDocument.downloadUrl), '_blank');
+                      }}
+                    >
+                      Download
+                    </Button>
+                  )}
+                </Box>
+                
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  Due to browser security restrictions, the document will open in a new tab for preview.
+                </Alert>
+              </Box>
+            )}
+            
+            {/* Show message if no preview available */}
+            {!previewDocument.previewUrl && !previewDocument.downloadUrl && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                Preview not available for this document.
+              </Alert>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setPreviewDocument(null)} variant="contained">
+              Close
             </Button>
           </DialogActions>
         </Dialog>

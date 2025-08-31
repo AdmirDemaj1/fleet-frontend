@@ -25,6 +25,7 @@ import {
   Dashboard,
   Delete,
   Edit,
+  Description,
 } from "@mui/icons-material";
 import {
   ContractResponse,

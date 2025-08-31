@@ -205,6 +205,7 @@ export interface ContractFormData {
   
   // Additional components
   selectedVehicles: string[];
+  selectedVehicleData?: VehicleSummary[]; // Full vehicle data including documents
   selectedEndorsers: string[];
   collaterals: VehicleCollateral[];
   endorserCollaterals: EndorserCollateral[];
@@ -226,6 +227,33 @@ export interface ContractResponse {
   createdAt: string;
   updatedAt: string;
   documents?: ContractDocumentResponseDto[];
+  
+  // Additional nested objects from backend
+  vehicles?: {
+    id: string;
+    licensePlate: string;
+    name: string;
+    year: number;
+    vin: string;
+    status: string;
+  }[];
+  
+  collaterals?: {
+    id: string;
+    type: string;
+    description: string;
+    value: number;
+    active: boolean;
+  }[];
+  
+  endorsers?: {
+    id: string;
+    name: string;
+    relationshipToCustomer: string;
+    guaranteedAmount: number;
+    guaranteeType: string;
+    active: boolean;
+  }[];
 }
 
 export interface CustomerSummary {
@@ -244,6 +272,46 @@ export interface VehicleSummary {
   licensePlate: string;
   vinNumber: string;
   status: string;
+  // Additional vehicle properties
+  color?: string;
+  fuelType?: string;
+  mileage?: number;
+  legalOwner?: string;
+  currentClientId?: string;
+  contractId?: string;
+  conditionStatus?: string;
+  isLiquidAsset?: boolean;
+  depreciatedValue?: number;
+  marketValue?: number;
+  currentValuation?: number;
+  lastValuationDate?: string | null;
+  primaryInsuranceCompany?: string | null;
+  tplExpiryDate?: string | null;
+  kaskoExpiryDate?: string | null;
+  passengerInsuranceExpiry?: string | null;
+  currentMileage?: number | null;
+  nextMaintenanceDate?: string | null;
+  lastServiceDate?: string | null;
+  purchaseDate?: string;
+  registrationExpiry?: string | null;
+  creditStatus?: string | null;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  // Documents array when includeDocuments=true
+  documents?: VehicleDocument[];
+}
+
+export interface VehicleDocument {
+  id: string;
+  type: string;
+  title: string;
+  fileName: string;
+  filePath: string;
+  status: string;
+  createdAt: string;
+  downloadUrl: string;
+  previewUrl: string; // New field for preview URL
 }
 
 export interface EndorserSummary {
@@ -278,6 +346,7 @@ export interface CustomerPickerProps {
 export interface VehiclePickerProps {
   selectedVehicleIds: string[];
   onVehicleSelect: (vehicleIds: string[]) => void;
+  onVehicleDataChange?: (vehicles: VehicleSummary[]) => void; // New callback for full vehicle data
   customerId?: string;
   error?: string;
 }

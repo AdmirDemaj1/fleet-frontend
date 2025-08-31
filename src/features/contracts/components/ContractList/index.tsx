@@ -18,7 +18,7 @@ import {
   Divider,
   Paper,
 } from "@mui/material";
-import { Description } from "@mui/icons-material";
+import { Assignment } from "@mui/icons-material";
 import { ContractResponse } from "../../types/contract.types";
 import { ContractListItem } from "./ContractListItem";
 
@@ -221,7 +221,7 @@ export const ContractList: React.FC<ContractListProps> = ({
                         mb: 2,
                       }}
                     >
-                      <Description
+                      <Assignment
                         sx={{
                           fontSize: 48,
                           color: theme.palette.primary.main,
