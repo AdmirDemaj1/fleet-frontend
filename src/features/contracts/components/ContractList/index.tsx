@@ -197,6 +197,7 @@ export const ContractList: React.FC<ContractListProps> = ({
                   Created
                 </TableSortLabel>
               </TableCell>
+              <TableCell>Documents</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -210,7 +211,7 @@ export const ContractList: React.FC<ContractListProps> = ({
             ))}
             {contracts.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                   <Box
                     sx={{
                       display: "flex",

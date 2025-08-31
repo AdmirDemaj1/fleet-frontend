@@ -7,3 +7,4 @@ export { ContractForm } from "./ContractForm/ContractForm";
 export { DocumentUpload } from "./DocumentUpload/DocumentUpload";
 export { ContractList } from "./ContractList";
 export { ContractListFilters } from "./ContractList/ContractListFilters";
+export { ContractDocuments } from "./ContractDocuments";

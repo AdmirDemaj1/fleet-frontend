@@ -6,6 +6,7 @@ import auditReducer from '../features/logs/slices/Auditslice';
 import { auditApi } from '../features/logs/api/auditapi'; // Import auditApi
 import { contractApi } from '../features/contracts/api/contractApi'; // Import contractApi
 import { contractDocumentApi } from '../features/contracts/api/contractDocumentApi'; // Import contractDocumentApi
+import { vehicleDocumentApi } from '../features/vehicles/api/vehicleDocumentApi'; // Import vehicleDocumentApi
 import { paymentsApi } from '../features/invoices/api/paymentsApi'; // Import paymentsApi
 
 export const store = configureStore({
@@ -16,6 +17,7 @@ export const store = configureStore({
     [auditApi.reducerPath]: auditApi.reducer, // Add the auditApi reducer
     [contractApi.reducerPath]: contractApi.reducer, // Add the contractApi reducer
     [contractDocumentApi.reducerPath]: contractDocumentApi.reducer, // Add the contractDocumentApi reducer
+    [vehicleDocumentApi.reducerPath]: vehicleDocumentApi.reducer, // Add the vehicleDocumentApi reducer
     [paymentsApi.reducerPath]: paymentsApi.reducer, // Add the paymentsApi reducer
   },
   middleware: (getDefaultMiddleware) =>
@@ -23,6 +25,7 @@ export const store = configureStore({
       .concat(auditApi.middleware) // Add the auditApi middleware
       .concat(contractApi.middleware) // Add the contractApi middleware
       .concat(contractDocumentApi.middleware) // Add the contractDocumentApi middleware
+      .concat(vehicleDocumentApi.middleware) // Add the vehicleDocumentApi middleware
       .concat(paymentsApi.middleware), // Add the paymentsApi middleware
 });
 

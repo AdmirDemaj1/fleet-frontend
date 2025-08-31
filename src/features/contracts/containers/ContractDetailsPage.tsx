@@ -35,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useGetContractQuery } from '../api/contractApi';
 import { ContractType, ContractStatus } from '../types/contract.types';
+import { ContractDocuments } from '../components/ContractDocuments';
 import dayjs from 'dayjs';
 
 export const ContractDetailsPage: React.FC = () => {
@@ -483,6 +484,14 @@ export const ContractDetailsPage: React.FC = () => {
                 </Box>
               </CardContent>
             </Card>
+          </Grid>
+
+          {/* Contract Documents */}
+          <Grid item xs={12}>
+            <ContractDocuments 
+              contractId={contract.id}
+              contractNumber={contract.contractNumber}
+            />
           </Grid>
         </Grid>
       </Box>

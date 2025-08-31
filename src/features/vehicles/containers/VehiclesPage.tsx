@@ -42,7 +42,8 @@ export const VehiclesPage: React.FC = () => {
       setLoading(true);
       const params: VehicleQueryParams = {
         ...filters,
-        limit: rowsPerPage
+        limit: rowsPerPage,
+        offset: page * rowsPerPage
       };
       
       const response = await vehicleApi.getVehicles(params);

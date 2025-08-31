@@ -63,7 +63,7 @@ export const contractApi = createApi({
       providesTags: (_result, _error, id) => [{ type: 'Contract', id }],
     }),
 
-    getContracts: builder.query<ContractResponse[], {
+    getContracts: builder.query<{ contracts: ContractResponse[]; totalCount: number }, {
       type?: ContractType;
       status?: ContractStatus;
       limit?: number;
@@ -75,6 +75,27 @@ export const contractApi = createApi({
         params: params,
       }),
       providesTags: ['Contract'],
+      transformResponse: (response: any) => {
+        // Handle the backend response structure: { data: [...], meta: { total, ... } }
+        if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          return {
+            contracts: response.data,
+            totalCount: response.meta?.total || response.data.length
+          };
+        } else if (Array.isArray(response)) {
+          // Fallback for direct array response
+          return {
+            contracts: response,
+            totalCount: response.length
+          };
+        } else {
+          console.warn('Unexpected contracts response structure:', response);
+          return {
+            contracts: [],
+            totalCount: 0
+          };
+        }
+      },
     }),
 
     // Customer endpoints (for picker)
@@ -237,12 +258,7 @@ export const contractApi = createApi({
       }),
     }),
 
-    // Generate contract number
-    generateContractNumber: builder.query<{ contractNumber: string }, ContractType>({
-      query: (type) => ({
-        url: `/generate-number?type=${type}`,
-      }),
-    }),
+
 
     // Calculate loan details
     calculateLoanPayment: builder.query<{ monthlyPayment: number; totalInterest: number }, {
@@ -269,6 +285,6 @@ export const {
   useGetVehicleQuery,
   useGetEndorsersQuery,
   useGetEndorserQuery,
-  useGenerateContractNumberQuery,
+
   useCalculateLoanPaymentQuery,
 } = contractApi;

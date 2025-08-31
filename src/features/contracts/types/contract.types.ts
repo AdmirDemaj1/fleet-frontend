@@ -1,5 +1,7 @@
 // Contract Types - Based on backend DTOs
 
+import { ContractDocumentResponseDto } from '../api/contractDocumentApi';
+
 export enum ContractType {
   LOAN = 'loan',
   LEASING = 'leasing'
@@ -161,8 +163,8 @@ export interface CreateContractDto {
   
   // Documents are handled separately via the document upload API
   
-  // Session key for linking uploaded documents to this contract
-  sessionKey: string;
+  // Session key for linking uploaded documents to this contract (optional if no documents)
+  sessionKey?: string;
   
   // Contract terms
   terms?: Record<string, any>;
@@ -223,6 +225,7 @@ export interface ContractResponse {
   remainingAmount: string;
   createdAt: string;
   updatedAt: string;
+  documents?: ContractDocumentResponseDto[];
 }
 
 export interface CustomerSummary {

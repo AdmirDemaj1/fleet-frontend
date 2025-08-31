@@ -2,17 +2,21 @@ import { api } from '../../../shared/utils/api';
 import { Vehicle, VehicleQueryParams, VehicleStatus, VehicleStatistics } from '../types/vehicleType';
 
 export const vehicleApi = {
-  // Get all vehicles with filtering (limit supported, offset not supported)
+  // Get all vehicles with filtering (limit and offset supported)
   getVehicles: async (params: VehicleQueryParams): Promise<{ vehicles: Vehicle[], total: number }> => {
-    // Backend supports limit but not offset
+    // Backend supports limit and offset
     const response = await api.get<any>('/vehicles', { params });
     
     // Handle the backend response structure
     let vehicles: Vehicle[];
     let total: number;
     
-    if (response.data && response.data.vehicles && Array.isArray(response.data.vehicles)) {
-      // Backend returns { vehicles: [...], total: number }
+    if (response.data && response.data.data && Array.isArray(response.data.data)) {
+      // Backend returns { data: [...], meta: { total: number } }
+      vehicles = response.data.data;
+      total = response.data.meta?.total || vehicles.length;
+    } else if (response.data && response.data.vehicles && Array.isArray(response.data.vehicles)) {
+      // Backend returns { vehicles: [...], total: number } (fallback)
       vehicles = response.data.vehicles;
       total = response.data.total || vehicles.length;
     } else if (Array.isArray(response.data)) {
@@ -56,6 +60,24 @@ export const vehicleApi = {
   // Create a new vehicle
   createVehicle: async (vehicleData: Partial<Vehicle>): Promise<Vehicle> => {
     const response = await api.post<Vehicle>('/vehicles', vehicleData);
+    return response.data;
+  },
+
+  // Create a new vehicle with documents (using session key)
+  createVehicleWithDocuments: async (vehicleData: Partial<Vehicle> & { sessionKey: string }): Promise<Vehicle> => {
+    // Get user ID for header
+  
+    // Get or generate a consistent user ID
+    let userId = localStorage.getItem("userId");
+    if (!userId) {
+      userId = crypto.randomUUID();
+      localStorage.setItem("userId", userId);
+    }
+    const response = await api.post<Vehicle>('/vehicles/with-documents', vehicleData, {
+      headers: {
+        'x-user-id': userId
+      }
+    });
     return response.data;
   },
 
