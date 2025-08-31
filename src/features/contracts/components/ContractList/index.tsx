@@ -190,6 +190,7 @@ export const ContractList: React.FC<ContractListProps> = ({
                   Created
                 </TableSortLabel>
               </TableCell>
+              <TableCell>Documents</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>

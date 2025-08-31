@@ -63,19 +63,7 @@ export const contractApi = createApi({
       providesTags: (_result, _error, id) => [{ type: 'Contract', id }],
     }),
 
-    getContracts: builder.query<{
-      contracts: ContractResponse[];
-      total: number;
-      meta: {
-        total: number;
-        page: number;
-        limit: number;
-        offset: number;
-        totalPages: number;
-        hasNextPage: boolean;
-        hasPreviousPage: boolean;
-      };
-    }, {
+    getContracts: builder.query<{ contracts: ContractResponse[]; totalCount: number }, {
       type?: ContractType;
       status?: ContractStatus;
       limit?: number;
@@ -88,60 +76,25 @@ export const contractApi = createApi({
       }),
       providesTags: ['Contract'],
       transformResponse: (response: any) => {
-        console.log('Contracts API response:', response);
-        
-        // Handle paginated response structure with data and meta
+        // Handle the backend response structure: { data: [...], meta: { total, ... } }
         if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-          const contractsArray = response.data;
-          const meta = response.meta || {};
-          const total = meta.total || contractsArray.length;
-          
-          console.log('Transformed contracts:', contractsArray);
-          console.log('Meta information:', meta);
-          console.log('Total count:', total);
-          
-          return { 
-            contracts: contractsArray, 
-            total,
-            meta: {
-              total: meta.total || total,
-              page: meta.page || 1,
-              limit: meta.limit || contractsArray.length,
-              offset: meta.offset || 0,
-              totalPages: meta.totalPages || Math.ceil(total / (meta.limit || contractsArray.length)),
-              hasNextPage: meta.hasNextPage || false,
-              hasPreviousPage: meta.hasPreviousPage || false,
-            }
+          return {
+            contracts: response.data,
+            totalCount: response.meta?.total || response.data.length
           };
-        }
-        
-        // Fallback for other response structures
-        let contractsArray: ContractResponse[];
-        if (Array.isArray(response)) {
-          contractsArray = response;
-        } else if (response && typeof response === 'object' && 'contracts' in response && Array.isArray(response.contracts)) {
-          contractsArray = response.contracts;
+        } else if (Array.isArray(response)) {
+          // Fallback for direct array response
+          return {
+            contracts: response,
+            totalCount: response.length
+          };
         } else {
           console.warn('Unexpected contracts response structure:', response);
-          contractsArray = [];
+          return {
+            contracts: [],
+            totalCount: 0
+          };
         }
-        
-        console.log('Transformed contracts (fallback):', contractsArray);
-        const total = contractsArray.length;
-        
-        return { 
-          contracts: contractsArray, 
-          total,
-          meta: {
-            total,
-            page: 1,
-            limit: total,
-            offset: 0,
-            totalPages: 1,
-            hasNextPage: false,
-            hasPreviousPage: false,
-          }
-        };
       },
     }),
 
@@ -305,12 +258,7 @@ export const contractApi = createApi({
       }),
     }),
 
-    // Generate contract number
-    generateContractNumber: builder.query<{ contractNumber: string }, ContractType>({
-      query: (type) => ({
-        url: `/generate-number?type=${type}`,
-      }),
-    }),
+
 
     // Calculate loan details
     calculateLoanPayment: builder.query<{ monthlyPayment: number; totalInterest: number }, {
@@ -337,6 +285,6 @@ export const {
   useGetVehicleQuery,
   useGetEndorsersQuery,
   useGetEndorserQuery,
-  useGenerateContractNumberQuery,
+
   useCalculateLoanPaymentQuery,
 } = contractApi;

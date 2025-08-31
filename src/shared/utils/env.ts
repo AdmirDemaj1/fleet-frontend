@@ -24,12 +24,15 @@ export const getEnvConfig = (): EnvConfig => {
   // Check for explicit mode override from environment variable
   const explicitMode = import.meta.env.VITE_MODE;
   console.log("🚀 ~ explicitMode:", explicitMode)
-  const mode = explicitMode || import.meta.env.MODE || 'development';
+  const mode = explicitMode;
 
   console.log("🚀 ~ mode:", mode)
   const isDevelopment = mode === 'development';
   const isProduction = mode === 'production';
 
+  console.log("🚀 ~ isProduction:", isProduction);
+  console.log("🚀 ~ isDevelopment:", isDevelopment);
+  
   // Determine API URL based on mode
   let apiUrl: string;
   if (isDevelopment) {

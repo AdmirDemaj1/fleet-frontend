@@ -37,9 +37,10 @@ import dayjs from "dayjs";
 import {
   ContractFormProps,
   ContractFormData,
-  CreateContractDto,
   ContractType,
+  CreateContractDto,
 } from "../../../types/contract.types";
+import { generateContractNumber } from "../../../utils/contractNumberGenerator";
 
 import { CustomerPicker } from "../CustomerPicker/CustomerPicker";
 import { VehiclePicker } from "../VehiclePicker/VehiclePicker";
@@ -95,7 +96,13 @@ export const ContractForm: React.FC<ContractFormProps> = ({
 }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [submitError, setSubmitError] = useState<string>("");
-  const [sessionKey] = useState(() => `contract-${Date.now()}`); // Generate session key once when component mounts
+  const [sessionKey, setSessionKey] = useState<string | null>(null); // Backend will generate session key on first upload
+
+  // Debug session key changes
+  const handleSessionKeyChange = useCallback((newSessionKey: string) => {
+    console.log("🔑 ContractForm: Session key being set:", newSessionKey);
+    setSessionKey(newSessionKey);
+  }, []);
 
   const methods = useForm<ContractFormData>({
     defaultValues: {
@@ -139,6 +146,30 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   } = methods;
 
   const watchedData = watch();
+
+  // Auto-generate contract number when contract type changes (frontend only)
+  useEffect(() => {
+    if (watchedData.type && !isEdit && !watchedData.contractNumber) {
+      const newContractNumber = generateContractNumber(watchedData.type);
+      console.log(
+        "🔢 Auto-generated contract number:",
+        newContractNumber,
+        "for type:",
+        watchedData.type
+      );
+      setValue("contractNumber", newContractNumber, {
+        shouldValidate: true,
+      });
+    }
+  }, [watchedData.type, isEdit, watchedData.contractNumber, setValue]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log("📋 Contract Form Debug:");
+    console.log("  - Contract Type:", watchedData.type);
+    console.log("  - Current Contract Number:", watchedData.contractNumber);
+    console.log("  - Is Edit Mode:", isEdit);
+  }, [watchedData.type, watchedData.contractNumber, isEdit]);
 
   // Financial calculation effect
   useEffect(() => {
@@ -202,10 +233,20 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       try {
         setSubmitError("");
 
-        // Use the session key that was generated when contract creation started
-        
-        // Transform form data to match backend CreateContractDto exactly
-        const submitData: any = {
+        // Debug logging
+        console.log("🚀 Contract Submission Debug:");
+        console.log("  📋 Form Data:", data);
+        console.log("  🔑 Current Session Key:", sessionKey);
+        console.log("  📄 Documents Count:", data.documents?.length || 0);
+        console.log(
+          "  📤 Has Documents:",
+          data.documents && data.documents.length > 0
+        );
+        console.log("  📤 Session Key Type:", typeof sessionKey);
+        console.log("  📤 Session Key Truthy:", !!sessionKey);
+
+        // Build base contract data
+        const baseContractData = {
           type: data.type,
           contractNumber: data.contractNumber,
           customerId: data.customerId,
@@ -214,10 +255,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           totalAmount: data.totalAmount,
           interestRate: data.loanDetails?.interestRate || 0,
           vehicleIds: data.selectedVehicles || [],
-          sessionKey: sessionKey, // Same session key used in DocumentUpload
           collaterals:
             data.collaterals?.map((collateral) => ({
-              type: "vehicle",
+              type: "vehicle" as const,
               description: collateral.description,
               value: collateral.value,
               active: collateral.active,
@@ -233,7 +273,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             })) || [],
           endorserCollaterals:
             data.selectedEndorsers?.map((endorserId) => ({
-              type: "endorser",
+              type: "endorser" as const,
               description: `Personal guarantee by endorser ${endorserId}`,
               value: data.totalAmount * 0.5, // Default to 50% of contract amount
               endorserId: endorserId,
@@ -246,6 +286,21 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           // Documents are handled separately via the document upload API
           terms: data.terms || {},
         };
+
+        // Build the submit data with proper type safety
+        const submitData: CreateContractDto = {
+          ...baseContractData,
+          // Only add sessionKey if documents were uploaded
+          ...(sessionKey ? { sessionKey } : {}),
+        };
+
+        if (sessionKey) {
+          console.log("  ✅ Using backend-generated session key:", sessionKey);
+        } else {
+          console.log(
+            "  📝 No documents uploaded, creating contract without session key"
+          );
+        }
 
         // Add loan details if it's a loan contract
         if (data.type === ContractType.LOAN && data.loanDetails) {
@@ -288,6 +343,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           "📤 Submitting contract data:",
           JSON.stringify(submitData, null, 2)
         );
+        console.log("🚀 Final contract submission data:", submitData);
+
         await onSubmit(submitData);
       } catch (error) {
         console.error("❌ Contract submission error:", error);
@@ -298,7 +355,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
       }
     },
-    [onSubmit]
+    [onSubmit, sessionKey]
   );
 
   const renderStepContent = () => {
@@ -342,7 +399,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               <TextField
                 fullWidth
                 label="Contract Number"
-                placeholder="e.g., CNT-2024-001"
+                placeholder="e.g., LOAN-2024-001"
                 value={watchedData.contractNumber}
                 onChange={(e) =>
                   setValue("contractNumber", e.target.value, {
@@ -352,7 +409,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 error={!!errors.contractNumber}
                 helperText={
                   errors.contractNumber?.message ||
-                  "Unique identifier for this contract"
+                  "Unique identifier for this contract (auto-generated based on type)"
                 }
                 required
               />
@@ -731,10 +788,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               setValue("documents", documents, { shouldValidate: true });
             }}
             error={errors.documents?.message}
-            customerId={watchedData.customerId || ""}
+            customerId={watchedData.customerId || undefined}
             endorserId={watchedData.selectedEndorsers?.[0]} // Use first endorser if available
             vehicleIds={watchedData.selectedVehicles || []} // Pass selected vehicles
-            sessionKey={sessionKey} // Use the session key generated when contract creation started
+            sessionKey={sessionKey}
+            onSessionKeyChange={handleSessionKeyChange} // Backend will generate session key on first upload
           />
         );
 
@@ -1142,7 +1200,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           )}
                           {(!watchedData.documents ||
                             watchedData.documents.length === 0) && (
-                            <li>Required documents must be uploaded (ID Card, Insurance, TPL, CASCO, Driving Permit, Customer Registration, Endorser ID, Contract Agreement)</li>
+                            <li>
+                              Required documents must be uploaded (ID Card,
+                              Insurance, TPL, CASCO, Driving Permit, Customer
+                              Registration, Endorser ID, Contract Agreement)
+                            </li>
                           )}
                         </ul>
                       </Box>
@@ -1179,11 +1241,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       case 4: // Endorsers
         return true; // Endorsers are optional
       case 5: // Documents
-        // First check if customer is selected (required for document uploads)
-        if (!watchedData.customerId) {
-          return false;
-        }
-        
+        // Customer selection is no longer required for document uploads
         // Check if all required documents are uploaded
         const requiredCategories = [
           "id_card",

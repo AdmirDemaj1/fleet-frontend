@@ -11,6 +11,8 @@ export enum ContractDocumentType {
   CUSTOMER_REGISTRATION = "customer_registration",
   ENDORSER_ID = "endorser_id",
   CONTRACT_AGREEMENT = "contract_agreement",
+  BUSINESS_REGISTRATION = "business_registration",
+  TAX_CERTIFICATE = "tax_certificate",
   OTHER = "other",
 }
 
@@ -38,10 +40,8 @@ export interface UploadRequestData {
   type: ContractDocumentType;
   title: string;
   description?: string;
-  customerId: string;
-  endorserId?: string;
-  metadata?: Record<string, any>;
   expiryDate?: string;
+  metadata?: Record<string, any>;
 }
 // Updated interfaces to match backend DTOs
 
@@ -58,7 +58,7 @@ export interface ContractDocumentResponseDto {
   customerId?: string;
   endorserId?: string;
   metadata?: Record<string, any>;
-  expiryDate?: Date;
+  expiryDate?: string;
   isRequired: boolean;
   version: number;
   createdAt: string;
@@ -83,6 +83,15 @@ export const contractDocumentApi = createApi({
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }
+
+      // Get or generate a consistent user ID
+      let userId = localStorage.getItem("userId");
+      if (!userId) {
+        userId = crypto.randomUUID();
+        localStorage.setItem("userId", userId);
+      }
+      headers.set("x-user-id", userId);
+
       return headers;
     },
   }),
@@ -95,57 +104,65 @@ export const contractDocumentApi = createApi({
 
     // Upload a contract document
     uploadDocument: builder.mutation<
-      ContractDocumentResponseDto,
+      ContractDocumentResponseDto & { sessionKey?: string },
       {
         file: File;
         data: UploadRequestData;
-        sessionKey: string;
+        sessionKey?: string;
       }
     >({
       query: ({ file, data, sessionKey }) => {
         const formData = new FormData();
-        
+
+        // Generate a UUID for entityId
+        const entityId = crypto.randomUUID();
+
         // Add file first (required)
         formData.append("file", file);
-        
-        // Add required fields
-        formData.append("type", data.type);
+
+        // Add required fields for new endpoint
+        formData.append("entityType", "contract");
+        formData.append("entityId", entityId); // Use generated UUID
+        formData.append("documentType", data.type);
         formData.append("title", data.title);
-        formData.append("customerId", data.customerId);
-        
-        // Add sessionKey to the form data body
-        formData.append("sessionKey", sessionKey);
-        
+
+        // Add session key only if provided (for subsequent uploads)
+        if (sessionKey) {
+          formData.append("sessionKey", sessionKey);
+        }
+
         // Add optional fields
         if (data.description) {
           formData.append("description", data.description);
         }
-        if (data.endorserId) {
-          formData.append("endorserId", data.endorserId);
+        if (data.expiryDate) {
+          formData.append("expiryDate", data.expiryDate);
         }
         if (data.metadata) {
-          // Don't stringify metadata - send it as individual fields
+          // Add metadata as individual fields
           Object.entries(data.metadata).forEach(([key, value]) => {
             if (value !== undefined && value !== null) {
               formData.append(`metadata[${key}]`, String(value));
             }
           });
         }
-        if (data.expiryDate) {
-          formData.append("expiryDate", data.expiryDate);
-        }
 
-        console.log("🔗 API Request Details:");
-        console.log("URL:", `/contract-documents/upload?sessionKey=${sessionKey}`);
+        console.log("🔗 Contract Document API Request Details:");
+        console.log("URL:", `/document-management/upload`);
         console.log("Method: POST");
-        console.log("Session Key:", sessionKey);
+        console.log(
+          "Session Key:",
+          sessionKey || "Not provided (first upload)"
+        );
+        console.log("Entity ID:", entityId);
+        console.log("Entity Type: contract");
         console.log("FormData entries:");
         for (let [key, value] of formData.entries()) {
           console.log(`  ${key}:`, value);
         }
 
         return {
-          url: `/contract-documents/upload?sessionKey=${sessionKey}`,
+          url: `/document-management/upload`,
           method: "POST",
           body: formData,
           // Don't set Content-Type header, let the browser set it with boundary
@@ -186,7 +203,7 @@ export const contractDocumentApi = createApi({
     // Delete a document
     deleteDocument: builder.mutation<{ message: string }, string>({
       query: (documentId) => ({
-        url: `/contract-documents/${documentId}`,
+        url: `/document-management/pending/${documentId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["ContractDocument"],
@@ -212,10 +229,14 @@ export const contractDocumentApi = createApi({
         sessionKey: string;
       }
     >({
-      query: ({ documentId, sessionKey }) => ({
-        url: `/contract-documents/pending/${documentId}?sessionKey=${sessionKey}`,
-        method: "DELETE",
-      }),
+      query: ({ documentId, sessionKey }) => {
+        console.log("documentId", documentId);
+        console.log("sessionKey", sessionKey);
+        return {
+          url: `/document-management/pending/${documentId}?sessionKey=${sessionKey}`,
+          method: "DELETE",
+        };
+      },
       invalidatesTags: ["ContractDocument"],
     }),
 

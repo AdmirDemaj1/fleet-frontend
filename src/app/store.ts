@@ -6,6 +6,7 @@ import auditReducer from '../features/logs/slices/Auditslice';
 import { auditApi } from '../features/logs/api/auditapi'; // Import auditApi
 import { contractApi } from '../features/contracts/api/contractApi'; // Import contractApi
 import { contractDocumentApi } from '../features/contracts/api/contractDocumentApi'; // Import contractDocumentApi
+import { vehicleDocumentApi } from '../features/vehicles/api/vehicleDocumentApi'; // Import vehicleDocumentApi
 import { paymentsApi } from '../features/invoices/api/paymentsApi'; // Import paymentsApi
 import { endorserApi } from '../features/endorsers/api/endorserApi'; // Import endorserApi
 
@@ -17,6 +18,7 @@ export const store = configureStore({
     [auditApi.reducerPath]: auditApi.reducer, // Add the auditApi reducer
     [contractApi.reducerPath]: contractApi.reducer, // Add the contractApi reducer
     [contractDocumentApi.reducerPath]: contractDocumentApi.reducer, // Add the contractDocumentApi reducer
+    [vehicleDocumentApi.reducerPath]: vehicleDocumentApi.reducer, // Add the vehicleDocumentApi reducer
     [paymentsApi.reducerPath]: paymentsApi.reducer, // Add the paymentsApi reducer
     [endorserApi.reducerPath]: endorserApi.reducer, // Add the endorserApi reducer
   },
@@ -26,7 +28,9 @@ export const store = configureStore({
       .concat(contractApi.middleware) // Add the contractApi middleware
       .concat(contractDocumentApi.middleware) // Add the contractDocumentApi middleware
       .concat(paymentsApi.middleware) // Add the paymentsApi middleware
-      .concat(endorserApi.middleware), // Add the endorserApi middleware
+      .concat(endorserApi.middleware) // Add the endorserApi middleware
+      .concat(vehicleDocumentApi.middleware) // Add the vehicleDocumentApi middleware
+      .concat(paymentsApi.middleware) // Add the paymentsApi middleware
 });
 
 export type RootState = ReturnType<typeof store.getState>;

@@ -1,1 +1,2 @@
-export { useContracts } from './useContracts'; 
+export { useContracts } from './useContracts';
+export { useContractDocuments } from './useContractDocuments'; 

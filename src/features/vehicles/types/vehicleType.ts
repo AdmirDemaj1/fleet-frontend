@@ -32,14 +32,15 @@ export enum InsuranceCompany {
 export interface Vehicle {
   id: string;
   licensePlate: string;
+  oldLicensePlate?: string;
   vin: string;
   make: string;
   model: string;
   year: number;
   color?: string;
   status: VehicleStatus;
-  condition?: ConditionStatus;
-  mileage?: number;
+  conditionStatus?: ConditionStatus;
+  currentMileage?: number;
   fuelType?: FuelType;
   transmission?: string;
   currentValuation?: number;
@@ -47,19 +48,28 @@ export interface Vehicle {
   depreciatedValue?: number;
   purchaseDate?: string;
   purchasePrice?: number;
-  registrationDate?: string;
-  registrationExpiryDate?: string;
+  registrationExpiry?: string;
   insuranceProvider?: InsuranceCompany;
   insurancePolicyNumber?: string;
-  insuranceExpiryDate?: string;
+  tplExpiryDate?: string;
+  kaskoExpiryDate?: string;
+  passengerInsuranceExpiry?: string;
   maintenanceHistory?: MaintenanceRecord[];
   documents?: Document[];
+  currentClientId?: string;
   customerId?: string;
   customerName?: string;
   isLiquidAsset?: boolean;
   legalOwner?: string;
+  nextMaintenanceDate?: string;
+  lastServiceDate?: string;
+  creditStatus?: string;
+  notes?: string;
+  primaryInsuranceCompany?: string;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface MaintenanceRecord {
@@ -126,4 +136,38 @@ export interface VehicleStatistics {
   maintenanceVehicles: number;
   liquidAssets: number;
   totalValue: number;
+}
+
+export enum VehicleDocumentType {
+  VEHICLE_REGISTRATION = 'vehicle_registration',
+  VEHICLE_INSPECTION = 'vehicle_inspection',
+  INSURANCE = 'insurance',
+  TPL = 'tpl',
+  CASCO = 'casco',
+  PURCHASE_INVOICE = 'purchase_invoice',
+  TECHNICAL_PASSPORT = 'technical_passport',
+  OTHER = 'other',
+}
+
+export enum VehicleDocumentStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  EXPIRED = 'expired',
+}
+
+export interface VehicleDocument {
+  id: string;
+  type: VehicleDocumentType;
+  name: string;
+  fileName: string;
+  filePath: string;
+  status: VehicleDocumentStatus;
+  vehicleId: string;
+  description?: string;
+  expiryDate?: string;
+  metadata?: Record<string, any>;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
 }
