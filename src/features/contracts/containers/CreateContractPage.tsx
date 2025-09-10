@@ -9,6 +9,8 @@ export const CreateContractPage: React.FC = () => {
 
   const handleSubmit = async (data: CreateContractDto) => {
     try {
+
+      console.log('Creating contract with data:', data);
       await createContract(data).unwrap();
       // Navigate to contracts list or show success message
       console.log('Contract created successfully');

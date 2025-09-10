@@ -205,6 +205,7 @@ export const STEP_FIELDS = {
   DETAILS: ['fuelType', 'legalOwner', 'isLiquidAsset', 'purchaseDate'] as const,
   // Removed commented out fields: 'registrationDate', 'registrationExpiryDate', 'insuranceProvider', 'insurancePolicyNumber', 'insuranceExpiryDate'
   DOCUMENTATION: ['currentValuation', 'marketValue', 'depreciatedValue'] as const,
+  DOCUMENTS: [] as const, // Documents are handled separately
 } as const;
 
 /**
@@ -214,6 +215,7 @@ export const REQUIRED_FIELDS = {
   BASIC_INFO: ['licensePlate', 'vin', 'make', 'model', 'year', 'status'] as const,
   DETAILS: [] as const,
   DOCUMENTATION: [] as const,
+  DOCUMENTS: [] as const, // Documents are handled separately
 } as const;
 
 /**
@@ -237,5 +239,11 @@ export const STEP_CONFIG = [
     fields: STEP_FIELDS.DOCUMENTATION,
     required: REQUIRED_FIELDS.DOCUMENTATION,
     description: 'Enter registration, insurance, and valuation information'
+  },
+  {
+    label: 'Vehicle Documents',
+    fields: STEP_FIELDS.DOCUMENTS,
+    required: REQUIRED_FIELDS.DOCUMENTS,
+    description: 'Upload required vehicle documents and certificates'
   }
 ] as const;

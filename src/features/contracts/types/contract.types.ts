@@ -1,5 +1,7 @@
 // Contract Types - Based on backend DTOs
 
+import { ContractDocumentResponseDto } from '../api/contractDocumentApi';
+
 export enum ContractType {
   LOAN = 'loan',
   LEASING = 'leasing'
@@ -158,11 +160,14 @@ export interface CreateContractDto {
     guaranteeExpirationDate?: string;
     legalDocumentReference?: string;
   }[];
+
+  // Custom guarantee amount for contract
+  guaranteeForContract?: number;
   
   // Documents are handled separately via the document upload API
   
-  // Session key for linking uploaded documents to this contract
-  sessionKey: string;
+  // Session key for linking uploaded documents to this contract (optional if no documents)
+  sessionKey?: string;
   
   // Contract terms
   terms?: Record<string, any>;
@@ -203,7 +208,9 @@ export interface ContractFormData {
   
   // Additional components
   selectedVehicles: string[];
+  selectedVehicleData?: VehicleSummary[]; // Full vehicle data including documents
   selectedEndorsers: string[];
+  guaranteeForContract?: number; // Amount the endorser guarantees for the contract
   collaterals: VehicleCollateral[];
   endorserCollaterals: EndorserCollateral[];
   documents: any[]; // Will be ContractDocument[] when imported
@@ -223,6 +230,34 @@ export interface ContractResponse {
   remainingAmount: string;
   createdAt: string;
   updatedAt: string;
+  documents?: ContractDocumentResponseDto[];
+  
+  // Additional nested objects from backend
+  vehicles?: {
+    id: string;
+    licensePlate: string;
+    name: string;
+    year: number;
+    vin: string;
+    status: string;
+  }[];
+  
+  collaterals?: {
+    id: string;
+    type: string;
+    description: string;
+    value: number;
+    active: boolean;
+  }[];
+  
+  endorsers?: {
+    id: string;
+    name: string;
+    relationshipToCustomer: string;
+    guaranteedAmount: number;
+    guaranteeType: string;
+    active: boolean;
+  }[];
 }
 
 export interface CustomerSummary {
@@ -241,6 +276,46 @@ export interface VehicleSummary {
   licensePlate: string;
   vinNumber: string;
   status: string;
+  // Additional vehicle properties
+  color?: string;
+  fuelType?: string;
+  mileage?: number;
+  legalOwner?: string;
+  currentClientId?: string;
+  contractId?: string;
+  conditionStatus?: string;
+  isLiquidAsset?: boolean;
+  depreciatedValue?: number;
+  marketValue?: number;
+  currentValuation?: number;
+  lastValuationDate?: string | null;
+  primaryInsuranceCompany?: string | null;
+  tplExpiryDate?: string | null;
+  kaskoExpiryDate?: string | null;
+  passengerInsuranceExpiry?: string | null;
+  currentMileage?: number | null;
+  nextMaintenanceDate?: string | null;
+  lastServiceDate?: string | null;
+  purchaseDate?: string;
+  registrationExpiry?: string | null;
+  creditStatus?: string | null;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  // Documents array when includeDocuments=true
+  documents?: VehicleDocument[];
+}
+
+export interface VehicleDocument {
+  id: string;
+  type: string;
+  title: string;
+  fileName: string;
+  filePath: string;
+  status: string;
+  createdAt: string;
+  downloadUrl: string;
+  previewUrl: string; // New field for preview URL
 }
 
 export interface EndorserSummary {
@@ -251,6 +326,8 @@ export interface EndorserSummary {
   phone: string;
   idNumber: string;
   relationshipToCustomer?: string;
+  guaranteedAmount?: number; // Maximum amount this endorser can guarantee
+  remainingGuaranteeCapacity?: number;
 }
 
 // Form step configuration
@@ -275,6 +352,7 @@ export interface CustomerPickerProps {
 export interface VehiclePickerProps {
   selectedVehicleIds: string[];
   onVehicleSelect: (vehicleIds: string[]) => void;
+  onVehicleDataChange?: (vehicles: VehicleSummary[]) => void; // New callback for full vehicle data
   customerId?: string;
   error?: string;
 }
@@ -282,6 +360,9 @@ export interface VehiclePickerProps {
 export interface EndorserPickerProps {
   selectedEndorserIds: string[];
   onEndorserSelect: (endorserIds: string[]) => void;
+  guaranteeForContract?: number;
+  onGuaranteeForContractChange?: (amount: number) => void;
+  totalContractAmount?: number;
   customerId?: string;
   onCreateEndorser?: () => void;
   error?: string;

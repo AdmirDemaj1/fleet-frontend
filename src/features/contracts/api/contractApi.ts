@@ -63,19 +63,7 @@ export const contractApi = createApi({
       providesTags: (_result, _error, id) => [{ type: 'Contract', id }],
     }),
 
-    getContracts: builder.query<{
-      contracts: ContractResponse[];
-      total: number;
-      meta: {
-        total: number;
-        page: number;
-        limit: number;
-        offset: number;
-        totalPages: number;
-        hasNextPage: boolean;
-        hasPreviousPage: boolean;
-      };
-    }, {
+    getContracts: builder.query<{ contracts: ContractResponse[]; totalCount: number }, {
       type?: ContractType;
       status?: ContractStatus;
       limit?: number;
@@ -88,60 +76,25 @@ export const contractApi = createApi({
       }),
       providesTags: ['Contract'],
       transformResponse: (response: any) => {
-        console.log('Contracts API response:', response);
-        
-        // Handle paginated response structure with data and meta
+        // Handle the backend response structure: { data: [...], meta: { total, ... } }
         if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-          const contractsArray = response.data;
-          const meta = response.meta || {};
-          const total = meta.total || contractsArray.length;
-          
-          console.log('Transformed contracts:', contractsArray);
-          console.log('Meta information:', meta);
-          console.log('Total count:', total);
-          
-          return { 
-            contracts: contractsArray, 
-            total,
-            meta: {
-              total: meta.total || total,
-              page: meta.page || 1,
-              limit: meta.limit || contractsArray.length,
-              offset: meta.offset || 0,
-              totalPages: meta.totalPages || Math.ceil(total / (meta.limit || contractsArray.length)),
-              hasNextPage: meta.hasNextPage || false,
-              hasPreviousPage: meta.hasPreviousPage || false,
-            }
+          return {
+            contracts: response.data,
+            totalCount: response.meta?.total || response.data.length
           };
-        }
-        
-        // Fallback for other response structures
-        let contractsArray: ContractResponse[];
-        if (Array.isArray(response)) {
-          contractsArray = response;
-        } else if (response && typeof response === 'object' && 'contracts' in response && Array.isArray(response.contracts)) {
-          contractsArray = response.contracts;
+        } else if (Array.isArray(response)) {
+          // Fallback for direct array response
+          return {
+            contracts: response,
+            totalCount: response.length
+          };
         } else {
           console.warn('Unexpected contracts response structure:', response);
-          contractsArray = [];
+          return {
+            contracts: [],
+            totalCount: 0
+          };
         }
-        
-        console.log('Transformed contracts (fallback):', contractsArray);
-        const total = contractsArray.length;
-        
-        return { 
-          contracts: contractsArray, 
-          total,
-          meta: {
-            total,
-            page: 1,
-            limit: total,
-            offset: 0,
-            totalPages: 1,
-            hasNextPage: false,
-            hasPreviousPage: false,
-          }
-        };
       },
     }),
 
@@ -208,25 +161,39 @@ export const contractApi = createApi({
       make?: string;
       model?: string;
       year?: number;
+      includeDocuments?: boolean;
     }>({
-      query: (params) => ({
-        url: '/vehicles',
-        params: params, // Remove the forced status filter
-      }),
+      query: (params) => {
+        console.log('🚀 Vehicle API Call - Request params:', params);
+        const requestConfig = {
+          url: '/vehicles',
+          params: params,
+        };
+        console.log('🚀 Vehicle API Call - Full config:', requestConfig);
+        return requestConfig;
+      },
       providesTags: ['Vehicle'],
       transformResponse: (response: any) => {
+        console.log('🔄 Vehicle API Response - Raw response:', response);
+        
         // Handle different response structures
         let vehiclesArray: any[];
         if (Array.isArray(response)) {
           vehiclesArray = response;
+          console.log('✅ Using direct array response');
         } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
           vehiclesArray = response.data;
+          console.log('✅ Using response.data array');
         } else if (response && typeof response === 'object' && 'vehicles' in response && Array.isArray(response.vehicles)) {
           vehiclesArray = response.vehicles;
+          console.log('✅ Using response.vehicles array');
         } else {
-          console.warn('Unexpected vehicles response structure:', response);
+          console.warn('❌ Unexpected vehicles response structure:', response);
           vehiclesArray = [];
         }
+        
+        console.log('📊 Processed vehicles array:', vehiclesArray);
+        console.log('📊 Vehicle count:', vehiclesArray.length);
         
         return vehiclesArray.map((vehicle: any) => ({
           id: vehicle.id,
@@ -235,7 +202,35 @@ export const contractApi = createApi({
           year: vehicle.year,
           licensePlate: vehicle.licensePlate,
           vinNumber: vehicle.vin, // Note: backend uses 'vin', frontend expects 'vinNumber'
-          status: vehicle.status
+          status: vehicle.status,
+          // Additional properties from new API response
+          color: vehicle.color,
+          fuelType: vehicle.fuelType,
+          mileage: vehicle.currentMileage || vehicle.mileage,
+          legalOwner: vehicle.legalOwner,
+          currentClientId: vehicle.currentClientId,
+          contractId: vehicle.contractId,
+          conditionStatus: vehicle.conditionStatus,
+          isLiquidAsset: vehicle.isLiquidAsset,
+          depreciatedValue: vehicle.depreciatedValue,
+          marketValue: vehicle.marketValue,
+          currentValuation: vehicle.currentValuation,
+          lastValuationDate: vehicle.lastValuationDate,
+          primaryInsuranceCompany: vehicle.primaryInsuranceCompany,
+          tplExpiryDate: vehicle.tplExpiryDate,
+          kaskoExpiryDate: vehicle.kaskoExpiryDate,
+          passengerInsuranceExpiry: vehicle.passengerInsuranceExpiry,
+          currentMileage: vehicle.currentMileage,
+          nextMaintenanceDate: vehicle.nextMaintenanceDate,
+          lastServiceDate: vehicle.lastServiceDate,
+          purchaseDate: vehicle.purchaseDate,
+          registrationExpiry: vehicle.registrationExpiry,
+          creditStatus: vehicle.creditStatus,
+          notes: vehicle.notes,
+          createdAt: vehicle.createdAt,
+          updatedAt: vehicle.updatedAt,
+          // Include documents if provided
+          documents: vehicle.documents
         }));
       },
     }),
@@ -286,7 +281,9 @@ export const contractApi = createApi({
           email: endorser.email,
           phone: endorser.phone,
           idNumber: endorser.idNumber,
-          relationshipToCustomer: endorser.relationshipToCustomer
+          relationshipToCustomer: endorser.relationshipToCustomer,
+          guaranteedAmount: endorser.guaranteedAmount,
+          remainingGuaranteeCapacity: endorser.remainingGuaranteeCapacity
         }));
       },
     }),
@@ -305,12 +302,7 @@ export const contractApi = createApi({
       }),
     }),
 
-    // Generate contract number
-    generateContractNumber: builder.query<{ contractNumber: string }, ContractType>({
-      query: (type) => ({
-        url: `/generate-number?type=${type}`,
-      }),
-    }),
+
 
     // Calculate loan details
     calculateLoanPayment: builder.query<{ monthlyPayment: number; totalInterest: number }, {
@@ -337,6 +329,6 @@ export const {
   useGetVehicleQuery,
   useGetEndorsersQuery,
   useGetEndorserQuery,
-  useGenerateContractNumberQuery,
+
   useCalculateLoanPaymentQuery,
 } = contractApi;

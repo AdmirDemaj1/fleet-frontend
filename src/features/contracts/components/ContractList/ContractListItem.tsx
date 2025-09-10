@@ -25,12 +25,14 @@ import {
   Dashboard,
   Delete,
   Edit,
+  Description,
 } from "@mui/icons-material";
 import {
   ContractResponse,
   ContractType,
   ContractStatus,
 } from "../../types/contract.types";
+import { useContractDocuments } from "../../hooks/useContractDocuments";
 import dayjs from "dayjs";
 
 interface ContractListItemProps {
@@ -44,6 +46,7 @@ export const ContractListItem: React.FC<ContractListItemProps> = ({
 }) => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { documents } = useContractDocuments(contract.id);
 
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -221,6 +224,18 @@ export const ContractListItem: React.FC<ContractListItemProps> = ({
           <Typography variant="body2" color="text.secondary">
             {formatDate(contract.createdAt)}
           </Typography>
+        </TableCell>
+
+        <TableCell>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Description fontSize="small" color="action" />
+            <Typography variant="body2" fontWeight={500}>
+              {documents.length}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              doc{documents.length !== 1 ? 's' : ''}
+            </Typography>
+          </Box>
         </TableCell>
 
         <TableCell align="right">

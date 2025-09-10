@@ -72,6 +72,7 @@ interface VehiclePickerState {
 export const VehiclePicker: React.FC<VehiclePickerProps> = ({
   selectedVehicleIds,
   onVehicleSelect,
+  onVehicleDataChange,
   error
 }) => {
   const theme = useTheme();
@@ -88,16 +89,44 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
   // Debounced search term to improve performance
   const debouncedSearchTerm = useDebounce(state.searchTerm, 300);
 
-  // Fetch ONLY available vehicles
+  // Parse search term to extract make and model
+  const parseSearchTerm = (searchTerm: string) => {
+    if (!searchTerm.trim()) return { make: undefined, model: undefined };
+    
+    // Try to parse format like "1999 Volkswagen Gof - TR 3896 R"
+    const parts = searchTerm.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      // Skip year (first part), extract make and model
+      const make = parts[1];
+      const model = parts[2];
+      return { make, model };
+    }
+    
+    // Fallback: use search as is
+    return { make: undefined, model: undefined, search: searchTerm };
+  };
+
+  const parsedSearch = parseSearchTerm(debouncedSearchTerm);
+
+  // Fetch ONLY available vehicles with documents
   const {
     data: vehiclesResponse = [],
     isLoading,
     error: apiError,
     refetch
   } = useGetAvailableVehiclesQuery({
-    search: debouncedSearchTerm,
-    status: 'AVAILABLE'
+    ...parsedSearch,
+    status: 'AVAILABLE',
+    includeDocuments: true
   });
+
+  // Debug logging for API responses
+  console.log('🔍 VehiclePicker Debug:');
+  console.log('  🔍 Original Search Term:', debouncedSearchTerm);
+  console.log('  🔧 Parsed Search Params:', parsedSearch);
+  console.log('  📊 API Response:', vehiclesResponse);
+  console.log('  ⚠️ API Error:', apiError);
+  console.log('  🔄 Is Loading:', isLoading);
 
   // Process vehicles - only available ones
   const allVehicles = useMemo(() => 
@@ -145,10 +174,17 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
     
     if (vehicle) {
       onVehicleSelect([vehicle.id]); // Single vehicle array
+      // Also pass the full vehicle data including documents
+      if (onVehicleDataChange) {
+        onVehicleDataChange([vehicle]);
+      }
     } else {
       onVehicleSelect([]); // Empty array
+      if (onVehicleDataChange) {
+        onVehicleDataChange([]);
+      }
     }
-  }, [onVehicleSelect]);
+  }, [onVehicleSelect, onVehicleDataChange]);
 
   // Handle input change
   const handleInputChange = useCallback((_event: any, newInputValue: string) => {
@@ -203,7 +239,7 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         vinNumber: newVehicle.vin,
         status: 'AVAILABLE',
         isVerified: true,
-        mileage: newVehicle.mileage,
+        mileage: newVehicle.currentMileage,
         fuelType: newVehicle.fuelType,
         color: newVehicle.color
       };
@@ -218,6 +254,10 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
       
       // Notify parent component
       onVehicleSelect([enhancedVehicle.id]);
+      // Also pass the full vehicle data
+      if (onVehicleDataChange) {
+        onVehicleDataChange([enhancedVehicle]);
+      }
       
       // Refresh the vehicle list
       refetch();
@@ -226,7 +266,7 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
       console.error('Failed to create vehicle:', error);
       setState(prev => ({ ...prev, isCreatingVehicle: false }));
     }
-  }, [onVehicleSelect, refetch]);
+  }, [onVehicleSelect, onVehicleDataChange, refetch]);
 
   // Error handling
   if (apiError) {

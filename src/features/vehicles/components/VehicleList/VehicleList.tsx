@@ -185,7 +185,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         {vehicle.year} {vehicle.make} {vehicle.model}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                        {vehicle.color ? `${vehicle.color} • ` : ''}{vehicle.mileage?.toLocaleString() || 0} mi
+                        {vehicle.color ? `${vehicle.color} • ` : ''}{vehicle.currentMileage?.toLocaleString() || 0} mi
                       </Typography>
                     </Box>
                   </TableCell>
@@ -216,8 +216,8 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         {vehicle.insuranceProvider || 'Uninsured'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                        {vehicle.insuranceExpiryDate ? 
-                          `Exp: ${formatDate(vehicle.insuranceExpiryDate)}` : 
+                        {vehicle.tplExpiryDate ? 
+                          `TPL Exp: ${formatDate(vehicle.tplExpiryDate)}` : 
                           'No expiry'
                         }
                       </Typography>
@@ -247,7 +247,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                         Fuel: {vehicle.fuelType || 'Unknown'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                        Condition: {vehicle.condition || 'Unknown'}
+                        Condition: {vehicle.conditionStatus || 'Unknown'}
                       </Typography>
                     </Box>
                   </TableCell>

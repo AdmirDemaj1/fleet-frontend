@@ -39,174 +39,112 @@ import {
 } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 import { useDropzone } from "react-dropzone";
+import { VehicleDocumentType, VehicleDocument } from "../../types/vehicleType";
 import {
   useUploadDocumentMutation,
-  useReplacePendingDocumentMutation,
-  ContractDocumentType,
-  UploadRequestData,
   useRemovePendingDocumentMutation,
-} from "../../../api/contractDocumentApi";
-import { useNotification } from "../../../../../shared/hooks/useNotification";
-import { VehicleSummary } from "../../../types/contract.types";
-import { getApiUrl } from "../../../../../shared/utils/env";
+  UploadVehicleDocumentRequestData,
+} from "../../api/vehicleDocumentApi";
+import { useNotification } from "../../../../shared/hooks/useNotification";
 
-export interface ContractDocument {
+export interface VehicleDocumentFile {
   id: string;
   name: string;
   type: string;
   size: number;
   file: File;
-  category: DocumentCategory;
+  category: VehicleDocumentType;
   description?: string;
   isRequired: boolean;
   status: "pending" | "uploaded" | "verified" | "rejected";
   uploadedAt?: Date;
-  verifiedAt?: Date;
-  verifiedBy?: string;
-  rejectionReason?: string;
 }
 
-export enum DocumentCategory {
-  ID_CARD = "id_card",
-  INSURANCE = "insurance",
-  TPL = "tpl", // Third Party Liability
-  CASCO = "casco",
-  DRIVING_PERMIT = "driving_permit", // Leje qarkullimi
-  CUSTOMER_REGISTRATION = "customer_registration",
-  ENDORSER_ID = "endorser_id",
-  CONTRACT_AGREEMENT = "contract_agreement",
-  BUSINESS_REGISTRATION = "business_registration",
-  TAX_CERTIFICATE = "tax_certificate",
-}
+const REQUIRED_VEHICLE_DOCUMENTS = [
+  {
+    category: VehicleDocumentType.VEHICLE_REGISTRATION,
+    name: "Vehicle Registration",
+    description: "Official vehicle registration certificate",
+    isRequired: true,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: true,
+  },
+  {
+    category: VehicleDocumentType.VEHICLE_INSPECTION,
+    name: "Vehicle Inspection",
+    description: "Vehicle inspection certificate",
+    isRequired: true,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: true,
+  },
+  {
+    category: VehicleDocumentType.INSURANCE,
+    name: "Insurance Certificate",
+    description: "Vehicle insurance policy",
+    isRequired: true,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: true,
+  },
+  {
+    category: VehicleDocumentType.TPL,
+    name: "Third Party Liability (TPL)",
+    description: "TPL insurance certificate",
+    isRequired: true,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: true,
+  },
+  {
+    category: VehicleDocumentType.CASCO,
+    name: "CASCO Insurance",
+    description: "Comprehensive insurance certificate",
+    isRequired: true,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: true,
+  },
+  {
+    category: VehicleDocumentType.PURCHASE_INVOICE,
+    name: "Purchase Invoice",
+    description: "Vehicle purchase invoice",
+    isRequired: false,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: false,
+  },
+  {
+    category: VehicleDocumentType.TECHNICAL_PASSPORT,
+    name: "Technical Passport",
+    description: "Vehicle technical passport",
+    isRequired: false,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: false,
+  },
+];
 
-interface DocumentUploadProps {
-  documents: ContractDocument[];
-  onDocumentsChange: (documents: ContractDocument[]) => void;
+interface VehicleDocumentUploadProps {
+  documents: VehicleDocumentFile[];
+  onDocumentsChange: (documents: VehicleDocumentFile[]) => void;
   error?: string;
-  customerId?: string; // Made optional since API no longer requires it
-  endorserId?: string;
-  vehicleIds: string[];
-  vehicleData?: VehicleSummary[]; // Full vehicle data including documents
   sessionKey: string | null;
   onSessionKeyChange: (sessionKey: string) => void;
 }
 
-const REQUIRED_DOCUMENTS = [
-  {
-    category: DocumentCategory.ID_CARD,
-    name: "ID Card",
-    description: "Valid government-issued photo identification",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: false,
-  },
-  // Vehicle-related documents (INSURANCE, TPL, CASCO) removed - now provided by vehicle picker
-  {
-    category: DocumentCategory.DRIVING_PERMIT,
-    name: "Driving Permit",
-    description: "Valid driving license (Leje qarkullimi)",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true, // ✅ Requires expiry date
-  },
-  {
-    category: DocumentCategory.CUSTOMER_REGISTRATION,
-    name: "Customer Registration",
-    description: "Customer registration documents",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: false,
-  },
-  {
-    category: DocumentCategory.ENDORSER_ID,
-    name: "Endorser ID",
-    description: "Endorser identification documents",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: false,
-  },
-  {
-    category: DocumentCategory.CONTRACT_AGREEMENT,
-    name: "Contract Agreement",
-    description: "Contract agreement documents",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: false,
-  },
-  {
-    category: DocumentCategory.BUSINESS_REGISTRATION,
-    name: "Business Registration",
-    description: "Business Registration documents",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: false,
-  },
-  {
-    category: DocumentCategory.TAX_CERTIFICATE,
-    name: "Tax Certificate",
-    description: "Tax Certificate Documents",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: false,
-  },
-];
-
-// Vehicle-related documents that are now provided automatically via vehicle picker
-const VEHICLE_DOCUMENTS = [
-  {
-    category: DocumentCategory.INSURANCE,
-    name: "Insurance Certificate",
-    description: "Current vehicle insurance policy (provided by selected vehicle)",
-    isRequired: false, // No longer required for manual upload
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true,
-  },
-  {
-    category: DocumentCategory.TPL,
-    name: "Third Party Liability (TPL)",
-    description: "Third party liability insurance certificate (provided by selected vehicle)",
-    isRequired: false, // No longer required for manual upload
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true,
-  },
-  {
-    category: DocumentCategory.CASCO,
-    name: "CASCO Insurance",
-    description: "Comprehensive vehicle insurance certificate (provided by selected vehicle)",
-    isRequired: false, // No longer required for manual upload
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true,
-  },
-];
-
-// Combined array for dropdown selection (required + optional vehicle documents)
-const ALL_DOCUMENTS = [...REQUIRED_DOCUMENTS, ...VEHICLE_DOCUMENTS];
-
-export const DocumentUpload: React.FC<DocumentUploadProps> = ({
+export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
   documents,
   onDocumentsChange,
   error,
-  customerId,
-  endorserId,
-  vehicleIds,
-  vehicleData = [],
   sessionKey,
   onSessionKeyChange,
 }) => {
   const [isTypeDialogOpen, setIsTypeDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<DocumentCategory>(
-    DocumentCategory.ID_CARD
+  const [selectedCategory, setSelectedCategory] = useState<VehicleDocumentType>(
+    VehicleDocumentType.VEHICLE_REGISTRATION
   );
   const [documentDescription, setDocumentDescription] = useState("");
   const [documentExpiryDate, setDocumentExpiryDate] = useState<string>("");
@@ -215,12 +153,10 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     null
   );
   const [documentToDelete, setDocumentToDelete] =
-    useState<ContractDocument | null>(null);
-  const [previewDocument, setPreviewDocument] = useState<any | null>(null); // For vehicle document preview
+    useState<VehicleDocumentFile | null>(null);
 
-  const [uploadDocument, { isLoading: isUploading }] =
-    useUploadDocumentMutation();
-  const [replacePendingDocument] = useReplacePendingDocumentMutation();
+  // API mutations
+  const [uploadDocument] = useUploadDocumentMutation();
   const [removePendingDocument] = useRemovePendingDocumentMutation();
 
   // Notification system
@@ -229,7 +165,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   // Effect to set expiry date when dialog opens and category changes
   useEffect(() => {
     if (isTypeDialogOpen && selectedCategory) {
-      const selectedDoc = ALL_DOCUMENTS.find(
+      const selectedDoc = REQUIRED_VEHICLE_DOCUMENTS.find(
         (doc) => doc.category === selectedCategory
       );
       if (selectedDoc?.requiresExpiryDate && !documentExpiryDate) {
@@ -249,14 +185,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      // Check if customer is selected before allowing uploads (optional but recommended for organization)
-      if (!customerId) {
-        setUploadError(
-          "Please select a customer before uploading documents for better organization."
-        );
-        // Don't return - allow uploads to proceed
-      }
-
       // For now, only handle one file at a time for better UX
       if (acceptedFiles.length > 0) {
         const file = acceptedFiles[0];
@@ -264,11 +192,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
         // Find the next required document type to upload
         const uploadedCategories = documents.map((doc) => doc.category);
-        const nextRequiredDoc = REQUIRED_DOCUMENTS.find(
+        const nextRequiredDoc = REQUIRED_VEHICLE_DOCUMENTS.find(
           (doc) => !uploadedCategories.includes(doc.category)
         );
         const defaultCategory =
-          nextRequiredDoc?.category || DocumentCategory.ID_CARD;
+          nextRequiredDoc?.category || VehicleDocumentType.VEHICLE_REGISTRATION;
 
         setSelectedCategory(defaultCategory);
         setDocumentDescription("");
@@ -276,7 +204,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         // Auto-set expiry date to 1 year from now for documents that require it
         const requiresExpiry =
           nextRequiredDoc?.requiresExpiryDate ||
-          ALL_DOCUMENTS.find(
+          REQUIRED_VEHICLE_DOCUMENTS.find(
             (doc) => doc.category === defaultCategory
           )?.requiresExpiryDate;
 
@@ -303,7 +231,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         setIsTypeDialogOpen(true);
       }
     },
-    [customerId, documents]
+    [documents]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -316,12 +244,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         [".docx"],
     },
     maxSize: 25 * 1024 * 1024, // 25MB max
-    multiple: false, // Changed to false since we handle one file at a time
+    multiple: false, // Handle one file at a time
   });
 
   const handleDeleteDocument = async (documentId: string) => {
     try {
-      console.log("documentId", documentId);
       setDeletingDocumentId(documentId);
 
       // Check if this is a backend document (has UUID format)
@@ -332,14 +259,15 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         // This is a backend document, call the API to remove it
         await removePendingDocument({
           documentId,
-          sessionKey: sessionKey || "", // Provide empty string if sessionKey is null
+          // TODO: RDouble check this
+          sessionKey: sessionKey || undefined,
         }).unwrap();
 
-        console.log("Document deleted from backend:", documentId);
+        console.log("Vehicle document deleted from backend:", documentId);
         showSuccess("Document deleted successfully");
       } else {
         // This is a local/temporary document, just remove it locally
-        console.log("Removing local document:", documentId);
+        console.log("Removing local vehicle document:", documentId);
         showSuccess("Document removed");
       }
 
@@ -360,9 +288,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       setDocumentToDelete(null); // Close confirmation dialog
     }
   };
-  console.log("documentToDelete", documentToDelete);
-  const handleDeleteClick = (document: ContractDocument) => {
-    console.log("document", document);
+
+  const handleDeleteClick = (document: VehicleDocumentFile) => {
     setDocumentToDelete(document);
   };
 
@@ -376,24 +303,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     // Check for duplicates by name
     const existingNames = documents.map((doc) => doc.name);
     if (existingNames.includes(pendingFile.name)) {
-      // Show error and don't proceed
       setUploadError(
         `Document "${pendingFile.name}" has already been uploaded. Please use a different file or remove the existing one first.`
-      );
-      return;
-    }
-
-    // Check for duplicates by file content (using size and type as a basic check)
-    const existingFile = documents.find(
-      (doc) =>
-        doc.size === pendingFile.size &&
-        doc.type === pendingFile.type &&
-        doc.name !== pendingFile.name
-    );
-
-    if (existingFile) {
-      setUploadError(
-        `A file with the same size and type has already been uploaded. Please ensure you're not uploading duplicate content.`
       );
       return;
     }
@@ -406,14 +317,16 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     if (existingCategoryDoc) {
       setUploadError(
         `A document of type "${
-          ALL_DOCUMENTS.find((d) => d.category === selectedCategory)?.name
+          REQUIRED_VEHICLE_DOCUMENTS.find(
+            (d) => d.category === selectedCategory
+          )?.name
         }" has already been uploaded. Please remove the existing one first or choose a different category.`
       );
       return;
     }
 
     // Check if expiry date is required for this document type
-    const selectedDocType = ALL_DOCUMENTS.find(
+    const selectedDocType = REQUIRED_VEHICLE_DOCUMENTS.find(
       (doc) => doc.category === selectedCategory
     );
     if (selectedDocType?.requiresExpiryDate && !documentExpiryDate) {
@@ -427,55 +340,23 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setUploadError("");
 
     try {
-      // Convert DocumentCategory to ContractDocumentType
-      const convertToContractDocumentType = (
-        category: DocumentCategory
-      ): ContractDocumentType => {
-        switch (category) {
-          case DocumentCategory.ID_CARD:
-            return ContractDocumentType.ID_CARD;
-          case DocumentCategory.INSURANCE:
-            return ContractDocumentType.INSURANCE;
-          case DocumentCategory.TPL:
-            return ContractDocumentType.TPL;
-          case DocumentCategory.CASCO:
-            return ContractDocumentType.CASCO;
-          case DocumentCategory.DRIVING_PERMIT:
-            return ContractDocumentType.DRIVING_PERMIT;
-          case DocumentCategory.CUSTOMER_REGISTRATION:
-            return ContractDocumentType.CUSTOMER_REGISTRATION;
-          case DocumentCategory.ENDORSER_ID:
-            return ContractDocumentType.ENDORSER_ID;
-          case DocumentCategory.CONTRACT_AGREEMENT:
-            return ContractDocumentType.CONTRACT_AGREEMENT;
-          case DocumentCategory.BUSINESS_REGISTRATION:
-            return ContractDocumentType.BUSINESS_REGISTRATION;
-          case DocumentCategory.TAX_CERTIFICATE:
-            return ContractDocumentType.TAX_CERTIFICATE;
-          default:
-            return ContractDocumentType.OTHER;
-        }
-      };
-
-      // Upload document to backend
-      const uploadData = {
-        type: convertToContractDocumentType(selectedCategory),
+      // Prepare upload data
+      const uploadData: UploadVehicleDocumentRequestData = {
+        type: selectedCategory,
         title: pendingFile.name,
         description: documentDescription,
-        expiryDate: documentExpiryDate || undefined, // Add expiry date if needed
+        expiryDate: documentExpiryDate || undefined,
         metadata: {
           originalFileName: pendingFile.name,
           fileSize: pendingFile.size,
           fileType: pendingFile.type,
           uploadDate: new Date().toISOString(),
-          vehicleIds: vehicleIds.length > 0 ? vehicleIds : undefined,
           documentCategory: selectedCategory,
-          customerId: customerId, // Keep in metadata for reference
-          endorserId: endorserId, // Keep in metadata for reference
+          sessionKey: sessionKey,
         },
       };
 
-      console.log("🚀 Attempting to upload document:");
+      console.log("🚀 Attempting to upload vehicle document:");
       console.log(
         "📁 File:",
         pendingFile.name,
@@ -486,14 +367,12 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       );
       console.log("📋 Upload Data:", uploadData);
       console.log("🔑 Session Key:", sessionKey);
-      console.log("👤 Customer ID:", customerId);
-      console.log("🚗 Vehicle IDs:", vehicleIds);
-      console.log("🤝 Endorser ID:", endorserId);
 
+      // Upload document to backend
       const response = await uploadDocument({
         file: pendingFile,
         data: uploadData,
-        sessionKey: sessionKey || undefined, // Pass undefined if sessionKey is null for first upload
+        sessionKey: sessionKey || undefined,
       }).unwrap();
 
       // If this is the first upload and we get a session key back, store it
@@ -502,17 +381,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           "🔑 Received session key from backend:",
           response.sessionKey
         );
-        console.log("🔄 Calling onSessionKeyChange callback...");
         onSessionKeyChange(response.sessionKey);
-        console.log("✅ Session key callback completed");
-      } else if (sessionKey) {
-        console.log("🔑 Using existing session key:", sessionKey);
-      } else {
-        console.log("⚠️ No session key in response:", response);
       }
 
       // Create local document object with backend response
-      const newDocument: ContractDocument = {
+      const newDocument: VehicleDocumentFile = {
         id: response.id,
         name: response.fileName || pendingFile.name,
         type: pendingFile.type,
@@ -520,7 +393,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         file: pendingFile,
         category: selectedCategory,
         description: documentDescription,
-        isRequired: REQUIRED_DOCUMENTS.some(
+        isRequired: REQUIRED_VEHICLE_DOCUMENTS.some(
           (doc) => doc.category === selectedCategory
         ),
         status: response.status as
@@ -534,85 +407,30 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       const updatedDocuments = [...documents, newDocument];
       onDocumentsChange(updatedDocuments);
 
+      // Show success notification
+      showSuccess("Document uploaded successfully!");
+
       // Reset and close dialog
       setPendingFile(null);
-      setSelectedCategory(DocumentCategory.ID_CARD);
+      setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
       setDocumentDescription("");
       setDocumentExpiryDate("");
       setIsTypeDialogOpen(false);
     } catch (error) {
       console.error("Document upload failed:", error);
-      setUploadError("Failed to upload document. Please try again.");
+      const errorMessage = "Failed to upload document. Please try again.";
+      setUploadError(errorMessage);
+      showError(errorMessage);
     }
   };
 
   const handleCancelDocumentUpload = () => {
     setPendingFile(null);
-    setSelectedCategory(DocumentCategory.ID_CARD);
+    setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
     setDocumentDescription("");
     setDocumentExpiryDate("");
     setUploadError("");
     setIsTypeDialogOpen(false);
-  };
-
-  const handleReplaceDocument = async (documentId: string, newFile: File) => {
-    try {
-      // If the document has a backend ID, replace it using the API
-      if (documentId.includes("-") && !documentId.includes("temp-")) {
-        const metadata = {
-          reason: "Document replaced by user",
-          replacedAt: new Date().toISOString(),
-          originalDocumentId: documentId,
-        };
-
-        const response = await replacePendingDocument({
-          documentId,
-          sessionKey: sessionKey || "", // Provide empty string if sessionKey is null
-          file: newFile,
-          metadata,
-        }).unwrap();
-
-        // Update the local document with the new file info
-        const updatedDocuments = documents.map((doc) => {
-          if (doc.id === documentId) {
-            return {
-              ...doc,
-              name: response.fileName || newFile.name,
-              file: newFile,
-              size: newFile.size,
-              type: newFile.type,
-              status: response.status as
-                | "pending"
-                | "uploaded"
-                | "verified"
-                | "rejected",
-            };
-          }
-          return doc;
-        });
-
-        onDocumentsChange(updatedDocuments);
-      } else {
-        // For local documents, just update the file
-        const updatedDocuments = documents.map((doc) => {
-          if (doc.id === documentId) {
-            return {
-              ...doc,
-              name: newFile.name,
-              file: newFile,
-              size: newFile.size,
-              type: newFile.type,
-            };
-          }
-          return doc;
-        });
-
-        onDocumentsChange(updatedDocuments);
-      }
-    } catch (error) {
-      console.error("Failed to replace document:", error);
-      setUploadError("Failed to replace document. Please try again.");
-    }
   };
 
   const getFileIcon = (fileType: string) => {
@@ -657,28 +475,12 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     }
   };
 
-  const requiredDocuments = REQUIRED_DOCUMENTS.filter(
+  const requiredDocuments = REQUIRED_VEHICLE_DOCUMENTS.filter(
     (doc) =>
       !documents.some((uploadedDoc) => uploadedDoc.category === doc.category)
   );
 
   const missingRequired = requiredDocuments.filter((doc) => doc.isRequired);
-
-  // Helper function to properly join URLs
-  const buildFullUrl = useCallback((relativePath: string) => {
-    const baseUrl = getApiUrl().replace(/\/$/, ''); // Remove trailing slash
-    const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
-    return `${baseUrl}${path}`;
-  }, []);
-
-  // Handle vehicle document preview
-  const handlePreviewVehicleDocument = useCallback((document: any) => {
-    console.log('🔍 Opening vehicle document preview:', document);
-    console.log('  📄 Preview URL:', document.previewUrl);
-    console.log('  📥 Download URL:', document.downloadUrl);
-    console.log('  🌐 Full Preview URL:', buildFullUrl(document.previewUrl || document.downloadUrl));
-    setPreviewDocument(document);
-  }, [buildFullUrl]);
 
   return (
     <Box>
@@ -688,133 +490,17 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         sx={{ display: "flex", alignItems: "center", gap: 1 }}
       >
         <Description />
-        Required Documents
+        Vehicle Documents
       </Typography>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Upload all required documents to complete your contract application.
-        After uploading each file, you'll be prompted to select the appropriate
-        document category. Documents will be reviewed and verified by our team.
+        Upload all required vehicle documents. After uploading each file, you'll
+        be prompted to select the appropriate document category.
       </Typography>
-
-      {/* Information about vehicle documents */}
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-          📋 Vehicle Documents Automatically Included
-        </Typography>
-        <Typography variant="body2">
-          Vehicle-related documents (Insurance, TPL, CASCO) are no longer required to be uploaded here.
-          These documents are automatically provided from the selected vehicle in the previous step.
-        </Typography>
-      </Alert>
-
-      {/* Vehicle Documents Section */}
-      {vehicleData && vehicleData.length > 0 && vehicleData.some(v => v.documents && v.documents.length > 0) && (
-        <Card sx={{ mb: 3, border: '2px solid', borderColor: 'success.main', bgcolor: 'success.50' }}>
-          <CardContent>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ display: "flex", alignItems: "center", gap: 1, color: 'success.main' }}
-            >
-              <CheckCircle />
-              Vehicle Documents (Already Available)
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              The following documents are already associated with the selected vehicle(s):
-            </Typography>
-            
-            {vehicleData.map((vehicle) => (
-              vehicle.documents && vehicle.documents.length > 0 && (
-                <Box key={vehicle.id} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                    📋 {vehicle.year} {vehicle.make} {vehicle.model} - {vehicle.licensePlate}
-                  </Typography>
-                  <Grid container spacing={1}>
-                    {vehicle.documents.map((doc) => (
-                      <Grid item xs={12} sm={6} md={4} key={doc.id}>
-                        <Card 
-                          variant="outlined" 
-                          sx={{ 
-                            p: 1, 
-                            border: '1px solid', 
-                            borderColor: 'success.main',
-                            bgcolor: 'success.50',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
-                          }}
-                        >
-                          <CheckCircle color="success" fontSize="small" />
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography 
-                              variant="caption" 
-                              sx={{ 
-                                fontWeight: 600,
-                                display: 'block',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              {doc.type}
-                            </Typography>
-                            <Typography 
-                              variant="caption" 
-                              color="text.secondary"
-                              sx={{ 
-                                display: 'block',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              {doc.title}
-                            </Typography>
-                          </Box>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handlePreviewVehicleDocument(doc)}
-                            sx={{ ml: 'auto' }}
-                          >
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )
-            ))}
-          </CardContent>
-        </Card>
-      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
-        </Alert>
-      )}
-
-      {!customerId && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Customer selection is recommended for better document organization,
-          but not required for upload.
-        </Alert>
-      )}
-
-      {customerId && vehicleIds.length === 0 && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          No vehicles selected. You can still upload documents, but vehicle
-          information will not be associated.
-        </Alert>
-      )}
-
-      {customerId && !endorserId && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          No endorser selected. You can still upload documents, but endorser
-          information will not be associated.
         </Alert>
       )}
 
@@ -852,17 +538,12 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           borderRadius: 2,
           p: 4,
           textAlign: "center",
-          cursor: customerId ? "pointer" : "not-allowed",
+          cursor: "pointer",
           transition: "all 0.2s ease",
-          bgcolor: isDragActive
-            ? "primary.50"
-            : customerId
-            ? "background.paper"
-            : "grey.100",
-          opacity: customerId ? 1 : 0.6,
+          bgcolor: isDragActive ? "primary.50" : "background.paper",
           "&:hover": {
-            borderColor: customerId ? "primary.main" : "divider",
-            bgcolor: customerId ? "primary.50" : "grey.100",
+            borderColor: "primary.main",
+            bgcolor: "primary.50",
           },
         }}
       >
@@ -884,37 +565,16 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         >
           You'll be prompted to select the document type after upload
         </Typography>
-        {customerId && (
-          <Typography
-            variant="caption"
-            color="success.main"
-            sx={{ display: "block", mt: 1, fontWeight: 500 }}
-          >
-            ✓ Customer: {customerId.slice(0, 8)}... | Vehicles:{" "}
-            {vehicleIds.length} | Endorser:{" "}
-            {endorserId ? endorserId.slice(0, 8) + "..." : "None"}
-          </Typography>
-        )}
-        {!customerId && (
-          <Typography
-            variant="caption"
-            color="info.main"
-            sx={{ display: "block", mt: 1, fontWeight: 500 }}
-          >
-            ℹ️ No customer selected - documents will be uploaded with session
-            key only
-          </Typography>
-        )}
       </Paper>
 
       {/* Required Documents Checklist */}
-      {REQUIRED_DOCUMENTS.length > 0 && (
+      {REQUIRED_VEHICLE_DOCUMENTS.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="subtitle1" gutterBottom fontWeight={600}>
             Required Documents Checklist
           </Typography>
           <Grid container spacing={2}>
-            {REQUIRED_DOCUMENTS.map((doc) => {
+            {REQUIRED_VEHICLE_DOCUMENTS.map((doc) => {
               const uploadedDoc = documents.find(
                 (d) => d.category === doc.category
               );
@@ -1066,7 +726,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                       size="small"
                       onClick={() => handleDeleteClick(document)}
                       color="error"
-                      title="Delete document (will ask for confirmation)"
+                      title="Delete document"
                       disabled={deletingDocumentId === document.id}
                     >
                       {deletingDocumentId === document.id ? (
@@ -1080,56 +740,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               </ListItem>
             ))}
           </List>
-        </Box>
-      )}
-
-      {/* Document Status Summary */}
-      {documents.length > 0 && (
-        <Box sx={{ mt: 3 }}>
-          <Card
-            elevation={0}
-            sx={{ border: "1px solid", borderColor: "divider" }}
-          >
-            <CardContent>
-              <Typography variant="subtitle1" gutterBottom fontWeight={600}>
-                Document Status Summary
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={6} sm={3}>
-                  <Box sx={{ textAlign: "center" }}>
-                    <Typography variant="h4" color="primary.main">
-                      {documents.length}
-                    </Typography>
-                    <Typography variant="caption">Total Uploaded</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Box sx={{ textAlign: "center" }}>
-                    <Typography variant="h4" color="success.main">
-                      {documents.filter((d) => d.status === "verified").length}
-                    </Typography>
-                    <Typography variant="caption">Verified</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Box sx={{ textAlign: "center" }}>
-                    <Typography variant="h4" color="info.main">
-                      {documents.filter((d) => d.status === "uploaded").length}
-                    </Typography>
-                    <Typography variant="caption">Pending Review</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <Box sx={{ textAlign: "center" }}>
-                    <Typography variant="h4" color="error.main">
-                      {documents.filter((d) => d.status === "rejected").length}
-                    </Typography>
-                    <Typography variant="caption">Rejected</Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
         </Box>
       )}
 
@@ -1156,11 +766,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               <Select
                 value={selectedCategory}
                 onChange={(e) => {
-                  const newCategory = e.target.value as DocumentCategory;
+                  const newCategory = e.target.value as VehicleDocumentType;
                   setSelectedCategory(newCategory);
 
                   // Auto-set expiry date for documents that require it
-                  const selectedDoc = ALL_DOCUMENTS.find(
+                  const selectedDoc = REQUIRED_VEHICLE_DOCUMENTS.find(
                     (doc) => doc.category === newCategory
                   );
                   if (selectedDoc?.requiresExpiryDate) {
@@ -1169,36 +779,24 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                     defaultExpiryDate.setFullYear(
                       defaultExpiryDate.getFullYear() + 1
                     );
-                    const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
-                    setDocumentExpiryDate(formattedDate);
+                    setDocumentExpiryDate(
+                      defaultExpiryDate.toISOString().split("T")[0]
+                    );
                     console.log(
                       "🗓️ Auto-set expiry date:",
-                      formattedDate,
-                      "for category:",
-                      newCategory
+                      defaultExpiryDate.toISOString().split("T")[0]
                     );
                   } else {
                     // Clear expiry date if not required
                     setDocumentExpiryDate("");
-                    console.log(
-                      "📄 Cleared expiry date for category:",
-                      newCategory
-                    );
                   }
                 }}
                 label="Document Category"
               >
-                {ALL_DOCUMENTS.map((doc) => (
+                {REQUIRED_VEHICLE_DOCUMENTS.map((doc) => (
                   <MenuItem key={doc.category} value={doc.category}>
                     <Box>
-                      <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {doc.name}
-                        {doc.isRequired ? (
-                          <Chip label="Required" size="small" color="error" variant="outlined" />
-                        ) : (
-                          <Chip label="Optional" size="small" color="info" variant="outlined" />
-                        )}
-                      </Typography>
+                      <Typography variant="body1">{doc.name}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         {doc.description}
                       </Typography>
@@ -1228,8 +826,9 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             />
 
             {/* Expiry Date Field */}
-            {ALL_DOCUMENTS.find((doc) => doc.category === selectedCategory)
-              ?.requiresExpiryDate && (
+            {REQUIRED_VEHICLE_DOCUMENTS.find(
+              (doc) => doc.category === selectedCategory
+            )?.requiresExpiryDate && (
               <TextField
                 fullWidth
                 label="Expiry Date (Required)"
@@ -1283,15 +882,13 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             disabled={
               !pendingFile ||
               !!uploadError ||
-              isUploading ||
-              (ALL_DOCUMENTS.find(
+              (REQUIRED_VEHICLE_DOCUMENTS.find(
                 (doc) => doc.category === selectedCategory
               )?.requiresExpiryDate &&
                 !documentExpiryDate)
             }
-            startIcon={isUploading ? <CircularProgress size={20} /> : undefined}
           >
-            {isUploading ? "Uploading..." : "Upload Document"}
+            Upload Document
           </Button>
         </DialogActions>
       </Dialog>
@@ -1326,95 +923,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               ) : (
                 "Delete"
               )}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
-
-      {/* Vehicle Document Preview Dialog */}
-      {previewDocument && (
-        <Dialog
-          open={!!previewDocument}
-          onClose={() => setPreviewDocument(null)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Visibility />
-            Vehicle Document Preview
-          </DialogTitle>
-          <DialogContent>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                {previewDocument.type}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                {previewDocument.title}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Created: {new Date(previewDocument.createdAt).toLocaleDateString()}
-              </Typography>
-            </Box>
-            
-            {/* Preview action buttons */}
-            {(previewDocument.previewUrl || previewDocument.downloadUrl) && (
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column',
-                gap: 2,
-                mt: 2,
-                p: 3,
-                border: '1px solid', 
-                borderColor: 'divider',
-                borderRadius: 2,
-                bgcolor: 'background.paper'
-              }}>
-                <Typography variant="body2" color="text.secondary">
-                  Document preview options:
-                </Typography>
-                
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  {previewDocument.previewUrl && (
-                    <Button
-                      variant="contained"
-                      startIcon={<Visibility />}
-                      onClick={() => {
-                        window.open(buildFullUrl(previewDocument.previewUrl), '_blank');
-                      }}
-                    >
-                      Open Preview
-                    </Button>
-                  )}
-                  
-                  {previewDocument.downloadUrl && (
-                    <Button
-                      variant="outlined"
-                      startIcon={<Download />}
-                      onClick={() => {
-                        window.open(buildFullUrl(previewDocument.downloadUrl), '_blank');
-                      }}
-                    >
-                      Download
-                    </Button>
-                  )}
-                </Box>
-                
-                <Alert severity="info" sx={{ mt: 1 }}>
-                  Due to browser security restrictions, the document will open in a new tab for preview.
-                </Alert>
-              </Box>
-            )}
-            
-            {/* Show message if no preview available */}
-            {!previewDocument.previewUrl && !previewDocument.downloadUrl && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                Preview not available for this document.
-              </Alert>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setPreviewDocument(null)} variant="contained">
-              Close
             </Button>
           </DialogActions>
         </Dialog>

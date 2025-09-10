@@ -91,6 +91,24 @@ export const vehicleApi = {
     return response.data;
   },
 
+  // Create a new vehicle with documents (using session key)
+  createVehicleWithDocuments: async (vehicleData: Partial<Vehicle> & { sessionKey: string }): Promise<Vehicle> => {
+    // Get user ID for header
+  
+    // Get or generate a consistent user ID
+    let userId = localStorage.getItem("userId");
+    if (!userId) {
+      userId = crypto.randomUUID();
+      localStorage.setItem("userId", userId);
+    }
+    const response = await api.post<Vehicle>('/vehicles/with-documents', vehicleData, {
+      headers: {
+        'x-user-id': userId
+      }
+    });
+    return response.data;
+  },
+
   // Update a vehicle
   updateVehicle: async (id: string, vehicleData: Partial<Vehicle>): Promise<Vehicle> => {
     const response = await api.put<Vehicle>(`/vehicles/${id}`, vehicleData);
