@@ -161,25 +161,39 @@ export const contractApi = createApi({
       make?: string;
       model?: string;
       year?: number;
+      includeDocuments?: boolean;
     }>({
-      query: (params) => ({
-        url: '/vehicles',
-        params: params, // Remove the forced status filter
-      }),
+      query: (params) => {
+        console.log('🚀 Vehicle API Call - Request params:', params);
+        const requestConfig = {
+          url: '/vehicles',
+          params: params,
+        };
+        console.log('🚀 Vehicle API Call - Full config:', requestConfig);
+        return requestConfig;
+      },
       providesTags: ['Vehicle'],
       transformResponse: (response: any) => {
+        console.log('🔄 Vehicle API Response - Raw response:', response);
+        
         // Handle different response structures
         let vehiclesArray: any[];
         if (Array.isArray(response)) {
           vehiclesArray = response;
+          console.log('✅ Using direct array response');
         } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
           vehiclesArray = response.data;
+          console.log('✅ Using response.data array');
         } else if (response && typeof response === 'object' && 'vehicles' in response && Array.isArray(response.vehicles)) {
           vehiclesArray = response.vehicles;
+          console.log('✅ Using response.vehicles array');
         } else {
-          console.warn('Unexpected vehicles response structure:', response);
+          console.warn('❌ Unexpected vehicles response structure:', response);
           vehiclesArray = [];
         }
+        
+        console.log('📊 Processed vehicles array:', vehiclesArray);
+        console.log('📊 Vehicle count:', vehiclesArray.length);
         
         return vehiclesArray.map((vehicle: any) => ({
           id: vehicle.id,
@@ -188,7 +202,35 @@ export const contractApi = createApi({
           year: vehicle.year,
           licensePlate: vehicle.licensePlate,
           vinNumber: vehicle.vin, // Note: backend uses 'vin', frontend expects 'vinNumber'
-          status: vehicle.status
+          status: vehicle.status,
+          // Additional properties from new API response
+          color: vehicle.color,
+          fuelType: vehicle.fuelType,
+          mileage: vehicle.currentMileage || vehicle.mileage,
+          legalOwner: vehicle.legalOwner,
+          currentClientId: vehicle.currentClientId,
+          contractId: vehicle.contractId,
+          conditionStatus: vehicle.conditionStatus,
+          isLiquidAsset: vehicle.isLiquidAsset,
+          depreciatedValue: vehicle.depreciatedValue,
+          marketValue: vehicle.marketValue,
+          currentValuation: vehicle.currentValuation,
+          lastValuationDate: vehicle.lastValuationDate,
+          primaryInsuranceCompany: vehicle.primaryInsuranceCompany,
+          tplExpiryDate: vehicle.tplExpiryDate,
+          kaskoExpiryDate: vehicle.kaskoExpiryDate,
+          passengerInsuranceExpiry: vehicle.passengerInsuranceExpiry,
+          currentMileage: vehicle.currentMileage,
+          nextMaintenanceDate: vehicle.nextMaintenanceDate,
+          lastServiceDate: vehicle.lastServiceDate,
+          purchaseDate: vehicle.purchaseDate,
+          registrationExpiry: vehicle.registrationExpiry,
+          creditStatus: vehicle.creditStatus,
+          notes: vehicle.notes,
+          createdAt: vehicle.createdAt,
+          updatedAt: vehicle.updatedAt,
+          // Include documents if provided
+          documents: vehicle.documents
         }));
       },
     }),
@@ -239,7 +281,9 @@ export const contractApi = createApi({
           email: endorser.email,
           phone: endorser.phone,
           idNumber: endorser.idNumber,
-          relationshipToCustomer: endorser.relationshipToCustomer
+          relationshipToCustomer: endorser.relationshipToCustomer,
+          guaranteedAmount: endorser.guaranteedAmount,
+          remainingGuaranteeCapacity: endorser.remainingGuaranteeCapacity
         }));
       },
     }),

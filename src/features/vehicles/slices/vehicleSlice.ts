@@ -18,7 +18,8 @@ const initialState: VehicleState = {
   error: null,
   selectedVehicle: null,
   filters: {
-    limit: 10
+    limit: 10,
+    offset: 0
   },
   totalCount: 0
 };
@@ -49,7 +50,17 @@ const vehicleSlice = createSlice({
       state.loading = false;
     },
     setFilters: (state, action: PayloadAction<Partial<VehicleFilters>>) => {
-      state.filters = { ...state.filters, ...action.payload };
+      const newFilters = { ...state.filters, ...action.payload };
+      
+      // Only update if filters actually changed
+      const hasChanged = Object.keys(newFilters).some(key => {
+        const filterKey = key as keyof VehicleFilters;
+        return state.filters[filterKey] !== newFilters[filterKey];
+      });
+      
+      if (hasChanged) {
+        state.filters = newFilters;
+      }
     },
     resetFilters: (state) => {
       state.filters = initialState.filters;

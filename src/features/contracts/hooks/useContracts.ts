@@ -44,6 +44,10 @@ export const useContracts = (options: UseContractsOptions = {}) => {
     search: search.trim() || undefined,
   });
 
+  // Extract contracts and pagination info from response
+  // const contracts1 = data?.contracts || [];
+  // const totalCount1 = data?.total || 0;
+  // const meta1 = data?.meta;
   // Extract contracts and totalCount from the response
   const contracts = data?.contracts || [];
   const totalCount = data?.totalCount || 0;
@@ -108,7 +112,7 @@ export const useContracts = (options: UseContractsOptions = {}) => {
     // Pagination
     page,
     rowsPerPage,
-    totalCount, // Now comes from API response meta.total
+    totalCount, // Now using the totalCount from API response
 
     // Filters
     type,

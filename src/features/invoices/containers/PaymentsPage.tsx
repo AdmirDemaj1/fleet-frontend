@@ -60,8 +60,8 @@ const PaymentsPage: React.FC = () => {
     navigate(`/customers/${customerId}`);
   };
 
-  const handleCreatePayment = () => {
-    navigate('/payments/create');
+  const handleViewContract = (contractId: string) => {
+    navigate(`/contracts/${contractId}`);
   };
 
   const handleExport = () => {
@@ -229,7 +229,7 @@ const PaymentsPage: React.FC = () => {
       {/* Table */}
       <PaymentTable
         payments={Array.isArray(payments) ? payments : []}
-        loading={isLoading}
+        loading={false}
         page={page}
         pageSize={rowsPerPage}
         totalCount={totalCount}
@@ -240,6 +240,7 @@ const PaymentsPage: React.FC = () => {
         onSortChange={(field: string) => handleSortChange(field, sortOrder === 'asc' ? 'desc' : 'asc')}
         onViewPayment={(paymentId: string) => navigate(`/payments/${paymentId}`)}
         onViewCustomer={handleViewCustomer}
+        onViewContract={handleViewContract}
       />
 
       {/* Loading Backdrop */}

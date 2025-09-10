@@ -3,9 +3,6 @@ import { useGetPaymentsQuery } from "../api/paymentsApi";
 import {
   PaymentFilters,
   PaymentQueryParams,
-  Payment,
-  PaymentStatus,
-  PaymentType,
 } from "../types/invoice.types";
 
 interface UsePaymentsOptions {
@@ -20,7 +17,7 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
   const {
     initialFilters = {},
     initialPage = 0,
-    initialRowsPerPage = 25,
+    initialRowsPerPage = 10,
     initialSortBy = "createdAt",
     initialSortOrder = "desc",
   } = options;
@@ -85,17 +82,24 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
     []
   );
 
-  // Use the total count from API response, fallback to estimation if not available
+  // Use total from meta if available, otherwise fallback to API response or estimation
   const totalCount = useMemo(() => {
+    // First try meta.total from the new response structure
+    if (paymentsResponse?.meta?.total !== undefined) {
+      return paymentsResponse.meta.total;
+    }
+    
+    // Fallback to the total from the response
     if (paymentsResponse?.total !== undefined) {
       return paymentsResponse.total;
     }
-    // Fallback estimation if API doesn't return total
+    
+    // Final fallback: estimate if API doesn't return total
     if (payments.length < rowsPerPage) {
       return page * rowsPerPage + payments.length;
     }
     return (page + 1) * rowsPerPage + 1; // Assume there's at least one more page
-  }, [paymentsResponse?.total, payments.length, page, rowsPerPage]);
+  }, [paymentsResponse?.meta?.total, paymentsResponse?.total, payments.length, page, rowsPerPage]);
 
   // Check if we have active filters
   const hasActiveFilters = useMemo(() => {

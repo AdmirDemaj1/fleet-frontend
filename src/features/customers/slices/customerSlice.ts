@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Customer, CustomerDetailed, CustomerFilters, CustomerType } from '../types/customer.types';
+import { Customer, CustomerDetailed, CustomerFilters } from '../types/customer.types';
 
 interface CustomerState {
   customers: Customer[];
@@ -46,7 +46,17 @@ const customerSlice = createSlice({
       state.loading = false;
     },
     setFilters: (state, action: PayloadAction<Partial<CustomerFilters>>) => {
-      state.filters = { ...state.filters, ...action.payload };
+      const newFilters = { ...state.filters, ...action.payload };
+      
+      // Only update if filters actually changed
+      const hasChanged = Object.keys(newFilters).some(key => {
+        const filterKey = key as keyof CustomerFilters;
+        return state.filters[filterKey] !== newFilters[filterKey];
+      });
+      
+      if (hasChanged) {
+        state.filters = newFilters;
+      }
     },
     resetFilters: (state) => {
       state.filters = initialState.filters;

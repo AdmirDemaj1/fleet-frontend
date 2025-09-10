@@ -34,24 +34,37 @@ export const CustomersPage: React.FC = () => {
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+  // Simple approach: single effect with debounced dispatch
   React.useEffect(() => {
-    dispatch(setFilters({
-      search: debouncedSearchTerm,
-      type: typeFilter || undefined,
-      limit: rowsPerPage,
-      offset: page * rowsPerPage,
-      hasVehicles,
-      hasContracts,
-      hasCollaterals
-    }));
-  }, [debouncedSearchTerm, typeFilter, page, rowsPerPage, hasVehicles, hasContracts, hasCollaterals, dispatch]);
+    // Reset page when filters change (except for page/rowsPerPage changes)
+    const filtersChanged = (
+      debouncedSearchTerm !== '' ||
+      typeFilter !== '' ||
+      hasVehicles !== undefined ||
+      hasContracts !== undefined ||
+      hasCollaterals !== undefined
+    );
 
-  // Reset to first page when filters change (except page and rowsPerPage)
-  React.useEffect(() => {
-    if (page > 0) {
+    const targetPage = filtersChanged && page > 0 ? 0 : page;
+    
+    if (filtersChanged && page > 0) {
       setPage(0);
     }
-  }, [debouncedSearchTerm, typeFilter, hasVehicles, hasContracts, hasCollaterals]);
+
+    const timeoutId = setTimeout(() => {
+      dispatch(setFilters({
+        search: debouncedSearchTerm,
+        type: typeFilter || undefined,
+        limit: rowsPerPage,
+        offset: targetPage * rowsPerPage,
+        hasVehicles,
+        hasContracts,
+        hasCollaterals
+      }));
+    }, 50); // Small delay to batch updates
+
+    return () => clearTimeout(timeoutId);
+  }, [debouncedSearchTerm, typeFilter, hasVehicles, hasContracts, hasCollaterals, page, rowsPerPage, dispatch]);
 
   const handleDelete = (id: string) => {
     setCustomerToDelete(id);

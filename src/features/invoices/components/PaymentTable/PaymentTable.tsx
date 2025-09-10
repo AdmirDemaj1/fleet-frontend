@@ -27,6 +27,7 @@ import {
 import { format } from 'date-fns';
 import { Payment, PaymentStatus } from '../../types/invoice.types';
 import { PAYMENT_STATUS_CONFIG, PAYMENT_METHODS } from '../../constants/paymentConstants';
+import { customerApi } from '../../../customers/api/customerApi';
 
 interface PaymentTableProps {
   payments: Payment[];
@@ -41,6 +42,7 @@ interface PaymentTableProps {
   onSortChange?: (field: string) => void;
   onViewPayment?: (paymentId: string) => void;
   onViewCustomer?: (customerId: string) => void;
+  onViewContract?: (contractId: string) => void;
 }
 
 export const PaymentTable: React.FC<PaymentTableProps> = ({
@@ -55,10 +57,82 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
   onPageSizeChange,
   onSortChange,
   onViewPayment,
-  onViewCustomer
+  onViewCustomer,
+  onViewContract
 }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [selectedPayment, setSelectedPayment] = React.useState<Payment | null>(null);
+  const [customerNames, setCustomerNames] = React.useState<Record<string, string>>({});
+  const [loadingCustomers, setLoadingCustomers] = React.useState<Set<string>>(new Set());
+
+  // Fetch customer names for visible payments
+  React.useEffect(() => {
+    if (!payments || payments.length === 0) return;
+
+    const uniqueCustomerIds = [...new Set(payments.map(p => p.customerId))].filter(id => 
+      id && !customerNames[id] && !loadingCustomers.has(id)
+    );
+
+    if (uniqueCustomerIds.length === 0) return;
+
+    // Mark customers as loading
+    setLoadingCustomers(prev => new Set([...prev, ...uniqueCustomerIds]));
+
+    // Fetch customer names
+    const fetchCustomerNames = async () => {
+      const fetchPromises = uniqueCustomerIds.map(async (customerId) => {
+        try {
+          const customerResponse = await customerApi.getById(customerId);
+          const customer = customerResponse.customer || customerResponse;
+          
+          let customerName = 'Unknown Customer';
+          if (customer && customer.type) {
+            if (customer.type === 'individual' || customer.type === 'endorser') {
+              customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown Customer';
+            } else if (customer.type === 'business') {
+              customerName = customer.legalName || 'Unknown Business';
+            }
+          }
+          
+          return { customerId, customerName };
+        } catch (error) {
+          return { customerId, customerName: `${customerId.substring(0, 8)}...` };
+        }
+      });
+
+      try {
+        const results = await Promise.allSettled(fetchPromises);
+        const newCustomerNames: Record<string, string> = {};
+        
+        results.forEach((result, index) => {
+          const customerId = uniqueCustomerIds[index];
+          if (result.status === 'fulfilled') {
+            newCustomerNames[result.value.customerId] = result.value.customerName;
+          } else {
+            newCustomerNames[customerId] = `${customerId.substring(0, 8)}...`;
+          }
+        });
+
+        setCustomerNames(prev => ({ ...prev, ...newCustomerNames }));
+      } catch (error) {
+        // Fallback for failed requests
+        const fallbackNames: Record<string, string> = {};
+        uniqueCustomerIds.forEach(id => {
+          fallbackNames[id] = `${id.substring(0, 8)}...`;
+        });
+        setCustomerNames(prev => ({ ...prev, ...fallbackNames }));
+      } finally {
+        // Remove from loading state
+        setLoadingCustomers(prev => {
+          const newSet = new Set(prev);
+          uniqueCustomerIds.forEach(id => newSet.delete(id));
+          return newSet;
+        });
+      }
+    };
+
+    fetchCustomerNames();
+  }, [payments]); // Only depend on payments, not page/pageSize
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, payment: Payment) => {
     event.stopPropagation();
@@ -77,12 +151,15 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
     }
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | string) => {
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(numericAmount)) return '$0.00';
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2
-    }).format(amount);
+    }).format(numericAmount);
   };
 
   const formatDate = (date: Date | string) => {
@@ -97,7 +174,8 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
 
   const isOverdue = (payment: Payment) => {
     if (payment.status === PaymentStatus.PAID) return false;
-    return new Date(payment.dueDate) < new Date();
+    const dueDate = typeof payment.dueDate === 'string' ? new Date(payment.dueDate) : payment.dueDate;
+    return dueDate < new Date();
   };
 
   const getDaysPastDue = (dueDate: Date | string) => {
@@ -160,7 +238,7 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {formatCurrency(payment.amount)}
           </Typography>
-          {payment.appliedAmount && payment.appliedAmount !== payment.amount && (
+          {payment.appliedAmount && parseFloat(String(payment.appliedAmount)) !== parseFloat(String(payment.amount)) && (
             <Typography variant="caption" color="text.secondary">
               Applied: {formatCurrency(payment.appliedAmount)}
             </Typography>
@@ -253,15 +331,35 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
             }}
           >
             <Typography variant="body2">
-              Customer {payment.customerId.substring(0, 8)}...
+              {loadingCustomers.has(payment.customerId) ? (
+                <Skeleton variant="text" width={100} height={20} />
+              ) : (
+                customerNames[payment.customerId] || `${payment.customerId.substring(0, 8)}...`
+              )}
             </Typography>
           </Box>
         </TableCell>
         
         <TableCell>
-          <Typography variant="body2">
-            Contract {payment.contractId.substring(0, 8)}...
-          </Typography>
+          <Box 
+            component="span"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewContract?.(payment.contractId);
+            }}
+            sx={{
+              cursor: 'pointer',
+              color: 'primary.main',
+              textDecoration: 'underline',
+              '&:hover': {
+                color: 'primary.dark'
+              }
+            }}
+          >
+            <Typography variant="body2">
+               {payment.contractId.substring(0, 8)}...
+            </Typography>
+          </Box>
         </TableCell>
         
         <TableCell onClick={(e) => e.stopPropagation()}>

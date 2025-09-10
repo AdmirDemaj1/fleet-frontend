@@ -16,7 +16,6 @@ import {
 } from "@mui/material";
 import {
   MoreVert,
-  Description,
   BusinessCenter,
   TrendingUp,
   FileDownload,
@@ -26,6 +25,7 @@ import {
   Dashboard,
   Delete,
   Edit,
+  Description,
 } from "@mui/icons-material";
 import {
   ContractResponse,
@@ -175,7 +175,7 @@ export const ContractListItem: React.FC<ContractListItemProps> = ({
                 color="text.secondary"
                 sx={{ display: "block" }}
               >
-                ID: {contract.id?.slice(0, 8)}
+                {formatDate(contract.startDate)} - {formatDate(contract.endDate)}
               </Typography>
             </Box>
           </Box>
@@ -217,15 +217,6 @@ export const ContractListItem: React.FC<ContractListItemProps> = ({
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Remaining: {formatCurrency(contract.remainingAmount)}
-          </Typography>
-        </TableCell>
-
-        <TableCell>
-          <Typography variant="body2">
-            {formatDate(contract.startDate)}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            to {formatDate(contract.endDate)}
           </Typography>
         </TableCell>
 

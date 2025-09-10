@@ -133,7 +133,7 @@ export enum CustomerType {
     firstName: string;
     lastName: string;
     idNumber: string;
-    dateOfBirth: Date;
+    dateOfBirth: string; // Changed from Date to string to match API response
     address: string;
     phone: string;
     email: string;
@@ -141,12 +141,54 @@ export enum CustomerType {
     secondaryEmail?: string;
     additionalNotes?: string;
     guaranteedAmount?: number;
+    remainingGuaranteeCapacity?: number; // Updated field name to match API response
     relationshipToCustomer?: string;
     financialInformation?: Record<string, any>;
     active: boolean;
     notes?: string;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: string; // Changed from Date to string to match API response
+    updatedAt: string; // Changed from Date to string to match API response
+  }
+
+  export interface EndorserContract {
+    contractId: string;
+    contractNumber: string;
+    contractType: string;
+    contractStatus: string;
+    totalAmount: number;
+    remainingAmount: number;
+    guaranteeAmount: number;
+    startDate: string;
+    endDate: string;
+    customer: {
+      id: string;
+      firstName?: string;
+      lastName?: string;
+      legalName?: string;
+      type: string;
+      email: string;
+      phone: string;
+    };
+    guaranteeExpirationDate: string;
+    guaranteeType: string;
+    requiresNotarization: boolean;
+    legalDocumentReference: string;
+    createdAt: string;
+  }
+
+  export interface EndorserContractSummary {
+    totalContracts: number;
+    totalGuaranteeAmount: number;
+    activeContracts: number;
+    completedContracts: number;
+    draftContracts: number;
+    cancelledContracts: number;
+  }
+
+  export interface EndorserWithContractsDto {
+    endorser: EndorserResponseDto;
+    contracts: EndorserContract[];
+    summary: EndorserContractSummary;
   }
   
   export interface UpdateCustomerDto {
@@ -192,4 +234,19 @@ export enum CustomerType {
     hasVehicles?: boolean;
     hasContracts?: boolean;
     hasCollaterals?: boolean;
+  }
+
+  export interface PaginationMeta {
+    total: number;
+    page: number;
+    limit: number;
+    offset: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }
+
+  export interface PaginatedResponse<T> {
+    data: T[];
+    meta: PaginationMeta;
   }
