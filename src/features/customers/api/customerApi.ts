@@ -118,14 +118,28 @@ export const customerApi = {
 
   getContracts: async (
     id: string,
-    options?: { active?: boolean; limit?: number; offset?: number }
-  ): Promise<ContractSummary[]> => {
+    options?: { 
+      active?: boolean; 
+      limit?: number; 
+      offset?: number;
+      search?: string;
+      status?: string;
+      type?: string;
+      dateRange?: string;
+      amountRange?: string;
+    }
+  ): Promise<PaginatedResponse<ContractSummary>> => {
     const params = new URLSearchParams();
     if (options?.active !== undefined)
       params.append("active", options.active.toString());
     if (options?.limit) params.append("limit", options.limit.toString());
     if (options?.offset) params.append("offset", options.offset.toString());
-    const response = await api.get<ContractSummary[]>(
+    if (options?.search) params.append("search", options.search);
+    if (options?.status) params.append("status", options.status);
+    if (options?.type) params.append("type", options.type);
+    if (options?.dateRange) params.append("dateRange", options.dateRange);
+    if (options?.amountRange) params.append("amountRange", options.amountRange);
+    const response = await api.get<PaginatedResponse<ContractSummary>>(
       `/customers/${id}/contracts?${params.toString()}`
     );
     return response.data;

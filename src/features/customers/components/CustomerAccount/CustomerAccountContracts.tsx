@@ -59,12 +59,12 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
   const theme = useTheme();
   const navigate = useNavigate();
   
-  // Custom hooks
-  const { contracts, loading, error, fetchContracts } = useContracts(propCustomerId);
+    // Custom hooks
+  const { contracts, meta, loading, error, fetchContracts } = useContracts(propCustomerId);
   const { notification, showNotification, hideNotification } = useNotification();
   const { 
-    showNewContractDialog, 
-    deleteDialogOpen, 
+    showNewContractDialog,
+    deleteDialogOpen,
     contractToDelete,
     openNewContractDialog,
     closeNewContractDialog,
@@ -88,12 +88,10 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
     rowsPerPage,
     order,
     orderBy,
-    filteredContracts,
-    paginatedContracts,
     handleRequestSort,
     handlePageChange,
     handleRowsPerPageChange
-  } = useContractsTable(contracts, filters);
+  } = useContractsTable(contracts, meta, fetchContracts, filters);
 
   // Event handlers
   const handleClearFilters = () => {
@@ -104,6 +102,14 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
       dateRange: '',
       amountRange: ''
     });
+    // Fetch contracts with cleared filters
+    fetchContracts(0, meta?.limit || 25, {});
+  };
+
+  const handleFilterChange = (newFilters: ContractFiltersType) => {
+    setFilters(newFilters);
+    // Reset to first page when filters change and fetch with new filters
+    fetchContracts(0, meta?.limit || 25, newFilters);
   };
 
   const handleDelete = (contractId: string) => {
@@ -178,7 +184,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
         </Alert>
         <Button
           variant="contained"
-          onClick={fetchContracts}
+          onClick={() => fetchContracts()}
         >
           Retry
         </Button>
@@ -213,8 +219,8 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
       <Box sx={{ mb: 3 }}>
         <ContractFilters
           filters={filters}
-          onFilterChange={setFilters}
-          contractsCount={filteredContracts.length}
+          onFilterChange={handleFilterChange}
+          contractsCount={meta?.total || 0}
         />
       </Box>
 
@@ -301,7 +307,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedContracts.map((contract) => (
+              {contracts.map((contract) => (
                 <TableRow 
                   key={contract.id} 
                   hover
@@ -358,7 +364,7 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                   </TableCell>
                 </TableRow>
               ))}
-              {paginatedContracts.length === 0 && !loading && (
+              {contracts.length === 0 && !loading && (
                 <TableRow>
                   <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                     <Box sx={{ 
@@ -379,12 +385,12 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
                       </Box>
                       <Typography variant="h6" gutterBottom>No contracts found</Typography>
                       <Typography variant="body2" color="textSecondary" align="center" sx={{ maxWidth: 500, mb: 3 }}>
-                        {filteredContracts.length !== contracts.length 
+                        {contracts.length === 0 && Object.values(filters).some(filter => filter) 
                           ? 'No contracts match your current filter criteria.'
                           : 'This customer doesn\'t have any contracts yet.'
                         }
                       </Typography>
-                      {filteredContracts.length !== contracts.length ? (
+                      {contracts.length === 0 && Object.values(filters).some(filter => filter) ? (
                         <Button 
                           variant="outlined" 
                           onClick={handleClearFilters}
@@ -411,8 +417,8 @@ const CustomerAccountContracts: React.FC<CustomerAccountContractsProps> = ({ cus
         
         <TablePagination
           component="div"
-          count={filteredContracts.length || 0}
-          page={Math.min(page, Math.max(0, Math.ceil((filteredContracts.length || 0) / rowsPerPage) - 1))}
+          count={meta?.total || 0}
+          page={page}
           onPageChange={(_, newPage) => {
             handlePageChange(newPage);
           }}

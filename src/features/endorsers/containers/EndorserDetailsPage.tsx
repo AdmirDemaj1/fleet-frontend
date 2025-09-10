@@ -24,7 +24,8 @@ import {
 import { EndorserDetailsCard, EndorserRelationshipsCard } from "../components/EndorserDetails";
 import { 
   useGetEndorserQuery, 
-  useDeleteEndorserMutation
+  useDeleteEndorserMutation,
+  useGetCustomersForEndorserQuery
 } from "../api/endorserApi";
 
 export const EndorserDetailsPage: React.FC = () => {
@@ -52,20 +53,14 @@ export const EndorserDetailsPage: React.FC = () => {
     skip: !id,
   });
 
-  // Fetch endorser relationships - TODO: Implement proper endorser relationship filtering
-  // const {
-  //   data: relationshipsData,
-  //   isLoading: relationshipsLoading,
-  //   error: relationshipsError,
-  // } = useGetEndorserRelationshipsQuery({
-  //   limit: 100,
-  // }, {
-  //   skip: !id,
-  // });
-
-  // For now, use empty relationships until API is properly implemented
-  const relationshipsData = { relationships: [] };
-  const relationshipsError = null;
+  // Fetch endorser relationships
+  const {
+    data: relationships = [],
+    error: relationshipsError,
+    refetch: refetchRelationships,
+  } = useGetCustomersForEndorserQuery(id!, {
+    skip: !id,
+  });
 
   // Delete mutation
   const [deleteEndorser] = useDeleteEndorserMutation();
@@ -110,12 +105,8 @@ export const EndorserDetailsPage: React.FC = () => {
   };
 
   const handleAddRelationship = () => {
-    // TODO: Implement add relationship functionality
-    setNotification({
-      open: true,
-      message: "Add relationship functionality coming soon",
-      severity: "info",
-    });
+    // This is now handled by the AddRelationshipModal in the EndorserRelationshipsCard
+    // The onAdd prop just enables the button, the modal handles the actual functionality
   };
 
   const handleEditRelationship = () => {
@@ -179,8 +170,6 @@ export const EndorserDetailsPage: React.FC = () => {
       </Container>
     );
   }
-
-  const relationships = relationshipsData?.relationships || [];
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
@@ -291,11 +280,13 @@ export const EndorserDetailsPage: React.FC = () => {
         {/* Relationships */}
         <Grid item xs={12} lg={4}>
           <EndorserRelationshipsCard
+            endorserId={id!}
             relationships={relationships}
             onAdd={handleAddRelationship}
             onEdit={handleEditRelationship}
             onDelete={handleDeleteRelationship}
             onViewCustomer={handleViewCustomer}
+            onRefresh={refetchRelationships}
           />
         </Grid>
       </Grid>

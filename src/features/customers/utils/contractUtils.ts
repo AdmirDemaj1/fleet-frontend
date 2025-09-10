@@ -48,6 +48,10 @@ export const filterContracts = (contracts: any[], filters: any) => {
 
 // Sort function for contracts
 export const sortContracts = (contracts: any[], orderBy: string, order: 'asc' | 'desc') => {
+  if (!contracts || !Array.isArray(contracts)) {
+    return [];
+  }
+  
   return contracts.slice().sort((a, b) => {
     let aValue = a[orderBy];
     let bValue = b[orderBy];

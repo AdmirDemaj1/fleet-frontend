@@ -16,13 +16,24 @@ export interface Endorser {
 }
 
 export interface EndorserRelationship {
-  id: string;
+  id?: string;
   customerId: string;
   endorserId: string;
-  relationshipToCustomer: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  endorsementDate: string;
+  expirationDate: string;
+  maximumGuaranteeAmount: number;
+  relationshipType: string;
+  terms: {
+    guaranteeScope: string;
+    notificationRequired: boolean;
+    maxSingleTransaction: number;
+    renewalRequired: boolean;
+    specialConditions?: string;
+  };
+  notes?: string;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   endorser?: Endorser;
   customer?: {
     id: string;
@@ -50,12 +61,35 @@ export interface UpdateEndorserDto extends Partial<CreateEndorserDto> {}
 export interface CreateEndorserRelationshipDto {
   customerId: string;
   endorserId: string;
-  relationshipToCustomer: string;
+  endorsementDate: string;
+  expirationDate: string;
+  maximumGuaranteeAmount: number;
+  relationshipType: string;
+  terms: {
+    guaranteeScope: string;
+    notificationRequired: boolean;
+    maxSingleTransaction: number;
+    renewalRequired: boolean;
+    specialConditions?: string;
+  };
+  notes?: string;
+  active?: boolean;
 }
 
 export interface UpdateEndorserRelationshipDto {
-  relationshipToCustomer?: string;
-  isActive?: boolean;
+  endorsementDate?: string;
+  expirationDate?: string;
+  maximumGuaranteeAmount?: number;
+  relationshipType?: string;
+  terms?: {
+    guaranteeScope?: string;
+    notificationRequired?: boolean;
+    maxSingleTransaction?: number;
+    renewalRequired?: boolean;
+    specialConditions?: string;
+  };
+  notes?: string;
+  active?: boolean;
 }
 
 export interface EndorserFilters {
@@ -101,12 +135,12 @@ export interface EndorserRelationshipsResponse {
 }
 
 export const RELATIONSHIP_TYPES = [
+  'Business Partner',
   'Spouse',
   'Parent',
   'Child',
   'Sibling',
   'Friend',
-  'Business Partner',
   'Colleague',
   'Other'
 ] as const;
