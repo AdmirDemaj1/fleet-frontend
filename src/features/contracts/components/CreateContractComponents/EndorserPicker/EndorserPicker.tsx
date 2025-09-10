@@ -1,3 +1,11 @@
+/**
+ * EndorserPicker Component
+ * 
+ * NOTE: Currently using default values for guaranteedAmount ($100,000) 
+ * since the backend doesn't yet include this field in the endorser response.
+ * 
+ * TODO: Update when backend implements guaranteedAmount field in endorser API
+ */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
@@ -18,7 +26,9 @@ import {
   Tooltip,
   InputAdornment,
   useTheme,
-  alpha
+  alpha,
+  Grid,
+  Divider
 } from '@mui/material';
 import {
   Person,
@@ -26,7 +36,8 @@ import {
   Clear,
   CheckCircle,
   PersonAdd,
-  Refresh
+  Refresh,
+  AttachMoney
 } from '@mui/icons-material';
 import { useGetEndorsersQuery } from '../../../api/contractApi';
 import { EndorserPickerProps, EndorserSummary } from '../../../types/contract.types';
@@ -55,6 +66,8 @@ const useDebounce = (value: string, delay: number) => {
 interface EnhancedEndorserSummary extends EndorserSummary {
   isVerified?: boolean;
   status?: string;
+  guaranteedAmount?: number;
+  // Maximum amount this endorser can guarantee
 }
 
 interface EndorserPickerState {
@@ -69,6 +82,9 @@ interface EndorserPickerState {
 export const EndorserPicker: React.FC<EndorserPickerProps> = ({
   selectedEndorserIds,
   onEndorserSelect,
+  guaranteeForContract = 0,
+  onGuaranteeForContractChange,
+  totalContractAmount = 0,
   error
 }) => {
   const theme = useTheme();
@@ -96,13 +112,23 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
     limit: 50
   });
 
+  console.log('📋 Endorsers Response:', endorsersResponse);
+
   // Process endorsers - all available ones
   const allEndorsers = useMemo(() => 
-    endorsersResponse.map(endorser => ({
-      ...endorser,
-      isVerified: (endorser as any).isVerified ?? true,
-      status: (endorser as any).status || 'active'
-    })) as EnhancedEndorserSummary[],
+    endorsersResponse.map(endorser => {
+      // Generate a default guarantee amount based on endorser (can be customized later)
+      const defaultGuaranteeAmount = 100000; // $100,000 default capacity per endorser
+      
+      return {
+        ...endorser,
+        isVerified: (endorser as any).isVerified ?? true,
+        status: (endorser as any).status || 'active',
+        // Backend doesn't currently send guaranteedAmount, using default until implemented
+        guaranteedAmount: (endorser as any).guaranteedAmount,
+        remainingGuaranteeCapacity: (endorser as any).remainingGuaranteeCapacity
+      };
+    }) as EnhancedEndorserSummary[],
     [endorsersResponse]
   );
 
@@ -129,6 +155,8 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
 
   // Handle endorser selection - single selection
   const handleEndorserSelect = useCallback((endorser: EnhancedEndorserSummary | null) => {
+
+    console.log('📋 Endorser:', endorser);
     setState(prev => ({
       ...prev,
       selectedEndorser: endorser,
@@ -169,6 +197,13 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  // Handle guarantee amount change
+  const handleGuaranteeAmountChange = useCallback((amount: number) => {
+    if (onGuaranteeForContractChange) {
+      onGuaranteeForContractChange(amount);
+    }
+  }, [onGuaranteeForContractChange]);
 
   // Endorser creation modal handlers
   const handleOpenCreateModal = useCallback(() => {
@@ -244,6 +279,8 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
         email: newEndorser.email || '',
         phone: newEndorser.phone || '',
         relationshipToCustomer: newEndorser.relationshipToCustomer || 'Endorser',
+        guaranteedAmount: newEndorser.guaranteedAmount || 100000, // Default capacity for new endorsers
+        remainingGuaranteeCapacity: newEndorser.remainingGuaranteeCapacity || 100000, // Default capacity for new endorsers
         isVerified: true,
         status: 'active'
       };
@@ -289,6 +326,8 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
       </Alert>
     );
   }
+
+  console.log('📋 State:', state.selectedEndorser);
 
   return (
     <Box>
@@ -450,20 +489,27 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                   🆔 {option.idNumber}
                 </Typography>
                 
-                {(option.email || option.phone) && (
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {option.email && (
-                      <Typography variant="caption" color="text.secondary">
-                        📧 {option.email}
-                      </Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {option.email && (
+                    <Typography variant="caption" color="text.secondary">
+                      📧 {option.email}
+                    </Typography>
+                  )}
+                  {option.phone && (
+                    <Typography variant="caption" color="text.secondary">
+                      📞 {option.phone}
+                    </Typography>
+                  )}
+                    {option.guaranteedAmount && (
+                      <Chip
+                        label={`Max: $${option.guaranteedAmount.toLocaleString()} (default)`}
+                        size="small"
+                        color="secondary"
+                        variant="outlined"
+                        sx={{ fontSize: '0.6rem', height: 18 }}
+                      />
                     )}
-                    {option.phone && (
-                      <Typography variant="caption" color="text.secondary">
-                        📞 {option.phone}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
+                </Box>
               </Box>
             </MenuItem>
           );
@@ -578,6 +624,158 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     📞 Phone: <strong>{state.selectedEndorser.phone}</strong>
                   </Typography>
+                )}
+                
+                <Divider sx={{ my: 2 }} />
+                
+                {/* Guarantee Amount Input */}
+                <Typography 
+                  variant="subtitle2" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    mb: 1, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    color: 'primary.main' 
+                  }}
+                >
+                  <AttachMoney />
+                  Guarantee Amount
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Guarantee Amount"
+                      type="number"
+                      value={guaranteeForContract || ''}
+                      onChange={(e) => {
+                        const amount = parseFloat(e.target.value) || 0;
+                        handleGuaranteeAmountChange(amount);
+                      }}
+                      error={guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">$</InputAdornment>
+                        ),
+                        inputProps: {
+                          max: state.selectedEndorser.remainingGuaranteeCapacity || 100000,
+                          min: 0
+                        }
+                      }}
+                      helperText={
+                        guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)
+                          ? `Exceeds max capacity of $${(state.selectedEndorser.remainingGuaranteeCapacity || 0).toLocaleString()}`
+                          : "Amount this endorser will guarantee"
+                      }
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'background.paper',
+                        }
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Max Guarantee Capacity"
+                      type="number"
+                      value={state.selectedEndorser.remainingGuaranteeCapacity}
+                      InputProps={{
+                        readOnly: true,
+                        startAdornment: (
+                          <InputAdornment position="start">$</InputAdornment>
+                        ),
+                      }}
+                      helperText="Max capacity (default value - pending backend implementation)"
+                      sx={{
+                        '& .MuiInputBase-input': {
+                          color: 'primary.main',
+                          fontWeight: 600,
+                        },
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                          border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                        }
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Contract Total"
+                      type="number"
+                      value={totalContractAmount}
+                      InputProps={{
+                        readOnly: true,
+                        startAdornment: (
+                          <InputAdornment position="start">$</InputAdornment>
+                        ),
+                      }}
+                      helperText="Total contract amount"
+                      sx={{
+                        '& .MuiInputBase-input': {
+                          color: 'text.secondary',
+                        }
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+                
+                {/* Guarantee Percentage Display */}
+                {guaranteeForContract > 0 && (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      mt: 2,
+                      p: 2,
+                      backgroundColor: guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)
+                        ? alpha(theme.palette.error.main, 0.05)
+                        : alpha(theme.palette.info.main, 0.05),
+                      border: `1px solid ${
+                        guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)
+                          ? alpha(theme.palette.error.main, 0.2)
+                          : alpha(theme.palette.info.main, 0.2)
+                      }`,
+                      borderRadius: 1
+                    }}
+                  >
+                    {totalContractAmount > 0 && (
+                      <Typography 
+                        variant="body2" 
+                        color="info.main" 
+                        sx={{ fontWeight: 600, mb: 1 }}
+                      >
+                        📊 Contract Coverage: {((guaranteeForContract / totalContractAmount) * 100).toFixed(1)}% of ${totalContractAmount.toLocaleString()}
+                      </Typography>
+                    )}
+                    
+                    <Typography 
+                      variant="body2" 
+                      color={
+                        guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)
+                          ? "error.main"
+                          : "success.main"
+                      } 
+                      sx={{ fontWeight: 600 }}
+                    >
+                      💰 Capacity Utilization: {
+                        state.selectedEndorser.remainingGuaranteeCapacity 
+                          ? ((guaranteeForContract / state.selectedEndorser.remainingGuaranteeCapacity) * 100).toFixed(1)
+                          : 0
+                      }% of ${(state.selectedEndorser.guaranteedAmount || 0).toLocaleString()} max capacity
+                    </Typography>
+                    
+                    {guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0) && (
+                      <Typography variant="caption" color="error.main" display="block" sx={{ mt: 1 }}>
+                        ⚠️ Error: Guarantee amount exceeds endorser's maximum capacity!
+                      </Typography>
+                    )}
+                  </Paper>
                 )}
               </Box>
             </CardContent>

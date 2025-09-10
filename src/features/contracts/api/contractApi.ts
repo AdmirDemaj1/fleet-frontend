@@ -281,7 +281,9 @@ export const contractApi = createApi({
           email: endorser.email,
           phone: endorser.phone,
           idNumber: endorser.idNumber,
-          relationshipToCustomer: endorser.relationshipToCustomer
+          relationshipToCustomer: endorser.relationshipToCustomer,
+          guaranteedAmount: endorser.guaranteedAmount,
+          remainingGuaranteeCapacity: endorser.remainingGuaranteeCapacity
         }));
       },
     }),

@@ -1,333 +1,167 @@
-import React, { useState } from "react";
+import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
-  Typography,
   Button,
-  IconButton,
-  Alert,
-  Snackbar,
-  Skeleton,
-  Grid,
+  Typography,
   Breadcrumbs,
   Link,
-  alpha,
   useTheme,
+  alpha,
 } from "@mui/material";
-import {
-  ArrowBack,
-  Edit,
-  Delete,
-  NavigateNext,
-} from "@mui/icons-material";
-import { EndorserDetailsCard, EndorserRelationshipsCard } from "../components/EndorserDetails";
-import { 
-  useGetEndorserQuery, 
-  useDeleteEndorserMutation
-} from "../api/endorserApi";
+import { ArrowBack, Home, Group } from "@mui/icons-material";
+import EndorserInfo from "../components/EndorserInfo";
 
 export const EndorserDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const theme = useTheme();
 
-  // State for notifications
-  const [notification, setNotification] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error" | "warning" | "info";
-  }>({
-    open: false,
-    message: "",
-    severity: "success",
-  });
-
-  // Fetch endorser data
-  const {
-    data: endorser,
-    isLoading: endorserLoading,
-    error: endorserError,
-  } = useGetEndorserQuery(id!, {
-    skip: !id,
-  });
-
-  // Fetch endorser relationships - TODO: Implement proper endorser relationship filtering
-  // const {
-  //   data: relationshipsData,
-  //   isLoading: relationshipsLoading,
-  //   error: relationshipsError,
-  // } = useGetEndorserRelationshipsQuery({
-  //   limit: 100,
-  // }, {
-  //   skip: !id,
-  // });
-
-  // For now, use empty relationships until API is properly implemented
-  const relationshipsData = { relationships: [] };
-  const relationshipsError = null;
-
-  // Delete mutation
-  const [deleteEndorser] = useDeleteEndorserMutation();
-
   const handleBack = () => {
     navigate("/endorsers");
   };
 
-  const handleEdit = () => {
-    navigate(`/endorsers/${id}/edit`);
-  };
-
-  const handleDelete = async () => {
-    if (!id || !endorser) return;
-
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${endorser.firstName} ${endorser.lastName}? This action cannot be undone.`
-    );
-
-    if (confirmed) {
-      try {
-        await deleteEndorser(id).unwrap();
-        setNotification({
-          open: true,
-          message: "Endorser deleted successfully",
-          severity: "success",
-        });
-        // Navigate back to endorsers list after successful deletion
-        setTimeout(() => navigate("/endorsers"), 1500);
-      } catch (error) {
-        setNotification({
-          open: true,
-          message: "Failed to delete endorser",
-          severity: "error",
-        });
-      }
-    }
-  };
-
-  const handleViewCustomer = (customerId: string) => {
-    navigate(`/customers/${customerId}`);
-  };
-
-  const handleAddRelationship = () => {
-    // TODO: Implement add relationship functionality
-    setNotification({
-      open: true,
-      message: "Add relationship functionality coming soon",
-      severity: "info",
-    });
-  };
-
-  const handleEditRelationship = () => {
-    // TODO: Implement edit relationship functionality
-    setNotification({
-      open: true,
-      message: "Edit relationship functionality coming soon",
-      severity: "info",
-    });
-  };
-
-  const handleDeleteRelationship = () => {
-    // TODO: Implement delete relationship functionality
-    setNotification({
-      open: true,
-      message: "Delete relationship functionality coming soon",
-      severity: "info",
-    });
-  };
-
-  const handleCloseNotification = () => {
-    setNotification({ ...notification, open: false });
-  };
-
-  // Loading state
-  if (endorserLoading) {
+  if (!id) {
     return (
-      <Container maxWidth="xl" sx={{ py: 3 }}>
-        <Box sx={{ mb: 3 }}>
-          <Skeleton variant="text" width={200} height={40} />
-          <Skeleton variant="text" width={300} height={24} sx={{ mt: 1 }} />
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h4" color="error" align="center">
+          Endorser ID not provided
+        </Typography>
+        <Box sx={{ textAlign: "center", mt: 2 }}>
+          <Button variant="contained" onClick={() => navigate("/endorsers")}>
+            Back to Endorsers
+          </Button>
         </Box>
-        <Grid container spacing={3}>
-          <Grid item xs={12} lg={8}>
-            <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />
-          </Grid>
-          <Grid item xs={12} lg={4}>
-            <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 2 }} />
-          </Grid>
-        </Grid>
       </Container>
     );
   }
-
-  // Error state
-  if (endorserError || !endorser) {
-    return (
-      <Container maxWidth="xl" sx={{ py: 3 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={handleBack}
-          sx={{ mb: 3, textTransform: "none" }}
-        >
-          Back to Endorsers
-        </Button>
-        <Alert severity="error" sx={{ borderRadius: 2 }}>
-          {endorserError && typeof endorserError === 'object' && 'message' in endorserError
-            ? endorserError.message
-            : "Failed to load endorser details. The endorser may not exist or there was a network error."}
-        </Alert>
-      </Container>
-    );
-  }
-
-  const relationships = relationshipsData?.relationships || [];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs
-        separator={<NavigateNext fontSize="small" />}
-        sx={{ mb: 2 }}
-        aria-label="breadcrumb"
-      >
-        <Link
-          component="button"
-          variant="body2"
-          onClick={handleBack}
-          sx={{
-            color: theme.palette.text.secondary,
-            textDecoration: "none",
-            "&:hover": {
-              textDecoration: "underline",
-            },
-          }}
-        >
-          Endorsers
-        </Link>
-        <Typography variant="body2" color="textPrimary">
-          {endorser.firstName} {endorser.lastName}
-        </Typography>
-      </Breadcrumbs>
-
-      {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          mb: 3,
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <IconButton
-            onClick={handleBack}
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: theme.palette.background.default,
+        pt: 2,
+        pb: 4,
+      }}
+    >
+      <Container maxWidth="lg">
+        {/* Header with Breadcrumbs and Back Button */}
+        <Box sx={{ mb: 3 }}>
+          {/* Breadcrumbs */}
+          <Breadcrumbs
+            aria-label="breadcrumb"
             sx={{
-              bgcolor: alpha(theme.palette.background.paper, 0.8),
-              "&:hover": {
-                bgcolor: alpha(theme.palette.primary.main, 0.08),
+              mb: 2,
+              "& .MuiBreadcrumbs-separator": {
+                color: theme.palette.text.secondary,
               },
             }}
           >
-            <ArrowBack />
-          </IconButton>
-          <Box>
-            <Typography
-              variant="h4"
-              component="h1"
+            <Link
+              color="inherit"
+              href="/"
               sx={{
-                fontWeight: 700,
-                color: theme.palette.text.primary,
-                lineHeight: 1.2,
+                display: "flex",
+                alignItems: "center",
+                textDecoration: "none",
+                "&:hover": {
+                  textDecoration: "underline",
+                },
               }}
             >
-              {endorser.firstName} {endorser.lastName}
-            </Typography>
-            <Typography
-              variant="body1"
+              <Home sx={{ mr: 0.5, fontSize: 16 }} />
+              Dashboard
+            </Link>
+            <Link
+              color="inherit"
+              onClick={() => navigate("/endorsers")}
               sx={{
-                color: theme.palette.text.secondary,
-                mt: 0.5,
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
+                textDecoration: "none",
+                "&:hover": {
+                  textDecoration: "underline",
+                },
               }}
             >
-              Endorser Details and Relationships
+              <Group sx={{ mr: 0.5, fontSize: 16 }} />
+              Endorsers
+            </Link>
+            <Typography
+              color="text.primary"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                fontWeight: 500,
+              }}
+            >
+              Endorser Details
             </Typography>
+          </Breadcrumbs>
+
+          {/* Page Header */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              py: 2,
+              px: 3,
+              bgcolor: theme.palette.background.paper,
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              boxShadow: `0 1px 3px ${alpha(theme.palette.common.black, 0.05)}`,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBack />}
+                onClick={handleBack}
+                sx={{
+                  mr: 2,
+                  borderRadius: 2,
+                  borderColor: alpha(theme.palette.primary.main, 0.5),
+                  "&:hover": {
+                    borderColor: theme.palette.primary.main,
+                    bgcolor: alpha(theme.palette.primary.main, 0.04),
+                  },
+                }}
+              >
+                Back to Endorsers
+              </Button>
+
+              <Box>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    color: theme.palette.text.primary,
+                    mb: 0.5,
+                  }}
+                >
+                  Endorser Details
+                </Typography>
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ fontSize: "1rem" }}
+                >
+                  View and manage endorser information and guarantee details
+                </Typography>
+              </Box>
+            </Box>
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <Button
-            variant="outlined"
-            startIcon={<Edit />}
-            onClick={handleEdit}
-            sx={{
-              textTransform: "none",
-              fontWeight: 500,
-            }}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<Delete />}
-            onClick={handleDelete}
-            sx={{
-              textTransform: "none",
-              fontWeight: 500,
-            }}
-          >
-            Delete
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Content */}
-      <Grid container spacing={3}>
-        {/* Main Details */}
-        <Grid item xs={12} lg={8}>
-          <EndorserDetailsCard endorser={endorser} />
-        </Grid>
-
-        {/* Relationships */}
-        <Grid item xs={12} lg={4}>
-          <EndorserRelationshipsCard
-            relationships={relationships}
-            onAdd={handleAddRelationship}
-            onEdit={handleEditRelationship}
-            onDelete={handleDeleteRelationship}
-            onViewCustomer={handleViewCustomer}
-          />
-        </Grid>
-      </Grid>
-
-      {/* Error Alert for Relationships */}
-      {relationshipsError && (
-        <Alert
-          severity="warning"
-          sx={{ mt: 3, borderRadius: 2 }}
-        >
-          Unable to load relationships. Please refresh the page to try again.
-        </Alert>
-      )}
-
-      {/* Notification Snackbar */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          onClose={handleCloseNotification}
-          severity={notification.severity}
-          sx={{
-            width: "100%",
-            borderRadius: 2,
-          }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+        {/* Main Content */}
+        <EndorserInfo endorserId={id} />
+      </Container>
+    </Box>
   );
 };
+
+export default EndorserDetailsPage;

@@ -160,6 +160,9 @@ export interface CreateContractDto {
     guaranteeExpirationDate?: string;
     legalDocumentReference?: string;
   }[];
+
+  // Custom guarantee amount for contract
+  guaranteeForContract?: number;
   
   // Documents are handled separately via the document upload API
   
@@ -207,6 +210,7 @@ export interface ContractFormData {
   selectedVehicles: string[];
   selectedVehicleData?: VehicleSummary[]; // Full vehicle data including documents
   selectedEndorsers: string[];
+  guaranteeForContract?: number; // Amount the endorser guarantees for the contract
   collaterals: VehicleCollateral[];
   endorserCollaterals: EndorserCollateral[];
   documents: any[]; // Will be ContractDocument[] when imported
@@ -322,6 +326,8 @@ export interface EndorserSummary {
   phone: string;
   idNumber: string;
   relationshipToCustomer?: string;
+  guaranteedAmount?: number; // Maximum amount this endorser can guarantee
+  remainingGuaranteeCapacity?: number;
 }
 
 // Form step configuration
@@ -354,6 +360,9 @@ export interface VehiclePickerProps {
 export interface EndorserPickerProps {
   selectedEndorserIds: string[];
   onEndorserSelect: (endorserIds: string[]) => void;
+  guaranteeForContract?: number;
+  onGuaranteeForContractChange?: (amount: number) => void;
+  totalContractAmount?: number;
   customerId?: string;
   onCreateEndorser?: () => void;
   error?: string;

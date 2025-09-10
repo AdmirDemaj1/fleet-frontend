@@ -101,33 +101,7 @@ const REQUIRED_DOCUMENTS = [
     maxSize: 10 * 1024 * 1024, // 10MB
     requiresExpiryDate: false,
   },
-  {
-    category: DocumentCategory.INSURANCE,
-    name: "Insurance Certificate",
-    description: "Current vehicle insurance policy",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true, // ✅ Requires expiry date
-  },
-  {
-    category: DocumentCategory.TPL,
-    name: "Third Party Liability (TPL)",
-    description: "Third party liability insurance certificate",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true, // ✅ Requires expiry date
-  },
-  {
-    category: DocumentCategory.CASCO,
-    name: "CASCO Insurance",
-    description: "Comprehensive vehicle insurance certificate",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true, // ✅ Requires expiry date
-  },
+  // Vehicle-related documents (INSURANCE, TPL, CASCO) removed - now provided by vehicle picker
   {
     category: DocumentCategory.DRIVING_PERMIT,
     name: "Driving Permit",
@@ -184,6 +158,40 @@ const REQUIRED_DOCUMENTS = [
   },
 ];
 
+// Vehicle-related documents that are now provided automatically via vehicle picker
+const VEHICLE_DOCUMENTS = [
+  {
+    category: DocumentCategory.INSURANCE,
+    name: "Insurance Certificate",
+    description: "Current vehicle insurance policy (provided by selected vehicle)",
+    isRequired: false, // No longer required for manual upload
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: true,
+  },
+  {
+    category: DocumentCategory.TPL,
+    name: "Third Party Liability (TPL)",
+    description: "Third party liability insurance certificate (provided by selected vehicle)",
+    isRequired: false, // No longer required for manual upload
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: true,
+  },
+  {
+    category: DocumentCategory.CASCO,
+    name: "CASCO Insurance",
+    description: "Comprehensive vehicle insurance certificate (provided by selected vehicle)",
+    isRequired: false, // No longer required for manual upload
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: true,
+  },
+];
+
+// Combined array for dropdown selection (required + optional vehicle documents)
+const ALL_DOCUMENTS = [...REQUIRED_DOCUMENTS, ...VEHICLE_DOCUMENTS];
+
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   documents,
   onDocumentsChange,
@@ -221,7 +229,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   // Effect to set expiry date when dialog opens and category changes
   useEffect(() => {
     if (isTypeDialogOpen && selectedCategory) {
-      const selectedDoc = REQUIRED_DOCUMENTS.find(
+      const selectedDoc = ALL_DOCUMENTS.find(
         (doc) => doc.category === selectedCategory
       );
       if (selectedDoc?.requiresExpiryDate && !documentExpiryDate) {
@@ -268,7 +276,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         // Auto-set expiry date to 1 year from now for documents that require it
         const requiresExpiry =
           nextRequiredDoc?.requiresExpiryDate ||
-          REQUIRED_DOCUMENTS.find(
+          ALL_DOCUMENTS.find(
             (doc) => doc.category === defaultCategory
           )?.requiresExpiryDate;
 
@@ -398,14 +406,14 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     if (existingCategoryDoc) {
       setUploadError(
         `A document of type "${
-          REQUIRED_DOCUMENTS.find((d) => d.category === selectedCategory)?.name
+          ALL_DOCUMENTS.find((d) => d.category === selectedCategory)?.name
         }" has already been uploaded. Please remove the existing one first or choose a different category.`
       );
       return;
     }
 
     // Check if expiry date is required for this document type
-    const selectedDocType = REQUIRED_DOCUMENTS.find(
+    const selectedDocType = ALL_DOCUMENTS.find(
       (doc) => doc.category === selectedCategory
     );
     if (selectedDocType?.requiresExpiryDate && !documentExpiryDate) {
@@ -688,6 +696,17 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         After uploading each file, you'll be prompted to select the appropriate
         document category. Documents will be reviewed and verified by our team.
       </Typography>
+
+      {/* Information about vehicle documents */}
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+          📋 Vehicle Documents Automatically Included
+        </Typography>
+        <Typography variant="body2">
+          Vehicle-related documents (Insurance, TPL, CASCO) are no longer required to be uploaded here.
+          These documents are automatically provided from the selected vehicle in the previous step.
+        </Typography>
+      </Alert>
 
       {/* Vehicle Documents Section */}
       {vehicleData && vehicleData.length > 0 && vehicleData.some(v => v.documents && v.documents.length > 0) && (
@@ -1141,7 +1160,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                   setSelectedCategory(newCategory);
 
                   // Auto-set expiry date for documents that require it
-                  const selectedDoc = REQUIRED_DOCUMENTS.find(
+                  const selectedDoc = ALL_DOCUMENTS.find(
                     (doc) => doc.category === newCategory
                   );
                   if (selectedDoc?.requiresExpiryDate) {
@@ -1169,10 +1188,17 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                 }}
                 label="Document Category"
               >
-                {REQUIRED_DOCUMENTS.map((doc) => (
+                {ALL_DOCUMENTS.map((doc) => (
                   <MenuItem key={doc.category} value={doc.category}>
                     <Box>
-                      <Typography variant="body1">{doc.name}</Typography>
+                      <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {doc.name}
+                        {doc.isRequired ? (
+                          <Chip label="Required" size="small" color="error" variant="outlined" />
+                        ) : (
+                          <Chip label="Optional" size="small" color="info" variant="outlined" />
+                        )}
+                      </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {doc.description}
                       </Typography>
@@ -1202,7 +1228,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             />
 
             {/* Expiry Date Field */}
-            {REQUIRED_DOCUMENTS.find((doc) => doc.category === selectedCategory)
+            {ALL_DOCUMENTS.find((doc) => doc.category === selectedCategory)
               ?.requiresExpiryDate && (
               <TextField
                 fullWidth
@@ -1258,7 +1284,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               !pendingFile ||
               !!uploadError ||
               isUploading ||
-              (REQUIRED_DOCUMENTS.find(
+              (ALL_DOCUMENTS.find(
                 (doc) => doc.category === selectedCategory
               )?.requiresExpiryDate &&
                 !documentExpiryDate)

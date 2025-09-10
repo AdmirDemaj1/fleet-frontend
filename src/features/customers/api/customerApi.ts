@@ -125,10 +125,33 @@ export const customerApi = {
       params.append("active", options.active.toString());
     if (options?.limit) params.append("limit", options.limit.toString());
     if (options?.offset) params.append("offset", options.offset.toString());
-    const response = await api.get<ContractSummary[]>(
+    
+    console.log(`📋 Fetching contracts for customer ${id}`);
+    
+    const response = await api.get<PaginatedResponse<ContractSummary> | ContractSummary[]>(
       `/customers/${id}/contracts?${params.toString()}`
     );
-    return response.data;
+
+    console.log(`📋 Contracts API response:`, response.data);
+
+    // Handle both paginated and array response formats
+    let contractsArray: ContractSummary[];
+    
+    if (response.data && typeof response.data === 'object' && 'data' in response.data && 'meta' in response.data) {
+      // Paginated response structure
+      contractsArray = response.data.data || [];
+      console.log(`📋 Using paginated response - ${contractsArray.length} contracts found`);
+    } else if (Array.isArray(response.data)) {
+      // Direct array response (backward compatibility)
+      contractsArray = response.data;
+      console.log(`📋 Using array response - ${contractsArray.length} contracts found`);
+    } else {
+      // Unexpected structure
+      console.warn('📋 Unexpected contracts response structure:', response.data);
+      contractsArray = [];
+    }
+
+    return contractsArray;
   },
 
   getCollateral: async (
@@ -140,10 +163,33 @@ export const customerApi = {
       params.append("active", options.active.toString());
     if (options?.limit) params.append("limit", options.limit.toString());
     if (options?.offset) params.append("offset", options.offset.toString());
-    const response = await api.get<CollateralSummary[]>(
+    
+    console.log(`📋 Fetching collateral for customer ${id}`);
+    
+    const response = await api.get<PaginatedResponse<CollateralSummary> | CollateralSummary[]>(
       `/customers/${id}/collateral?${params.toString()}`
     );
-    return response.data;
+
+    console.log(`📋 Collateral API response:`, response.data);
+
+    // Handle both paginated and array response formats
+    let collateralArray: CollateralSummary[];
+    
+    if (response.data && typeof response.data === 'object' && 'data' in response.data && 'meta' in response.data) {
+      // Paginated response structure
+      collateralArray = response.data.data || [];
+      console.log(`📋 Using paginated response - ${collateralArray.length} collaterals found`);
+    } else if (Array.isArray(response.data)) {
+      // Direct array response (backward compatibility)
+      collateralArray = response.data;
+      console.log(`📋 Using array response - ${collateralArray.length} collaterals found`);
+    } else {
+      // Unexpected structure
+      console.warn('📋 Unexpected collateral response structure:', response.data);
+      collateralArray = [];
+    }
+
+    return collateralArray;
   },
 
   getLogs: async (
@@ -154,10 +200,33 @@ export const customerApi = {
     if (options?.type) params.append("type", options.type);
     if (options?.limit) params.append("limit", options.limit.toString());
     if (options?.offset) params.append("offset", options.offset.toString());
-    const response = await api.get<CustomerLog[]>(
+    
+    console.log(`📋 Fetching logs for customer ${id}`);
+    
+    const response = await api.get<PaginatedResponse<CustomerLog> | CustomerLog[]>(
       `/audit/customer/${id}?${params.toString()}`
     );
-    return response.data;
+
+    console.log(`📋 Logs API response:`, response.data);
+
+    // Handle both paginated and array response formats
+    let logsArray: CustomerLog[];
+    
+    if (response.data && typeof response.data === 'object' && 'data' in response.data && 'meta' in response.data) {
+      // Paginated response structure
+      logsArray = response.data.data || [];
+      console.log(`📋 Using paginated response - ${logsArray.length} logs found`);
+    } else if (Array.isArray(response.data)) {
+      // Direct array response (backward compatibility)
+      logsArray = response.data;
+      console.log(`📋 Using array response - ${logsArray.length} logs found`);
+    } else {
+      // Unexpected structure
+      console.warn('📋 Unexpected logs response structure:', response.data);
+      logsArray = [];
+    }
+
+    return logsArray;
   },
 
   getInvoices: async (

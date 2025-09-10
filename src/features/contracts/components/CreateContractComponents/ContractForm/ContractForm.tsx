@@ -123,6 +123,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       selectedVehicles: [],
       selectedVehicleData: [], // Initialize vehicle data array
       selectedEndorsers: [],
+      guaranteeForContract: 0,
       collaterals: [],
       endorserCollaterals: [],
       documents: [],
@@ -147,6 +148,12 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   } = methods;
 
   const watchedData = watch();
+
+  // Handle guarantee amount change (defined after setValue is available)
+  const handleGuaranteeAmountChange = useCallback((amount: number) => {
+    console.log("💰 Guarantee amount change:", amount);
+    setValue("guaranteeForContract", amount, { shouldValidate: true });
+  }, [setValue]);
 
   // Auto-generate contract number when contract type changes (frontend only)
   useEffect(() => {
@@ -245,6 +252,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
         console.log("  📤 Session Key Type:", typeof sessionKey);
         console.log("  📤 Session Key Truthy:", !!sessionKey);
+        console.log("  💰 Guarantee Amount:", data.guaranteeForContract || 0);
+        console.log("  👤 Selected Endorsers:", data.selectedEndorsers?.length || 0);
 
         // Build base contract data
         const baseContractData = {
@@ -273,17 +282,21 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               insurancePolicy: collateral.insurancePolicy,
             })) || [],
           endorserCollaterals:
-            data.selectedEndorsers?.map((endorserId) => ({
-              type: "endorser" as const,
-              description: `Personal guarantee by endorser ${endorserId}`,
-              value: data.totalAmount * 0.5, // Default to 50% of contract amount
-              endorserId: endorserId,
-              guaranteedAmount: data.totalAmount * 0.5,
-              guaranteeType: "personal_guarantee",
-              requiresNotarization: false,
-              guaranteeExpirationDate: data.endDate,
-              legalDocumentReference: `GUARANTEE-${data.contractNumber}-${endorserId}`,
-            })) || [],
+            data.selectedEndorsers?.map((endorserId) => {
+              const guaranteeAmount = data.guaranteeForContract || data.totalAmount;
+              return {
+                type: "endorser" as const,
+                description: `Personal guarantee by endorser ${endorserId}`,
+                value: guaranteeAmount,
+                endorserId: endorserId,
+                guaranteedAmount: guaranteeAmount,
+                guaranteeType: "personal_guarantee",
+                requiresNotarization: false,
+                guaranteeForContract: data.guaranteeForContract,
+                guaranteeExpirationDate: data.endDate,
+                legalDocumentReference: `GUARANTEE-${data.contractNumber}-${endorserId}`,
+              };
+            }) || [],
           // Documents are handled separately via the document upload API
           terms: data.terms || {},
         };
@@ -293,6 +306,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           ...baseContractData,
           // Only add sessionKey if documents were uploaded
           ...(sessionKey ? { sessionKey } : {}),
+          // Add guarantee amount if specified
+          // ...(data.guaranteeForContract ? { guaranteeForContract: data.guaranteeForContract } : {}),
         };
 
         if (sessionKey) {
@@ -778,6 +793,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 shouldValidate: true,
               });
             }}
+            guaranteeForContract={watchedData.guaranteeForContract}
+            onGuaranteeForContractChange={handleGuaranteeAmountChange}
+            totalContractAmount={watchedData.totalAmount}
             onCreateEndorser={() => {
               // Handle create new endorser
               console.log("Create new endorser");
@@ -1097,10 +1115,22 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           {watchedData.selectedEndorsers.length} endorser(s)
                           selected
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Endorser IDs:{" "}
-                          {watchedData.selectedEndorsers.join(", ")}
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Endorser IDs: {watchedData.selectedEndorsers.join(", ")}
                         </Typography>
+                        {watchedData.guaranteeForContract && watchedData.guaranteeForContract > 0 && (
+                          <Box sx={{ mt: 0.5 }}>
+                            <Typography variant="caption" color="info.main" display="block" sx={{ fontWeight: 600 }}>
+                              💰 Guarantee Amount: ${watchedData.guaranteeForContract.toLocaleString()}
+                              {watchedData.totalAmount > 0 && (
+                                <> ({((watchedData.guaranteeForContract / watchedData.totalAmount) * 100).toFixed(1)}% coverage)</>
+                              )}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Note: Endorser capacity and validation handled in endorser selection
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
                     )}
                   </CardContent>
@@ -1246,19 +1276,25 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       case 3: // Collaterals
         return true; // Collaterals are optional
       case 4: // Endorsers
+        // If an endorser is selected and guarantee amount is set, validate it doesn't exceed capacity
+        if (watchedData.selectedEndorsers.length > 0 && watchedData.guaranteeForContract) {
+          // This validation would require endorser data, which we don't have here
+          // The validation is handled in the EndorserPicker component UI
+          return true;
+        }
         return true; // Endorsers are optional
       case 5: // Documents
         // Customer selection is no longer required for document uploads
         // Check if all required documents are uploaded
+        // Vehicle documents (insurance, tpl, casco) are now provided automatically via vehicle picker
         const requiredCategories = [
           "id_card",
-          "insurance",
-          "tpl",
-          "casco",
           "driving_permit",
           "customer_registration",
           "endorser_id",
           "contract_agreement",
+          "business_registration",
+          "tax_certificate",
         ];
         const uploadedCategories = (watchedData.documents || []).map(
           (doc) => doc.category
