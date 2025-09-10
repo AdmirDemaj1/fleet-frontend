@@ -5,15 +5,10 @@ import {
   Button,
   Chip,
   useTheme,
-  Stack,
-  Tooltip,
-  IconButton
+  Stack
 } from '@mui/material';
 import {
-  Edit,
-  Share,
-  Print,
-  Download
+  Edit
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { ContractResponse } from '../types/contract.types';
@@ -37,7 +32,7 @@ export const ContractHeader: React.FC<ContractHeaderProps> = ({ contract, contra
       gap: 3,
       mb: 4
     }}>
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
         <Box
           sx={{
             width: 72,
@@ -56,7 +51,7 @@ export const ContractHeader: React.FC<ContractHeaderProps> = ({ contract, contra
             fontSize: 36
           }} />
         </Box>
-        <Box>
+        <Box sx={{ flex: 1, textAlign: 'center' }}>
           <Typography 
             variant="h3" 
             sx={{ 
@@ -68,7 +63,7 @@ export const ContractHeader: React.FC<ContractHeaderProps> = ({ contract, contra
           >
             {contract.contractNumber}
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, justifyContent: 'center' }}>
             <Chip
               icon={<contractConfig.type.icon />}
               label={contractConfig.type.label}
@@ -95,26 +90,6 @@ export const ContractHeader: React.FC<ContractHeaderProps> = ({ contract, contra
       
       {/* Action Buttons */}
       <Stack direction="row" spacing={2}>
-        <Tooltip title="Share Contract">
-          <IconButton 
-            sx={{ 
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
-            }}
-          >
-            <Share />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Print Contract">
-          <IconButton 
-            sx={{ 
-              bgcolor: alpha(theme.palette.info.main, 0.1),
-              '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.2) }
-            }}
-          >
-            <Print />
-          </IconButton>
-        </Tooltip>
         <Button
           variant="outlined"
           startIcon={<Edit />}
@@ -133,21 +108,6 @@ export const ContractHeader: React.FC<ContractHeaderProps> = ({ contract, contra
           }}
         >
           Edit Contract
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<Download />}
-          sx={{ 
-            borderRadius: 2,
-            px: 3,
-            py: 1.5,
-            textTransform: 'none',
-            fontWeight: 600,
-            boxShadow: 3,
-            '&:hover': { boxShadow: 6 }
-          }}
-        >
-          Export PDF
         </Button>
       </Stack>
     </Box>

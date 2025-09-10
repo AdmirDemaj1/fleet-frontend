@@ -15,5 +15,4 @@ export { ContractInformation } from "./ContractInformation";
 export { ContractTimeline } from "./ContractTimeline";
 export { ContractPayments } from "./ContractPayments";
 export { ContractQuickActions } from "./ContractQuickActions";
-export { ContractMetrics } from "./ContractMetrics";
 export { ContractDocuments } from "./ContractDocuments";

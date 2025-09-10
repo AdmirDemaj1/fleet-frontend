@@ -1,24 +1,21 @@
 import React, { useState } from "react";
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  useTheme,
+  alpha,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Avatar,
   Chip,
+  Button,
+  Stack,
   IconButton,
   Menu,
   MenuItem,
   Alert,
-  Button,
-  alpha,
-  useTheme,
-  Avatar,
 } from "@mui/material";
 import {
   MoreVert,
@@ -28,28 +25,38 @@ import {
   Delete,
   Add,
   Visibility,
+  AttachMoney,
+  Schedule,
+  CheckCircle,
+  Error as ErrorIcon,
 } from "@mui/icons-material";
 import { format } from "date-fns";
 import { EndorserRelationship } from "../../types/endorser.types";
+import { AddRelationshipModal } from "../AddRelationshipModal";
 
 interface EndorserRelationshipsCardProps {
+  endorserId: string;
   relationships: EndorserRelationship[];
   onEdit?: (relationship: EndorserRelationship) => void;
   onDelete?: (relationshipId: string) => void;
   onAdd?: () => void;
   onViewCustomer?: (customerId: string) => void;
+  onRefresh?: () => void;
 }
 
 export const EndorserRelationshipsCard: React.FC<EndorserRelationshipsCardProps> = ({
+  endorserId,
   relationships,
   onEdit,
   onDelete,
   onAdd,
   onViewCustomer,
+  onRefresh,
 }) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [selectedRelationship, setSelectedRelationship] = useState<EndorserRelationship | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, relationship: EndorserRelationship) => {
     setAnchorEl(event.currentTarget);
@@ -59,6 +66,21 @@ export const EndorserRelationshipsCard: React.FC<EndorserRelationshipsCardProps>
   const handleMenuClose = () => {
     setAnchorEl(null);
     setSelectedRelationship(null);
+  };
+
+  const handleOpenAddModal = () => {
+    setIsAddModalOpen(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setIsAddModalOpen(false);
+  };
+
+  const handleAddSuccess = () => {
+    if (onRefresh) {
+      onRefresh();
+    }
+    setIsAddModalOpen(false);
   };
 
   const handleViewCustomer = () => {
@@ -76,7 +98,7 @@ export const EndorserRelationshipsCard: React.FC<EndorserRelationshipsCardProps>
   };
 
   const handleDelete = () => {
-    if (selectedRelationship && onDelete) {
+    if (selectedRelationship?.id && onDelete) {
       onDelete(selectedRelationship.id);
     }
     handleMenuClose();
@@ -84,6 +106,8 @@ export const EndorserRelationshipsCard: React.FC<EndorserRelationshipsCardProps>
 
   const getRelationshipColor = (type: string) => {
     switch (type.toLowerCase()) {
+      case "business partner":
+        return theme.palette.secondary.main;
       case "spouse":
         return theme.palette.error.main;
       case "parent":
@@ -92,8 +116,6 @@ export const EndorserRelationshipsCard: React.FC<EndorserRelationshipsCardProps>
         return theme.palette.info.main;
       case "sibling":
         return theme.palette.success.main;
-      case "business partner":
-        return theme.palette.secondary.main;
       case "friend":
         return theme.palette.primary.main;
       default:
@@ -109,56 +131,120 @@ export const EndorserRelationshipsCard: React.FC<EndorserRelationshipsCardProps>
     return customerName.charAt(0).toUpperCase();
   };
 
+  const getStatusConfig = (isActive: boolean) => {
+    if (isActive) {
+      return {
+        color: theme.palette.success.main,
+        bgcolor: alpha(theme.palette.success.main, 0.1),
+        icon: CheckCircle,
+        label: 'Active'
+      };
+    } else {
+      return {
+        color: theme.palette.error.main,
+        bgcolor: alpha(theme.palette.error.main, 0.1),
+        icon: ErrorIcon,
+        label: 'Inactive'
+      };
+    }
+  };
+
+  const getStats = () => {
+    const total = relationships.length;
+    const active = relationships.filter(rel => rel.active).length;
+    const inactive = relationships.filter(rel => !rel.active).length;
+    const totalGuaranteed = relationships.reduce((sum, rel) => sum + rel.maximumGuaranteeAmount, 0);
+    
+    return { total, active, inactive, totalGuaranteed };
+  };
+
+  const stats = getStats();
+
   return (
-    <Card
-      elevation={2}
+    <Box
       sx={{
-        borderRadius: 2,
-        transition: "box-shadow 0.3s ease-in-out",
-        "&:hover": {
-          boxShadow: theme.shadows[4],
-        },
+        bgcolor: theme.palette.background.paper,
+        borderRadius: 3,
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        overflow: 'hidden',
+        boxShadow: theme.shadows[1]
       }}
     >
-      <CardContent sx={{ p: 3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
-          }}
-        >
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 600,
-              color: theme.palette.text.primary,
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            <Person sx={{ fontSize: 20 }} />
+      {/* Header */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        p: 3,
+        borderBottom: `1px solid ${theme.palette.divider}`
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Person sx={{ mr: 1, color: 'text.secondary' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Customer Relationships
           </Typography>
-          {onAdd && (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<Add />}
-              onClick={onAdd}
-              sx={{
-                textTransform: "none",
-                fontWeight: 500,
-              }}
-            >
-              Add Relationship
-            </Button>
-          )}
         </Box>
+        {onAdd && (
+          <Button
+            size="small"
+            startIcon={<Add />}
+            onClick={handleOpenAddModal}
+            sx={{ 
+              textTransform: 'none',
+              borderRadius: 1.5
+            }}
+          >
+            Add Relationship
+          </Button>
+        )}
+      </Box>
 
-        {relationships.length === 0 ? (
+      {/* Stats */}
+      <Box sx={{ p: 3, borderBottom: `1px solid ${theme.palette.divider}` }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Manage and review endorser-customer relationships
+        </Typography>
+        
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          <Chip 
+            label={`${stats.total} Total`} 
+            size="small"
+            sx={{ 
+              bgcolor: alpha(theme.palette.primary.main, 0.1), 
+              color: 'primary.main',
+              fontSize: '0.75rem'
+            }}
+          />
+          <Chip 
+            label={`${stats.active} Active`} 
+            size="small"
+            sx={{ 
+              bgcolor: alpha(theme.palette.success.main, 0.1), 
+              color: 'success.main',
+              fontSize: '0.75rem'
+            }}
+          />
+          {stats.inactive > 0 && (
+            <Chip 
+              label={`${stats.inactive} Inactive`} 
+              size="small"
+              sx={{ 
+                bgcolor: alpha(theme.palette.error.main, 0.1), 
+                color: 'error.main',
+                fontSize: '0.75rem'
+              }}
+            />
+          )}
+        </Stack>
+        
+        <Typography variant="caption" color="text.secondary">
+          Total Guaranteed: ${stats.totalGuaranteed.toLocaleString()} • {stats.active} active relationships
+        </Typography>
+      </Box>
+
+      {/* Relationship List */}
+      {relationships.length === 0 ? (
+        <Box sx={{ p: 3 }}>
           <Alert
             severity="info"
             sx={{
@@ -181,7 +267,7 @@ export const EndorserRelationshipsCard: React.FC<EndorserRelationshipsCardProps>
                   variant="contained"
                   size="small"
                   startIcon={<Add />}
-                  onClick={onAdd}
+                  onClick={handleOpenAddModal}
                   sx={{ mt: 1, textTransform: "none" }}
                 >
                   Add First Relationship
@@ -189,182 +275,176 @@ export const EndorserRelationshipsCard: React.FC<EndorserRelationshipsCardProps>
               )}
             </Box>
           </Alert>
-        ) : (
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Customer</TableCell>
-                  <TableCell>Relationship Type</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Created</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {relationships.map((relationship) => (
-                  <TableRow
-                    key={relationship.id}
-                    sx={{
-                      "&:hover": {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                      },
-                      transition: "background-color 0.2s ease-in-out",
-                    }}
-                  >
-                    <TableCell>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                        <Avatar
-                          sx={{
-                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                            color: theme.palette.primary.main,
-                            width: 32,
-                            height: 32,
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {relationship.customer?.name 
-                            ? getCustomerInitials(relationship.customer.name)
-                            : "C"}
-                        </Avatar>
+        </Box>
+      ) : (
+        <>
+          <Typography variant="subtitle2" sx={{ p: 3, pb: 1, fontWeight: 600 }}>
+            Relationship List
+          </Typography>
+          
+          <List sx={{ p: 0 }}>
+            {relationships.map((relationship) => {
+              const statusConfig = getStatusConfig(relationship.active);
+              const StatusIcon = statusConfig.icon;
+              const relationshipColor = getRelationshipColor(relationship.relationshipType);
+
+              return (
+                <ListItem
+                  key={relationship.id}
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.04)
+                    }
+                  }}
+                >
+                  <ListItemAvatar>
+                    <Avatar
+                      sx={{
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        color: theme.palette.primary.main,
+                        width: 40,
+                        height: 40,
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {relationship.customer?.name 
+                        ? getCustomerInitials(relationship.customer.name)
+                        : "C"}
+                    </Avatar>
+                  </ListItemAvatar>
+                  
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <Box>
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 500, lineHeight: 1.3 }}
-                          >
+                          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
                             {relationship.customer?.name || "Unknown Customer"}
                           </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{ color: theme.palette.text.secondary }}
-                          >
-                            {relationship.customer?.type || "Individual"}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip
+                              size="small"
+                              label={relationship.relationshipType}
+                              sx={{
+                                bgcolor: alpha(relationshipColor, 0.1),
+                                color: relationshipColor,
+                                fontWeight: 500,
+                                fontSize: '0.7rem',
+                                height: 20,
+                              }}
+                            />
+                            <Chip
+                              icon={<StatusIcon />}
+                              label={statusConfig.label}
+                              size="small"
+                              sx={{
+                                bgcolor: statusConfig.bgcolor,
+                                color: statusConfig.color,
+                                fontSize: '0.7rem',
+                                height: 20,
+                                '& .MuiChip-icon': {
+                                  color: statusConfig.color,
+                                  fontSize: 12
+                                }
+                              }}
+                            />
+                          </Box>
                         </Box>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, relationship)}
+                          sx={{
+                            color: theme.palette.text.secondary,
+                            "&:hover": {
+                              backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                              color: theme.palette.primary.main,
+                            },
+                          }}
+                        >
+                          <MoreVert />
+                        </IconButton>
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        icon={
-                          relationship.relationshipToCustomer === "business_partner" ? (
-                            <Business sx={{ fontSize: 16 }} />
-                          ) : (
-                            <Person sx={{ fontSize: 16 }} />
-                          )
-                        }
-                        label={relationship.relationshipToCustomer.replace("_", " ")}
-                        sx={{
-                          bgcolor: alpha(getRelationshipColor(relationship.relationshipToCustomer), 0.1),
-                          color: getRelationshipColor(relationship.relationshipToCustomer),
-                          fontWeight: 500,
-                          textTransform: "capitalize",
-                          "& .MuiChip-icon": {
-                            color: getRelationshipColor(relationship.relationshipToCustomer),
-                          },
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={relationship.isActive ? "Active" : "Inactive"}
-                        sx={{
-                          bgcolor: relationship.isActive
-                            ? alpha(theme.palette.success.main, 0.1)
-                            : alpha(theme.palette.grey[500], 0.1),
-                          color: relationship.isActive
-                            ? theme.palette.success.main
-                            : theme.palette.grey[600],
-                          fontWeight: 500,
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {format(new Date(relationship.createdAt), "MMM d, yyyy")}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{ color: theme.palette.text.secondary }}
-                      >
-                        {format(new Date(relationship.createdAt), "h:mm a")}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, relationship)}
-                        sx={{
-                          color: theme.palette.text.secondary,
-                          "&:hover": {
-                            backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                            color: theme.palette.primary.main,
-                          },
-                        }}
-                      >
-                        <MoreVert />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          Max Guarantee: ${relationship.maximumGuaranteeAmount.toLocaleString()}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Expires: {format(new Date(relationship.expirationDate), "MMM d, yyyy")} • 
+                          {relationship.customer?.type || "Individual"}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              );
+            })}
+          </List>
+        </>
+      )}
 
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-          PaperProps={{
-            elevation: 3,
-            sx: {
-              borderRadius: 2,
-              minWidth: 160,
-              "& .MuiMenuItem-root": {
-                px: 2,
-                py: 1,
-                gap: 1.5,
-                fontSize: "0.875rem",
-                "&:hover": {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                },
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          elevation: 3,
+          sx: {
+            borderRadius: 2,
+            minWidth: 160,
+            "& .MuiMenuItem-root": {
+              px: 2,
+              py: 1,
+              gap: 1.5,
+              fontSize: "0.875rem",
+              "&:hover": {
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
               },
             },
-          }}
-          transformOrigin={{ horizontal: "right", vertical: "top" }}
-          anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        >
-          {onViewCustomer && (
-            <MenuItem onClick={handleViewCustomer}>
-              <Visibility fontSize="small" />
-              View Customer
-            </MenuItem>
-          )}
-          {onEdit && (
-            <MenuItem onClick={handleEdit}>
-              <Edit fontSize="small" />
-              Edit Relationship
-            </MenuItem>
-          )}
-          {onDelete && (
-            <MenuItem
-              onClick={handleDelete}
-              sx={{
-                color: theme.palette.error.main,
-                "&:hover": {
-                  backgroundColor: alpha(theme.palette.error.main, 0.08),
-                },
-              }}
-            >
-              <Delete fontSize="small" />
-              Delete Relationship
-            </MenuItem>
-          )}
-        </Menu>
-      </CardContent>
-    </Card>
+          },
+        }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+      >
+        {onViewCustomer && (
+          <MenuItem onClick={handleViewCustomer}>
+            <Visibility fontSize="small" />
+            View Customer
+          </MenuItem>
+        )}
+        {onEdit && (
+          <MenuItem onClick={handleEdit}>
+            <Edit fontSize="small" />
+            Edit Relationship
+          </MenuItem>
+        )}
+        {onDelete && (
+          <MenuItem
+            onClick={handleDelete}
+            sx={{
+              color: theme.palette.error.main,
+              "&:hover": {
+                backgroundColor: alpha(theme.palette.error.main, 0.08),
+              },
+            }}
+          >
+            <Delete fontSize="small" />
+            Delete Relationship
+          </MenuItem>
+        )}
+      </Menu>
+
+      {/* Add Relationship Modal */}
+      <AddRelationshipModal
+        open={isAddModalOpen}
+        onClose={handleCloseAddModal}
+        endorserId={endorserId}
+        onSuccess={handleAddSuccess}
+      />
+    </Box>
   );
 };

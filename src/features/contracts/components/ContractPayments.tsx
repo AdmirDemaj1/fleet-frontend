@@ -43,6 +43,9 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
   // Direct pagination state management - using offset instead of page
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  
+  // Filter state management
+  const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
 
   // Calculate offset from page
   const offset = page * rowsPerPage;
@@ -58,16 +61,29 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
     setPage(0); // Reset to first page
   }, []);
 
+  // Filter handlers
+  const handleFilterChange = React.useCallback((filter: string | null) => {
+    setActiveFilter(filter);
+    setPage(0); // Reset to first page when filter changes
+  }, []);
+
   // Create a unique query key using offset instead of page
   const queryKey = React.useMemo(() => {
-    return {
+    const baseQuery = {
       contractId,
       offset,
       limit: rowsPerPage
     };
-  }, [contractId, offset, rowsPerPage]);
+    
+    // Only add status filter if it's not null
+    if (activeFilter) {
+      return { ...baseQuery, status: activeFilter as any };
+    }
+    
+    return baseQuery;
+  }, [contractId, offset, rowsPerPage, activeFilter]);
 
-  const { data: paymentsResponse, isLoading, error, isFetching } = useGetPaymentsByContractQuery(queryKey, {
+  const { data: paymentsResponse, isLoading, error } = useGetPaymentsByContractQuery(queryKey, {
     // Force refetch when parameters change
     refetchOnMountOrArgChange: true
   });
@@ -238,6 +254,96 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
         >
           View All
         </Button>
+      </Box>
+
+      {/* Filter Buttons */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 500 }}>
+          Filter by Status
+        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant={activeFilter === null ? 'contained' : 'outlined'}
+            onClick={() => handleFilterChange(null)}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              borderColor: alpha(theme.palette.divider, 0.3),
+              '&:hover': {
+                borderColor: 'primary.main',
+                bgcolor: activeFilter === null ? 'primary.main' : alpha(theme.palette.primary.main, 0.05)
+              }
+            }}
+          >
+            All
+          </Button>
+          <Button
+            variant={activeFilter === 'paid' ? 'contained' : 'outlined'}
+            startIcon={<CheckCircle />}
+            onClick={() => handleFilterChange('paid')}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              borderColor: activeFilter === 'paid' ? 'success.main' : alpha(theme.palette.success.main, 0.3),
+              color: activeFilter === 'paid' ? 'white' : 'success.main',
+              bgcolor: activeFilter === 'paid' ? 'success.main' : 'transparent',
+              '&:hover': {
+                borderColor: 'success.main',
+                bgcolor: activeFilter === 'paid' ? 'success.dark' : alpha(theme.palette.success.main, 0.05)
+              }
+            }}
+          >
+            Paid
+          </Button>
+          <Button
+            variant={activeFilter === 'pending' ? 'contained' : 'outlined'}
+            startIcon={<Pending />}
+            onClick={() => handleFilterChange('pending')}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              borderColor: activeFilter === 'pending' ? 'warning.main' : alpha(theme.palette.warning.main, 0.3),
+              color: activeFilter === 'pending' ? 'white' : 'warning.main',
+              bgcolor: activeFilter === 'pending' ? 'warning.main' : 'transparent',
+              '&:hover': {
+                borderColor: 'warning.main',
+                bgcolor: activeFilter === 'pending' ? 'warning.dark' : alpha(theme.palette.warning.main, 0.05)
+              }
+            }}
+          >
+            Pending
+          </Button>
+          <Button
+            variant={activeFilter === 'overdue' ? 'contained' : 'outlined'}
+            startIcon={<ErrorIcon />}
+            onClick={() => handleFilterChange('overdue')}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
+              minWidth: 'auto',
+              px: 2,
+              borderColor: activeFilter === 'overdue' ? 'error.main' : alpha(theme.palette.error.main, 0.3),
+              color: activeFilter === 'overdue' ? 'white' : 'error.main',
+              bgcolor: activeFilter === 'overdue' ? 'error.main' : 'transparent',
+              '&:hover': {
+                borderColor: 'error.main',
+                bgcolor: activeFilter === 'overdue' ? 'error.dark' : alpha(theme.palette.error.main, 0.05)
+              }
+            }}
+          >
+            Overdue
+          </Button>
+        </Stack>
       </Box>
 
       {payments.length === 0 ? (

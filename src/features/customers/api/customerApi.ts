@@ -125,34 +125,12 @@ export const customerApi = {
       params.append("active", options.active.toString());
     if (options?.limit) params.append("limit", options.limit.toString());
     if (options?.offset) params.append("offset", options.offset.toString());
-    
-    console.log(`📋 Fetching contracts for customer ${id}`);
-    
-    const response = await api.get<PaginatedResponse<ContractSummary> | ContractSummary[]>(
+    const response = await api.get<ContractSummary[]>(
       `/customers/${id}/contracts?${params.toString()}`
     );
-
-    console.log(`📋 Contracts API response:`, response.data);
-
-    // Handle both paginated and array response formats
-    let contractsArray: ContractSummary[];
-    
-    if (response.data && typeof response.data === 'object' && 'data' in response.data && 'meta' in response.data) {
-      // Paginated response structure
-      contractsArray = response.data.data || [];
-      console.log(`📋 Using paginated response - ${contractsArray.length} contracts found`);
-    } else if (Array.isArray(response.data)) {
-      // Direct array response (backward compatibility)
-      contractsArray = response.data;
-      console.log(`📋 Using array response - ${contractsArray.length} contracts found`);
-    } else {
-      // Unexpected structure
-      console.warn('📋 Unexpected contracts response structure:', response.data);
-      contractsArray = [];
-    }
-
-    return contractsArray;
+    return response.data;
   },
+
 
   getCollateral: async (
     id: string,

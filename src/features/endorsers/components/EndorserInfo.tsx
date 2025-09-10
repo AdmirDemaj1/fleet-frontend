@@ -30,13 +30,18 @@ import {
   Notes,
 } from "@mui/icons-material";
 import { useEndorser } from "../hooks/useEndorser";
+import { EndorserRelationshipsCard } from "./EndorserDetails";
+import { useNavigate, useParams } from "react-router-dom";
+import { useGetCustomersForEndorserQuery } from "../api/endorserApi";
 
 interface EndorserInfoProps {
   endorserId: string;
 }
 
 const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
-  const theme = useTheme();
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+    const theme = useTheme();
   const { endorser, contracts, summary, loading, error, updateEndorser } = useEndorser(endorserId);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<{ guaranteedAmount: number }>({
@@ -45,6 +50,23 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error" | "warning" | "info";
+  }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
+  const {
+    data: relationships = [],
+    error: relationshipsError,
+    refetch: refetchRelationships,
+  } = useGetCustomersForEndorserQuery(id!, {
+    skip: !id,
+  });
 
   const handleEdit = () => {
     if (endorser) {
@@ -106,6 +128,35 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
       day: "numeric",
     });
   };
+
+
+  const handleAddRelationship = () => {
+    // This is now handled by the AddRelationshipModal in the EndorserRelationshipsCard
+    // The onAdd prop just enables the button, the modal handles the actual functionality
+  };
+
+  const handleEditRelationship = () => {
+    // TODO: Implement edit relationship functionality
+    setNotification({
+      open: true,
+      message: "Edit relationship functionality coming soon",
+      severity: "info",
+    });
+  };
+
+  const handleDeleteRelationship = () => {
+    // TODO: Implement delete relationship functionality
+    setNotification({
+      open: true,
+      message: "Delete relationship functionality coming soon",
+      severity: "info",
+    });
+  };
+
+  const handleViewCustomer = (customerId: string) => {
+    navigate(`/customers/${customerId}`);
+  };
+
 
   // Enhanced error message parser for better UX
   const parseErrorMessage = (error: string) => {
@@ -774,6 +825,18 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
           </Box>
         </>
       )}
+      <Divider sx={{ my: 3 }} />
+       <Grid item xs={12} lg={4}>
+          <EndorserRelationshipsCard    
+            endorserId={id!}
+            relationships={relationships}
+            onAdd={handleAddRelationship}
+            onEdit={handleEditRelationship}
+            onDelete={handleDeleteRelationship}
+            onViewCustomer={handleViewCustomer}
+            onRefresh={refetchRelationships}
+          />
+        </Grid>
     </Paper>
   );
 };

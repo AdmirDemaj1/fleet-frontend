@@ -17,7 +17,7 @@ import {
   ContractTimeline,
   ContractPayments,
   ContractQuickActions,
-  ContractMetrics
+  ContractDocuments
 } from '../components';
 import {
   AccountBalance,
@@ -155,7 +155,7 @@ export const ContractDetailsPage: React.FC = () => {
 
             {/* Contract Metrics */}
             <Grid item xs={12}>
-              <ContractMetrics />
+              <ContractDocuments contractId={contract.id} />
             </Grid>
           </Grid>
         </Grid>

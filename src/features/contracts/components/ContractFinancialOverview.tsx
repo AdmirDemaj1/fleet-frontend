@@ -4,15 +4,15 @@ import {
   Typography,
   Paper,
   Grid,
-  LinearProgress,
   Avatar,
-  Chip,
   useTheme,
   alpha
 } from '@mui/material';
 import {
   AttachMoney,
-  Assessment
+  TrendingUp,
+  AccountBalance,
+  Schedule
 } from '@mui/icons-material';
 
 interface ContractFinancialOverviewProps {
@@ -36,113 +36,296 @@ export const ContractFinancialOverview: React.FC<ContractFinancialOverviewProps>
     return `${Math.round(value)}%`;
   };
 
+  // Calculate progress percentage with proper validation
+  const calculateProgressPercentage = (): number => {
+    // If progressPercentage is already provided and valid, use it
+    if (contractConfig.progressPercentage && 
+        typeof contractConfig.progressPercentage === 'number' && 
+        contractConfig.progressPercentage >= 0 && 
+        contractConfig.progressPercentage <= 100) {
+      return contractConfig.progressPercentage;
+    }
+
+    // Calculate from paid and total amounts
+    if (contractConfig.paidAmount && contractConfig.totalAmount) {
+      const paidAmount = typeof contractConfig.paidAmount === 'string' 
+        ? parseFloat(contractConfig.paidAmount.replace(/[,$]/g, '')) 
+        : parseFloat(contractConfig.paidAmount);
+      const totalAmount = typeof contractConfig.totalAmount === 'string' 
+        ? parseFloat(contractConfig.totalAmount.replace(/[,$]/g, '')) 
+        : parseFloat(contractConfig.totalAmount);
+      
+      if (totalAmount > 0) {
+        const percentage = (paidAmount / totalAmount) * 100;
+        return Math.min(Math.max(percentage, 0), 100); // Clamp between 0 and 100
+      }
+    }
+
+    return 0;
+  };
+
+  const progressPercentage = calculateProgressPercentage();
+
   return (
     <Paper
       elevation={0}
       sx={{
-        bgcolor: alpha(theme.palette.success.main, 0.1),
-        border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
         borderRadius: 3,
-        p: 4,
-        mb: 4
+        overflow: 'hidden',
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        position: 'relative',
+        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.secondary.main, 0.02)} 100%)`,
+        mb: 4, // Add margin bottom for spacing
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background: `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.primary.main})`,
+        }
       }}
     >
-      <Grid container spacing={4} alignItems="center">
-        <Grid item xs={12} md={8}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <AttachMoney sx={{ fontSize: 32, color: 'success.main', mr: 2 }} />
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
-                {formatCurrency(contractConfig.totalAmount)}
-              </Typography>
-              <Typography variant="subtitle1" color="text.secondary">
-                Total Contract Value
-              </Typography>
-            </Box>
+      {/* Header Section */}
+      <Box sx={{ p: 3, pb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+          <Avatar
+            sx={{
+              bgcolor: alpha(theme.palette.success.main, 0.1),
+              color: 'success.main',
+              mr: 2,
+              width: 56,
+              height: 56,
+              boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.15)}`
+            }}
+          >
+            <AttachMoney sx={{ fontSize: 28 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Financial Overview
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Contract value and payment progress
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Progress Bar - Center of Attention */}
+      <Box sx={{ p: 3, py: 4 }}>
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Payment Progress
+            </Typography>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 800,
+                color: 'primary.main',
+                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                backgroundClip: 'text',
+                textFillColor: 'transparent',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}
+            >
+              {formatPercentage(progressPercentage)}
+            </Typography>
           </Box>
           
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Payment Progress
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {formatPercentage(contractConfig.progressPercentage)}
-              </Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={contractConfig.progressPercentage}
+          {/* Custom Progress Bar */}
+          <Box sx={{ position: 'relative' }}>
+            {/* Background Track */}
+            <Box
               sx={{
-                height: 8,
-                borderRadius: 4,
-                bgcolor: alpha(theme.palette.grey[500], 0.2),
-                '& .MuiLinearProgress-bar': {
-                  borderRadius: 4,
-                  bgcolor: theme.palette.success.main
+                height: 20,
+                borderRadius: 10,
+                bgcolor: alpha(theme.palette.grey[400], 0.2),
+                border: `1px solid ${alpha(theme.palette.grey[400], 0.1)}`,
+                overflow: 'hidden',
+                position: 'relative'
+              }}
+            >
+              {/* Filled Progress */}
+              <Box
+                sx={{
+                  height: '100%',
+                  width: `${Math.min(Math.max(progressPercentage, 0), 100)}%`,
+                  background: `linear-gradient(90deg, ${theme.palette.success.main} 0%, ${theme.palette.success.light} 50%, ${theme.palette.success.main} 100%)`,
+                  borderRadius: 10,
+                  transition: 'width 0.8s ease-in-out',
+                  position: 'relative',
+                  boxShadow: `inset 0 1px 2px ${alpha(theme.palette.success.dark, 0.2)}`,
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: `linear-gradient(90deg, transparent 0%, ${alpha(theme.palette.common.white, 0.4)} 50%, transparent 100%)`,
+                    borderRadius: 10
+                  }
+                }}
+              />
+            </Box>
+            
+            {/* Progress indicator dot */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: `${Math.min(Math.max(progressPercentage, 0), 100)}%`,
+                transform: 'translate(-50%, -50%)',
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                bgcolor: 'success.main',
+                border: `3px solid ${theme.palette.background.paper}`,
+                boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.5)}`,
+                transition: 'left 0.8s ease-in-out',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  bgcolor: theme.palette.background.paper,
                 }
               }}
             />
           </Box>
-          
-          <Grid container spacing={3}>
-            <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">
-                Amount Paid
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: 'success.main' }}>
-                {formatCurrency(contractConfig.paidAmount)}
-              </Typography>
-            </Grid>
-            <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">
-                Remaining
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: 'warning.main' }}>
-                {formatCurrency(contractConfig.remainingAmount)}
-              </Typography>
-            </Grid>
-          </Grid>
-        </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={0}
-            sx={{
-              bgcolor: 'background.paper',
-              borderRadius: 3,
-              p: 3,
-              textAlign: 'center',
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-            }}
-          >
-            <Avatar
+        </Box>
+
+        {/* Financial Cards Grid - Including Total Value */}
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={4}>
+            <Paper
+              elevation={0}
               sx={{
-                width: 64,
-                height: 64,
-                bgcolor: alpha(theme.palette.info.main, 0.1),
-                color: 'info.main',
-                mx: 'auto',
-                mb: 2
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.info.main, 0.04),
+                border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 6px 16px ${alpha(theme.palette.info.main, 0.15)}`
+                }
               }}
             >
-              <Assessment sx={{ fontSize: 28 }} />
-            </Avatar>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-              Contract Health
-            </Typography>
-            <Chip
-              label={contractConfig.progressPercentage > 80 ? 'Excellent' : 
-                    contractConfig.progressPercentage > 50 ? 'Good' : 
-                    contractConfig.progressPercentage > 20 ? 'Fair' : 'Needs Attention'}
-              color={contractConfig.progressPercentage > 80 ? 'success' : 
-                    contractConfig.progressPercentage > 50 ? 'primary' : 
-                    contractConfig.progressPercentage > 20 ? 'warning' : 'error'}
-              sx={{ fontWeight: 600 }}
-            />
-          </Paper>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    bgcolor: alpha(theme.palette.info.main, 0.1),
+                    color: 'info.main',
+                    mr: 1.5
+                  }}
+                >
+                  <TrendingUp sx={{ fontSize: 18 }} />
+                </Avatar>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Total Value
+                </Typography>
+              </Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'info.main', mb: 0.5 }}>
+                {formatCurrency(contractConfig.totalAmount)}
+              </Typography>
+              <Typography variant="caption" color="info.main" sx={{ fontWeight: 500 }}>
+                Contract value
+              </Typography>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} sm={4}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.success.main, 0.04),
+                border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 6px 16px ${alpha(theme.palette.success.main, 0.15)}`
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    bgcolor: alpha(theme.palette.success.main, 0.1),
+                    color: 'success.main',
+                    mr: 1.5
+                  }}
+                >
+                  <AccountBalance sx={{ fontSize: 18 }} />
+                </Avatar>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Amount Paid
+                </Typography>
+              </Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main', mb: 0.5 }}>
+                {formatCurrency(contractConfig.paidAmount)}
+              </Typography>
+              <Typography variant="caption" color="success.main" sx={{ fontWeight: 500 }}>
+                {formatPercentage(progressPercentage)} of total
+              </Typography>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} sm={4}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.warning.main, 0.04),
+                border: `1px solid ${alpha(theme.palette.warning.main, 0.1)}`,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 6px 16px ${alpha(theme.palette.warning.main, 0.15)}`
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    bgcolor: alpha(theme.palette.warning.main, 0.1),
+                    color: 'warning.main',
+                    mr: 1.5
+                  }}
+                >
+                  <Schedule sx={{ fontSize: 18 }} />
+                </Avatar>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Remaining
+                </Typography>
+              </Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'warning.main', mb: 0.5 }}>
+                {formatCurrency(contractConfig.remainingAmount)}
+              </Typography>
+              <Typography variant="caption" color="warning.main" sx={{ fontWeight: 500 }}>
+                {formatPercentage(100 - progressPercentage)} remaining
+              </Typography>
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
+      </Box>
     </Paper>
   );
 };

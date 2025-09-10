@@ -12,7 +12,8 @@ import CustomerContractsPage from '../features/customers/containers/Account/Cust
 import CustomerLogsPage from '../features/customers/containers/Account/CustomerLogsPage';
 import { CustomerInvoicesPage } from '../features/customers/containers';
 import CreateVehiclePage from '../features/vehicles/containers/CreateVehiclePage';
-import ProfessionalViewVehiclePage from '../features/vehicles/containers/ViewVehiclePage';
+import ViewVehiclePage from '../features/vehicles/containers/ViewVehiclePage';
+import VehicleAccountPage from '../features/vehicles/containers/VehicleAccountPage';
 import  CustomerVehiclesPage  from '../features/customers/containers/Account/CustomerVehiclesPage';
 import { DashboardPage } from '../features/dashboard/containers/DashboardPage';
 import { ContractsPage, CreateContractPage, ContractDetailsPage } from '../features/contracts/containers';
@@ -47,8 +48,15 @@ export const AppRoutes: React.FC = () => {
 
         <Route path="vehicles">
           <Route index element={<VehiclesPage />} />
-          <Route path="new" element={<CreateVehiclePage />} />
-          <Route path=":id" element={<ProfessionalViewVehiclePage />} />
+          <Route path="create" element={<CreateVehiclePage />} />
+          <Route path=":id" element={<VehicleAccountPage />}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<ViewVehiclePage />} />
+            <Route path="financial" element={<ViewVehiclePage />} />
+            <Route path="documents" element={<ViewVehiclePage />} />
+            <Route path="customer" element={<ViewVehiclePage />} />
+          </Route>
+          <Route path=":id/edit" element={<div>Edit Vehicle Page</div>} />
         </Route>
 
 
