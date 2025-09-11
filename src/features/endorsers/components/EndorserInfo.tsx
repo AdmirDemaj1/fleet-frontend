@@ -39,10 +39,11 @@ interface EndorserInfoProps {
 }
 
 const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
-    const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const theme = useTheme();
-  const { endorser, contracts, summary, loading, error, updateEndorser } = useEndorser(endorserId);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const { endorser, contracts, summary, loading, error, updateEndorser } =
+    useEndorser(endorserId);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<{ guaranteedAmount: number }>({
     guaranteedAmount: 0,
@@ -102,11 +103,11 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
     } catch (err: any) {
       // Extract detailed error information
       let errorMessage = "Failed to update guaranteed amount";
-      
+
       if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setUpdateError(errorMessage);
     } finally {
       setUpdateLoading(false);
@@ -128,7 +129,6 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
       day: "numeric",
     });
   };
-
 
   const handleAddRelationship = () => {
     // This is now handled by the AddRelationshipModal in the EndorserRelationshipsCard
@@ -157,27 +157,39 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
     navigate(`/customers/${customerId}`);
   };
 
-
   // Enhanced error message parser for better UX
   const parseErrorMessage = (error: string) => {
     // Check if it's a guarantee capacity validation error
-    if (error.includes("remaining guarantee capacity") && error.includes("Current guaranteed amount:")) {
-      const currentAmountMatch = error.match(/Current guaranteed amount: (\d+)/);
-      const remainingCapacityMatch = error.match(/current remaining capacity: (\d+)/);
+    if (
+      error.includes("remaining guarantee capacity") &&
+      error.includes("Current guaranteed amount:")
+    ) {
+      const currentAmountMatch = error.match(
+        /Current guaranteed amount: (\d+)/
+      );
+      const remainingCapacityMatch = error.match(
+        /current remaining capacity: (\d+)/
+      );
       const minimumAmountMatch = error.match(/must be at least (\d+)/);
-      
+
       return {
         isValidationError: true,
-        currentAmount: currentAmountMatch ? parseInt(currentAmountMatch[1]) : null,
-        remainingCapacity: remainingCapacityMatch ? parseInt(remainingCapacityMatch[1]) : null,
-        minimumRequired: minimumAmountMatch ? parseInt(minimumAmountMatch[1]) : null,
-        fullMessage: error
+        currentAmount: currentAmountMatch
+          ? parseInt(currentAmountMatch[1])
+          : null,
+        remainingCapacity: remainingCapacityMatch
+          ? parseInt(remainingCapacityMatch[1])
+          : null,
+        minimumRequired: minimumAmountMatch
+          ? parseInt(minimumAmountMatch[1])
+          : null,
+        fullMessage: error,
       };
     }
-    
+
     return {
       isValidationError: false,
-      fullMessage: error
+      fullMessage: error,
     };
   };
 
@@ -323,17 +335,17 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
 
       {/* Success/Error Messages */}
       {successMessage && (
-        <Alert 
-          severity="success" 
-          sx={{ 
+        <Alert
+          severity="success"
+          sx={{
             mb: 3,
             borderRadius: 2,
-            '& .MuiAlert-message': {
-              width: '100%'
-            }
+            "& .MuiAlert-message": {
+              width: "100%",
+            },
           }}
         >
-          <Box sx={{ width: '100%' }}>
+          <Box sx={{ width: "100%" }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
               Success
             </Typography>
@@ -345,95 +357,132 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
       )}
 
       {updateError && (
-        <Alert 
-          severity="error" 
-          sx={{ 
+        <Alert
+          severity="error"
+          sx={{
             mb: 3,
             borderRadius: 2,
-            '& .MuiAlert-message': {
-              width: '100%'
-            }
+            "& .MuiAlert-message": {
+              width: "100%",
+            },
           }}
         >
-          <Box sx={{ width: '100%' }}>
+          <Box sx={{ width: "100%" }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
               Unable to Update Guaranteed Amount
             </Typography>
-            
+
             {(() => {
               const parsedError = parseErrorMessage(updateError);
-              
+
               if (parsedError.isValidationError) {
                 return (
                   <Box>
                     <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.6 }}>
-                      The requested amount would result in insufficient capacity. Here's the breakdown:
+                      The requested amount would result in insufficient
+                      capacity. Here's the breakdown:
                     </Typography>
-                    
-                    <Box sx={{ 
-                      bgcolor: alpha(theme.palette.error.main, 0.1),
-                      p: 2,
-                      borderRadius: 1,
-                      mb: 2
-                    }}>
+
+                    <Box
+                      sx={{
+                        bgcolor: alpha(theme.palette.error.main, 0.1),
+                        p: 2,
+                        borderRadius: 1,
+                        mb: 2,
+                      }}
+                    >
                       <Grid container spacing={2}>
                         {parsedError.currentAmount && (
                           <Grid item xs={12} sm={4}>
-                            <Typography variant="caption" color="text.secondary">Current Amount</Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Current Amount
+                            </Typography>
                             <Typography variant="body2" fontWeight={600}>
                               {formatCurrency(parsedError.currentAmount)}
                             </Typography>
                           </Grid>
                         )}
-                        
+
                         {parsedError.remainingCapacity !== null && (
                           <Grid item xs={12} sm={4}>
-                            <Typography variant="caption" color="text.secondary">Available Capacity</Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Available Capacity
+                            </Typography>
                             <Typography variant="body2" fontWeight={600}>
                               {formatCurrency(parsedError.remainingCapacity)}
                             </Typography>
                           </Grid>
                         )}
-                        
+
                         {parsedError.minimumRequired && (
                           <Grid item xs={12} sm={4}>
-                            <Typography variant="caption" color="text.secondary">Minimum Required</Typography>
-                            <Typography variant="body2" fontWeight={600} color="success.main">
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Minimum Required
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              fontWeight={600}
+                              color="success.main"
+                            >
                               {formatCurrency(parsedError.minimumRequired)}
                             </Typography>
                           </Grid>
                         )}
                       </Grid>
                     </Box>
-                    
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                      <Typography variant="body2" sx={{ 
-                        lineHeight: 1.6, 
-                        fontStyle: 'italic',
-                        color: 'text.secondary',
-                        flex: 1
-                      }}>
-                        {parsedError.minimumRequired && 
-                          `Please enter an amount of at least ${formatCurrency(parsedError.minimumRequired)} to proceed.`
-                        }
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: 1,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          lineHeight: 1.6,
+                          fontStyle: "italic",
+                          color: "text.secondary",
+                          flex: 1,
+                        }}
+                      >
+                        {parsedError.minimumRequired &&
+                          `Please enter an amount of at least ${formatCurrency(
+                            parsedError.minimumRequired
+                          )} to proceed.`}
                       </Typography>
-                      
+
                       {parsedError.minimumRequired && isEditing && (
                         <Button
                           size="small"
                           variant="text"
                           color="success"
                           onClick={() => {
-                            setEditData({ guaranteedAmount: parsedError.minimumRequired! });
+                            setEditData({
+                              guaranteedAmount: parsedError.minimumRequired!,
+                            });
                             setUpdateError(null);
                           }}
-                          sx={{ 
-                            fontSize: '0.75rem',
-                            textTransform: 'none',
-                            fontWeight: 600
+                          sx={{
+                            fontSize: "0.75rem",
+                            textTransform: "none",
+                            fontWeight: 600,
                           }}
                         >
-                          Use Minimum ({formatCurrency(parsedError.minimumRequired)})
+                          Use Minimum (
+                          {formatCurrency(parsedError.minimumRequired)})
                         </Button>
                       )}
                     </Box>
@@ -441,7 +490,10 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
                 );
               } else {
                 return (
-                  <Typography variant="body2" sx={{ lineHeight: 1.6, wordBreak: 'break-word' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ lineHeight: 1.6, wordBreak: "break-word" }}
+                  >
                     {parsedError.fullMessage}
                   </Typography>
                 );
@@ -493,7 +545,11 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
                   size="small"
                   fullWidth
                   error={Boolean(updateError && isEditing)}
-                  helperText={updateError && isEditing ? "Please check the validation requirements above" : ""}
+                  helperText={
+                    updateError && isEditing
+                      ? "Please check the validation requirements above"
+                      : ""
+                  }
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: 2,
@@ -681,47 +737,98 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
       {summary && (
         <>
           <Divider sx={{ my: 3 }} />
-          
+
           <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
+            >
               <AttachMoney color="primary" />
               Guarantee Summary
             </Typography>
-            
+
             <Grid container spacing={3}>
               <Grid item xs={6} sm={3}>
-                <Paper elevation={1} sx={{ p: 2, textAlign: 'center', bgcolor: alpha(theme.palette.info.main, 0.1) }}>
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 2,
+                    textAlign: "center",
+                    bgcolor: alpha(theme.palette.info.main, 0.1),
+                  }}
+                >
                   <Typography variant="h4" fontWeight={700} color="info.main">
                     {summary.totalContracts}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">Total Contracts</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Total Contracts
+                  </Typography>
                 </Paper>
               </Grid>
-              
+
               <Grid item xs={6} sm={3}>
-                <Paper elevation={1} sx={{ p: 2, textAlign: 'center', bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
-                  <Typography variant="h4" fontWeight={700} color="primary.main">
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 2,
+                    textAlign: "center",
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  }}
+                >
+                  <Typography
+                    variant="h4"
+                    fontWeight={700}
+                    color="primary.main"
+                  >
                     {formatCurrency(summary.totalGuaranteeAmount)}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">Total Guaranteed</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Total Guaranteed
+                  </Typography>
                 </Paper>
               </Grid>
-              
+
               <Grid item xs={6} sm={3}>
-                <Paper elevation={1} sx={{ p: 2, textAlign: 'center', bgcolor: alpha(theme.palette.success.main, 0.1) }}>
-                  <Typography variant="h4" fontWeight={700} color="success.main">
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 2,
+                    textAlign: "center",
+                    bgcolor: alpha(theme.palette.success.main, 0.1),
+                  }}
+                >
+                  <Typography
+                    variant="h4"
+                    fontWeight={700}
+                    color="success.main"
+                  >
                     {summary.activeContracts}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">Active</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Active
+                  </Typography>
                 </Paper>
               </Grid>
-              
+
               <Grid item xs={6} sm={3}>
-                <Paper elevation={1} sx={{ p: 2, textAlign: 'center', bgcolor: alpha(theme.palette.warning.main, 0.1) }}>
-                  <Typography variant="h4" fontWeight={700} color="warning.main">
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 2,
+                    textAlign: "center",
+                    bgcolor: alpha(theme.palette.warning.main, 0.1),
+                  }}
+                >
+                  <Typography
+                    variant="h4"
+                    fontWeight={700}
+                    color="warning.main"
+                  >
                     {summary.draftContracts}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">Draft</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Draft
+                  </Typography>
                 </Paper>
               </Grid>
             </Grid>
@@ -733,85 +840,163 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
       {contracts.length > 0 && (
         <>
           <Divider sx={{ my: 3 }} />
-          
+
           <Box>
-            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
+            >
               <Business color="primary" />
               Guaranteed Contracts
             </Typography>
-            
-            <Paper elevation={1} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-              <Box sx={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+
+            <Paper elevation={1} sx={{ borderRadius: 2, overflow: "hidden" }}>
+              <Box sx={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ backgroundColor: alpha(theme.palette.primary.main, 0.05) }}>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        <Typography variant="body2" fontWeight={600}>Contract</Typography>
+                    <tr
+                      style={{
+                        backgroundColor: alpha(
+                          theme.palette.primary.main,
+                          0.05
+                        ),
+                      }}
+                    >
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={600}>
+                          Contract
+                        </Typography>
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        <Typography variant="body2" fontWeight={600}>Customer</Typography>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={600}>
+                          Customer
+                        </Typography>
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        <Typography variant="body2" fontWeight={600}>Status</Typography>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={600}>
+                          Status
+                        </Typography>
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        <Typography variant="body2" fontWeight={600}>Total Amount</Typography>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "right",
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={600}>
+                          Total Amount
+                        </Typography>
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'right', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        <Typography variant="body2" fontWeight={600}>Guarantee Amount</Typography>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "right",
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={600}>
+                          Guarantee Amount
+                        </Typography>
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        <Typography variant="body2" fontWeight={600}>End Date</Typography>
+                      <th
+                        style={{
+                          padding: "12px",
+                          textAlign: "left",
+                          borderBottom: `1px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={600}>
+                          End Date
+                        </Typography>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {contracts.map((contract, index) => (
-                      <tr 
+                      <tr
                         key={contract.contractId}
-                        style={{ 
-                          borderBottom: index < contracts.length - 1 ? `1px solid ${theme.palette.divider}` : 'none'
+                        style={{
+                          borderBottom:
+                            index < contracts.length - 1
+                              ? `1px solid ${theme.palette.divider}`
+                              : "none",
                         }}
                       >
-                        <td style={{ padding: '12px' }}>
-                          <Typography variant="body2" fontWeight={500} color="primary.main">
+                        <td style={{ padding: "12px" }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={500}
+                            color="primary.main"
+                          >
                             {contract.contractNumber}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {contract.contractType.toUpperCase()}
                           </Typography>
                         </td>
-                        <td style={{ padding: '12px' }}>
+                        <td style={{ padding: "12px" }}>
                           <Typography variant="body2" fontWeight={500}>
-                            {contract.customer.legalName || `${contract.customer.firstName} ${contract.customer.lastName}`}
+                            {contract.customer.legalName ||
+                              `${contract.customer.firstName} ${contract.customer.lastName}`}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {contract.customer.type.charAt(0).toUpperCase() + contract.customer.type.slice(1)}
+                            {contract.customer.type.charAt(0).toUpperCase() +
+                              contract.customer.type.slice(1)}
                           </Typography>
                         </td>
-                        <td style={{ padding: '12px' }}>
-                          <Chip 
-                            label={contract.contractStatus.charAt(0).toUpperCase() + contract.contractStatus.slice(1)}
+                        <td style={{ padding: "12px" }}>
+                          <Chip
+                            label={
+                              contract.contractStatus.charAt(0).toUpperCase() +
+                              contract.contractStatus.slice(1)
+                            }
                             size="small"
                             color={
-                              contract.contractStatus === 'active' ? 'success' :
-                              contract.contractStatus === 'draft' ? 'warning' :
-                              contract.contractStatus === 'completed' ? 'info' : 'default'
+                              contract.contractStatus === "active"
+                                ? "success"
+                                : contract.contractStatus === "draft"
+                                ? "warning"
+                                : contract.contractStatus === "completed"
+                                ? "info"
+                                : "default"
                             }
                             variant="outlined"
                           />
                         </td>
-                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                        <td style={{ padding: "12px", textAlign: "right" }}>
                           <Typography variant="body2" fontWeight={500}>
                             {formatCurrency(contract.totalAmount)}
                           </Typography>
                         </td>
-                        <td style={{ padding: '12px', textAlign: 'right' }}>
-                          <Typography variant="body2" fontWeight={600} color="primary.main">
+                        <td style={{ padding: "12px", textAlign: "right" }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={600}
+                            color="primary.main"
+                          >
                             {formatCurrency(contract.guaranteeAmount)}
                           </Typography>
                         </td>
-                        <td style={{ padding: '12px' }}>
+                        <td style={{ padding: "12px" }}>
                           <Typography variant="body2">
                             {formatDate(contract.endDate)}
                           </Typography>
@@ -826,17 +1011,17 @@ const EndorserInfo: React.FC<EndorserInfoProps> = ({ endorserId }) => {
         </>
       )}
       <Divider sx={{ my: 3 }} />
-       <Grid item xs={12} lg={4}>
-          <EndorserRelationshipsCard    
-            endorserId={id!}
-            relationships={relationships}
-            onAdd={handleAddRelationship}
-            onEdit={handleEditRelationship}
-            onDelete={handleDeleteRelationship}
-            onViewCustomer={handleViewCustomer}
-            onRefresh={refetchRelationships}
-          />
-        </Grid>
+      <Grid item xs={12} lg={4}>
+        <EndorserRelationshipsCard
+          endorserId={id!}
+          relationships={relationships}
+          onAdd={handleAddRelationship}
+          onEdit={handleEditRelationship}
+          onDelete={handleDeleteRelationship}
+          onViewCustomer={handleViewCustomer}
+          onRefresh={refetchRelationships}
+        />
+      </Grid>
     </Paper>
   );
 };

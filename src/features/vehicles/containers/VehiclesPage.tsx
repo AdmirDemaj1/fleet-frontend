@@ -128,7 +128,7 @@ export const VehiclesPage: React.FC = () => {
   };
 
   const handleAddVehicle = () => {
-    navigate('/vehicles/new');
+    navigate('/vehicles/create');
   };
 
   const handleEditVehicle = (id: string) => {
