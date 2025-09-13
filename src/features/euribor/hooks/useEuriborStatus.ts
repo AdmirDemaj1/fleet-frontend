@@ -68,7 +68,7 @@ export const useEuriborStatus = () => {
     checkRatesStatus();
     
     // Check status every 5 minutes
-    const interval = setInterval(checkRatesStatus, 5 * 1000);
+    const interval = setInterval(checkRatesStatus, 5 * 60 * 1000);
     
     return () => clearInterval(interval);
   }, []);

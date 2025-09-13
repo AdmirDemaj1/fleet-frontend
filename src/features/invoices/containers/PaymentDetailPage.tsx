@@ -5,11 +5,16 @@ import {
   Alert
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
-import { useGetPaymentByIdQuery, useMarkPaymentAsPaidMutation } from '../api/paymentsApi';
+import { 
+  useGetPaymentByIdQuery, 
+  useMarkPaymentAsPaidMutation, 
+  useMarkPaymentAsPaidWithCreditMutation 
+} from '../api/paymentsApi';
 import { PaymentHeader } from '../components/PaymentHeader';
 import { PaymentInformation } from '../components/PaymentInformation';
 import { PaymentRelatedInfo } from '../components/PaymentRelatedInfo';
 import { LoadingSpinner } from '../../../shared/components/LoadingSpinner';
+import { useNotification } from '../../../shared/hooks/useNotification';
 
 const PaymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,22 +26,61 @@ const PaymentDetailPage: React.FC = () => {
     error
   } = useGetPaymentByIdQuery(id!);
 
-  const [markAsPaid] = useMarkPaymentAsPaidMutation();
+  const [markAsPaid, { isLoading: isMarkingPaid }] = useMarkPaymentAsPaidMutation();
+  const [markAsPaidWithCredit, { isLoading: isMarkingPaidWithCredit }] = useMarkPaymentAsPaidWithCreditMutation();
+  const { showNotification } = useNotification();
 
-  const handleMarkAsPaid = async () => {
+  const handleMarkAsPaid = async (data: {
+    paymentDate: string;
+    paymentMethod: string;
+    actualAmountReceived: number;
+    transactionReference?: string;
+    notes?: string;
+    overpaymentOption?: 'credit' | 'upcoming_payments';
+  }) => {
     if (!payment) return;
-    
+
     try {
-      await markAsPaid({
-        id: payment.id,
-        data: {
-          paymentDate: new Date().toISOString(),
-          paymentMethod: 'bank_transfer', // Default method
-          notes: 'Marked as paid from payment details page'
-        }
-      }).unwrap();
+      const paymentAmount = Number(payment.amount);
+      const isOverpayment = data.actualAmountReceived > paymentAmount;
+
+      if (isOverpayment) {
+        // Handle overpayment case
+        await markAsPaidWithCredit({
+          id: payment.id,
+          data: {
+            paymentDate: data.paymentDate,
+            paymentMethod: data.paymentMethod,
+            transactionReference: data.transactionReference,
+            notes: data.notes,
+            actualAmountReceived: data.actualAmountReceived,
+            applyCreditBalance: data.overpaymentOption === 'credit'
+          }
+        }).unwrap();
+
+        const overpaymentAmount = data.actualAmountReceived - paymentAmount;
+        const message = data.overpaymentOption === 'credit'
+          ? `Payment marked as paid. €${overpaymentAmount.toFixed(2)} added to customer credits.`
+          : `Payment marked as paid. €${overpaymentAmount.toFixed(2)} will be applied to upcoming payments.`;
+        
+        showNotification(message, 'success');
+      } else {
+        // Handle normal payment case
+        await markAsPaid({
+          id: payment.id,
+          data: {
+            paymentDate: data.paymentDate,
+            paymentMethod: data.paymentMethod,
+            transactionReference: data.transactionReference,
+            notes: data.notes
+          }
+        }).unwrap();
+
+        showNotification('Payment marked as paid successfully!', 'success');
+      }
     } catch (error) {
       console.error('Failed to mark payment as paid:', error);
+      showNotification('Failed to mark payment as paid. Please try again.', 'error');
     }
   };
 
@@ -79,10 +123,11 @@ const PaymentDetailPage: React.FC = () => {
   return (
     <Box sx={{ p: { xs: 2, md: 4 } }}>
       {/* Header */}
-      <PaymentHeader 
-        payment={payment} 
-        onMarkAsPaid={handleMarkAsPaid}
-      />
+        <PaymentHeader 
+          payment={payment} 
+          onMarkAsPaid={handleMarkAsPaid}
+          loading={isMarkingPaid || isMarkingPaidWithCredit}
+        />
 
       {/* Main Content */}
       <Grid container spacing={4}>
