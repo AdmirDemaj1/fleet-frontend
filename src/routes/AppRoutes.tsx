@@ -19,6 +19,7 @@ import { DashboardPage } from '../features/dashboard/containers/DashboardPage';
 import { ContractsPage, CreateContractPage, ContractDetailsPage } from '../features/contracts/containers';
 import { PaymentsPage , PaymentDetailPage } from '../features/invoices/containers';
 import { EndorsersPage, EndorserDetailsPage } from '../features/endorsers/containers';
+import { EuriborRatesPage } from '../features/euribor/containers';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -75,6 +76,8 @@ export const AppRoutes: React.FC = () => {
         </Route>
 
         <Route path='logs' element={<AuditPage />} />
+
+        <Route path="euribor-rates" element={<EuriborRatesPage />} />
 
         <Route path="assets" element={<div>Assets Page</div>} />
       </Route>
