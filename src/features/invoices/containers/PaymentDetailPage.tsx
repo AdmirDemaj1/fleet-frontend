@@ -46,6 +46,9 @@ const PaymentDetailPage: React.FC = () => {
 
       if (isOverpayment) {
         // Handle overpayment case
+        const overpaymentAmount = data.actualAmountReceived - paymentAmount;
+        const updateFuturePayments = data.overpaymentOption === 'upcoming_payments';
+        
         await markAsPaidWithCredit({
           id: payment.id,
           data: {
@@ -54,11 +57,12 @@ const PaymentDetailPage: React.FC = () => {
             transactionReference: data.transactionReference,
             notes: data.notes,
             actualAmountReceived: data.actualAmountReceived,
-            applyCreditBalance: data.overpaymentOption === 'credit'
+            applyCreditBalance: data.overpaymentOption === 'credit',
+            updateFuturePayments,
+            overpaymentAmount: updateFuturePayments ? overpaymentAmount : undefined
           }
         }).unwrap();
 
-        const overpaymentAmount = data.actualAmountReceived - paymentAmount;
         const message = data.overpaymentOption === 'credit'
           ? `Payment marked as paid. €${overpaymentAmount.toFixed(2)} added to customer credits.`
           : `Payment marked as paid. €${overpaymentAmount.toFixed(2)} will be applied to upcoming payments.`;

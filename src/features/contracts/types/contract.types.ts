@@ -228,6 +228,10 @@ export interface ContractResponse {
   endDate: string;
   totalAmount: string;
   remainingAmount: string;
+  interestAmount?: string;
+  principalAmount?: string;
+  remainingInterestAmount?: string;
+  remainingPrincipalAmount?: string;
   createdAt: string;
   updatedAt: string;
   documents?: ContractDocumentResponseDto[];

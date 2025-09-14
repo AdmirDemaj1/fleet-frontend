@@ -174,6 +174,8 @@ export const PAYMENT_FILTER_OPTIONS = {
 export const PAYMENTS_TABLE_COLUMNS = [
   { id: 'id', label: 'Payment ID', sortable: true, width: 120 },
   { id: 'amount', label: 'Amount', sortable: true, width: 120 },
+  { id: 'principalAmount', label: 'Principal', sortable: true, width: 100 },
+  { id: 'interestAmount', label: 'Interest', sortable: true, width: 100 },
   { id: 'dueDate', label: 'Due Date', sortable: true, width: 120 },
   { id: 'paymentDate', label: 'Payment Date', sortable: true, width: 120 },
   { id: 'status', label: 'Status', sortable: true, width: 100 },

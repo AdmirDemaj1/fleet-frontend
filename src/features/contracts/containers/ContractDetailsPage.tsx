@@ -4,9 +4,7 @@ import {
   Box,
   Grid,
   Alert,
-  Skeleton,
-  useTheme,
-  alpha
+  Skeleton
 } from '@mui/material';
 import { useGetContractQuery } from '../api/contractApi';
 import { ContractType, ContractStatus } from '../types/contract.types';
@@ -30,7 +28,6 @@ import {
 
 export const ContractDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const theme = useTheme();
 
   const { data: contract, isLoading, error } = useGetContractQuery(id!);
 
@@ -39,10 +36,29 @@ export const ContractDetailsPage: React.FC = () => {
     if (!contract) return null;
 
     const isLoan = contract.type === ContractType.LOAN;
-    const totalAmount = parseFloat(contract.totalAmount);
-    const remainingAmount = parseFloat(contract.remainingAmount);
+    
+    // Parse principal and interest amounts
+    const principalAmount = contract.principalAmount ? parseFloat(contract.principalAmount) : null;
+    const interestAmount = contract.interestAmount ? parseFloat(contract.interestAmount) : null;
+    const remainingPrincipalAmount = contract.remainingPrincipalAmount ? parseFloat(contract.remainingPrincipalAmount) : null;
+    const remainingInterestAmount = contract.remainingInterestAmount ? parseFloat(contract.remainingInterestAmount) : null;
+
+    // Calculate total value as principal + interest when available, fallback to contract totalAmount
+    const totalAmount = (principalAmount && interestAmount) 
+      ? principalAmount + interestAmount 
+      : parseFloat(contract.totalAmount);
+    
+    // Calculate remaining amount as remainingPrincipal + remainingInterest when available, fallback to contract remainingAmount
+    const remainingAmount = (remainingPrincipalAmount !== null && remainingInterestAmount !== null)
+      ? remainingPrincipalAmount + remainingInterestAmount
+      : parseFloat(contract.remainingAmount);
+    
     const paidAmount = totalAmount - remainingAmount;
     const progressPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
+
+    // Calculate paid amounts for principal and interest
+    const paidPrincipalAmount = principalAmount && remainingPrincipalAmount ? principalAmount - remainingPrincipalAmount : null;
+    const paidInterestAmount = interestAmount && remainingInterestAmount ? interestAmount - remainingInterestAmount : null;
 
     return {
       isLoan,
@@ -50,6 +66,12 @@ export const ContractDetailsPage: React.FC = () => {
       remainingAmount,
       paidAmount,
       progressPercentage,
+      principalAmount,
+      interestAmount,
+      remainingPrincipalAmount,
+      remainingInterestAmount,
+      paidPrincipalAmount,
+      paidInterestAmount,
       type: {
         icon: isLoan ? AccountBalance : TrendingUp,
         color: isLoan ? 'primary' : 'secondary',

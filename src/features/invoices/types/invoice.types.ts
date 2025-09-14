@@ -31,6 +31,8 @@ export interface Payment {
   createdAt: Date | string;
   appliedAmount?: number | string;
   creditedAmount?: number | string;
+  principalAmount?: number | string;
+  interestAmount?: number | string;
 }
 
 export interface PaymentWithCreditResponse extends Payment {
@@ -73,6 +75,8 @@ export interface MarkPaymentPaidDto {
 export interface MarkPaymentPaidWithCreditDto extends MarkPaymentPaidDto {
   actualAmountReceived?: number;
   applyCreditBalance?: boolean;
+  updateFuturePayments?: boolean;
+  overpaymentAmount?: number;
 }
 
 export interface RegisterPaymentDto {
