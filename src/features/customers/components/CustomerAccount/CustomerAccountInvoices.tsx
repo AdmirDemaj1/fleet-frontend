@@ -164,7 +164,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
             actualAmountReceived: data.actualAmountReceived,
             applyCreditBalance: data.overpaymentOption === 'credit',
             updateFuturePayments,
-            overpaymentAmount: updateFuturePayments ? overpaymentAmount : undefined
+            // overpaymentAmount: updateFuturePayments ? overpaymentAmount : undefined
           }
         }).unwrap();
 
