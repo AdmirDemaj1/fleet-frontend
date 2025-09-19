@@ -809,5 +809,63 @@ export const theme = createTheme({
         },
       },
     },
+    MuiToggleButtonGroup: {
+      styleOverrides: {
+        root: {
+          backgroundColor: alpha(primaryColor, 0.02),
+          borderRadius: 10,
+          border: `1px solid ${alpha('#e2e8f0', 0.8)}`,
+          overflow: 'hidden',
+          '& .MuiToggleButton-root': {
+            border: 'none',
+            '&:not(:first-of-type)': {
+              borderLeft: `1px solid ${alpha('#e2e8f0', 0.5)}`,
+            },
+          },
+        },
+      },
+    },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          color: '#334155',
+          backgroundColor: 'transparent',
+          borderRadius: 0,
+          padding: '8px 16px',
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          textTransform: 'none',
+          transition: 'all 200ms ease',
+          '&:hover': {
+            backgroundColor: alpha(accentColor, 0.04),
+            color: '#1e293b',
+          },
+          '&.Mui-selected': {
+            backgroundColor: accentColor,
+            color: '#ffffff',
+            fontWeight: 600,
+            '&:hover': {
+              backgroundColor: '#2563eb',
+            },
+          },
+          '&:first-of-type': {
+            borderTopLeftRadius: 10,
+            borderBottomLeftRadius: 10,
+          },
+          '&:last-of-type': {
+            borderTopRightRadius: 10,
+            borderBottomRightRadius: 10,
+          },
+        },
+        sizeSmall: {
+          padding: '6px 12px',
+          fontSize: '0.8125rem',
+        },
+        sizeLarge: {
+          padding: '10px 20px',
+          fontSize: '0.9375rem',
+        },
+      },
+    },
   },
 });

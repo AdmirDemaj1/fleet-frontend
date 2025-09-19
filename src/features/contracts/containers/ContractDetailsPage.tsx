@@ -13,6 +13,7 @@ import {
   ContractFinancialOverview,
   ContractInformation,
   ContractTimeline,
+  ContractPaymentSchedule,
   ContractPayments,
   ContractQuickActions,
   ContractDocuments
@@ -155,6 +156,11 @@ export const ContractDetailsPage: React.FC = () => {
             {/* Contract Timeline */}
             <Grid item xs={12}>
               <ContractTimeline contract={contract} />
+            </Grid>
+
+            {/* Contract Payment Schedule */}
+            <Grid item xs={12}>
+              <ContractPaymentSchedule contract={contract} />
             </Grid>
 
             {/* Contract Payments */}

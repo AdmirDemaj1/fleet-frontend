@@ -30,7 +30,6 @@ export const store = configureStore({
       .concat(paymentsApi.middleware) // Add the paymentsApi middleware
       .concat(endorserApi.middleware) // Add the endorserApi middleware
       .concat(vehicleDocumentApi.middleware) // Add the vehicleDocumentApi middleware
-      .concat(paymentsApi.middleware) // Add the paymentsApi middleware
 });
 
 export type RootState = ReturnType<typeof store.getState>;
