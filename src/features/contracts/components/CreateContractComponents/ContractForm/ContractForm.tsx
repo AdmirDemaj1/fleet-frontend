@@ -116,7 +116,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         interestRate: 0.12,
         loanTermMonths: 36,
         monthlyPayment: 0,
-        processingFee: 0,
+        processingFeePercentage: 0.02,
         earlyRepaymentPenalty: 0.03,
         paymentScheduleType: "monthly_fixed",
       },
@@ -330,7 +330,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             interestRate: data.loanDetails.interestRate,
             loanTermMonths: data.loanDetails.loanTermMonths,
             monthlyPayment: data.loanDetails.monthlyPayment,
-            processingFee: data.loanDetails.processingFee,
+            processingFeePercentage: data.loanDetails.processingFeePercentage,
             earlyRepaymentPenalty: data.loanDetails.earlyRepaymentPenalty,
             paymentScheduleType:
               data.loanDetails.paymentScheduleType || "monthly_fixed",
@@ -542,24 +542,38 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 type="number"
                 value={
                   watchedData.loanDetails?.interestRate
-                    ? (watchedData.loanDetails.interestRate * 100).toFixed(2)
+                    ? parseFloat((watchedData.loanDetails.interestRate * 100).toFixed(10))
                     : ""
                 }
                 onChange={(e) => {
-                  const rate = parseFloat(e.target.value) / 100;
-                  setValue("loanDetails.interestRate", rate || 0, {
-                    shouldValidate: true,
-                  });
+                  const inputValue = e.target.value;
+                  if (inputValue === "" || inputValue === null) {
+                    setValue("loanDetails.interestRate", 0, {
+                      shouldValidate: true,
+                    });
+                  } else {
+                    const rate = parseFloat(inputValue) / 100;
+                    if (!isNaN(rate)) {
+                      setValue("loanDetails.interestRate", rate, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }
                 }}
                 error={!!errors.loanDetails?.interestRate}
                 helperText={
                   errors.loanDetails?.interestRate?.message ||
-                  "Annual interest rate (e.g., 12.5 for 12.5%)"
+                  "Enter percentage value (e.g., 12.5 for 12.5%)"
                 }
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">%</InputAdornment>
                   ),
+                }}
+                inputProps={{
+                  min: 0,
+                  max: 100,
+                  step: 0.01
                 }}
                 required
               />
@@ -623,29 +637,47 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               />
             </Grid>
 
-            {/* Processing Fee */}
+            {/* Processing Fee Percentage */}
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Processing Fee"
+                label="Processing Fee Percentage"
                 type="number"
-                value={watchedData.loanDetails?.processingFee || ""}
-                onChange={(e) =>
-                  setValue(
-                    "loanDetails.processingFee",
-                    parseFloat(e.target.value) || 0,
-                    { shouldValidate: true }
-                  )
+                value={
+                  watchedData.loanDetails?.processingFeePercentage
+                    ? parseFloat((watchedData.loanDetails.processingFeePercentage * 100).toFixed(10))
+                    : ""
                 }
-                error={!!errors.loanDetails?.processingFee}
+                onChange={(e) => {
+                  const inputValue = e.target.value;
+                  if (inputValue === "" || inputValue === null) {
+                    setValue("loanDetails.processingFeePercentage", 0, {
+                      shouldValidate: true,
+                    });
+                  } else {
+                    const percentageValue = parseFloat(inputValue);
+                    if (!isNaN(percentageValue)) {
+                      const decimalValue = percentageValue / 100;
+                      setValue("loanDetails.processingFeePercentage", decimalValue, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }
+                }}
+                error={!!errors.loanDetails?.processingFeePercentage}
                 helperText={
-                  errors.loanDetails?.processingFee?.message ||
-                  "One-time processing fee (optional)"
+                  errors.loanDetails?.processingFeePercentage?.message ||
+                  "Enter percentage value (e.g., 2 for 2%)"
                 }
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">$</InputAdornment>
+                  endAdornment: (
+                    <InputAdornment position="end">%</InputAdornment>
                   ),
+                }}
+                inputProps={{
+                  min: 0,
+                  max: 100,
+                  step: 0.01
                 }}
               />
             </Grid>
@@ -658,26 +690,38 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 type="number"
                 value={
                   watchedData.loanDetails?.earlyRepaymentPenalty
-                    ? (
-                        watchedData.loanDetails.earlyRepaymentPenalty * 100
-                      ).toFixed(2)
+                    ? parseFloat((watchedData.loanDetails.earlyRepaymentPenalty * 100).toFixed(10))
                     : ""
                 }
                 onChange={(e) => {
-                  const penalty = parseFloat(e.target.value) / 100;
-                  setValue("loanDetails.earlyRepaymentPenalty", penalty || 0, {
-                    shouldValidate: true,
-                  });
+                  const inputValue = e.target.value;
+                  if (inputValue === "" || inputValue === null) {
+                    setValue("loanDetails.earlyRepaymentPenalty", 0, {
+                      shouldValidate: true,
+                    });
+                  } else {
+                    const penalty = parseFloat(inputValue) / 100;
+                    if (!isNaN(penalty)) {
+                      setValue("loanDetails.earlyRepaymentPenalty", penalty, {
+                        shouldValidate: true,
+                      });
+                    }
+                  }
                 }}
                 error={!!errors.loanDetails?.earlyRepaymentPenalty}
                 helperText={
                   errors.loanDetails?.earlyRepaymentPenalty?.message ||
-                  "Penalty rate for early repayment (optional)"
+                  "Enter percentage value (e.g., 3 for 3%) - Optional"
                 }
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">%</InputAdornment>
                   ),
+                }}
+                inputProps={{
+                  min: 0,
+                  max: 100,
+                  step: 0.01
                 }}
               />
             </Grid>
@@ -931,10 +975,10 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           {watchedData.loanDetails.monthlyPayment?.toFixed(2) ||
                             "0.00"}
                         </Typography>
-                        {watchedData.loanDetails.processingFee && (
+                        {watchedData.loanDetails.processingFeePercentage && (
                           <Typography variant="body2">
-                            <strong>Processing Fee:</strong> $
-                            {watchedData.loanDetails.processingFee.toFixed(2)}
+                            <strong>Processing Fee:</strong>{" "}
+                            {(watchedData.loanDetails.processingFeePercentage * 100).toFixed(2)}%
                           </Typography>
                         )}
                         {watchedData.loanDetails.earlyRepaymentPenalty && (

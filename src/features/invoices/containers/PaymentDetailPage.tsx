@@ -59,7 +59,7 @@ const PaymentDetailPage: React.FC = () => {
             actualAmountReceived: data.actualAmountReceived,
             applyCreditBalance: data.overpaymentOption === 'credit',
             updateFuturePayments,
-            overpaymentAmount: updateFuturePayments ? overpaymentAmount : undefined
+            // overpaymentAmount: updateFuturePayments ? overpaymentAmount : undefined
           }
         }).unwrap();
 
