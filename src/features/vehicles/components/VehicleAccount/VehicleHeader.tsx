@@ -19,7 +19,9 @@ import {
   FavoriteBorder
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { Vehicle, VehicleStatus, ConditionStatus } from '../../types/vehicleType';
+import { Vehicle, VehicleStatus } from '../../types/vehicleType';
+import { BrandLogo } from '../../../../shared/components';
+import { hasBrandLogo } from '../../../../shared/utils/brandLogos';
 
 interface VehicleHeaderProps {
   vehicle: Vehicle;
@@ -61,21 +63,7 @@ export const VehicleHeader: React.FC<VehicleHeaderProps> = ({
     }
   };
 
-  const getConditionColor = (condition: ConditionStatus): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-    switch (condition) {
-      case ConditionStatus.EXCELLENT:
-        return 'success';
-      case ConditionStatus.GOOD:
-        return 'primary';
-      case ConditionStatus.FAIR:
-        return 'warning';
-      case ConditionStatus.POOR:
-      case ConditionStatus.NEEDS_REPAIR:
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
+
 
   const formatCurrency = (amount: number | undefined): string => {
     if (!amount) return 'N/A';
@@ -119,17 +107,25 @@ export const VehicleHeader: React.FC<VehicleHeaderProps> = ({
             <ArrowBack sx={{ color: theme.palette.text.primary }} />
           </IconButton>
 
-          <Avatar
-            sx={{
-              width: 80,
-              height: 80,
-              bgcolor: theme.palette.primary.main,
-              fontSize: '2rem',
-              fontWeight: 700
-            }}
-          >
-            <DirectionsCar fontSize="large" />
-          </Avatar>
+          {hasBrandLogo(vehicle.make) ? (
+            <BrandLogo 
+              brandName={vehicle.make} 
+              size={160}
+              sx={{}}
+            />
+          ) : (
+            <Avatar
+              sx={{
+                width: 160,
+                height: 160,
+                bgcolor: theme.palette.primary.main,
+                fontSize: '2rem',
+                fontWeight: 700
+              }}
+            >
+              <DirectionsCar fontSize="large" />
+            </Avatar>
+          )}
 
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -151,13 +147,6 @@ export const VehicleHeader: React.FC<VehicleHeaderProps> = ({
                 color={getStatusColor(vehicle.status)} 
                 sx={{ fontWeight: 600 }}
               />
-              {vehicle.condition && (
-                <Chip 
-                  label={vehicle.condition.replace('_', ' ')} 
-                  color={getConditionColor(vehicle.condition)} 
-                  sx={{ fontWeight: 600 }}
-                />
-              )}
               {vehicle.isLiquidAsset && (
                 <Chip 
                   label="Liquid Asset" 
