@@ -208,7 +208,7 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
     <Paper
       elevation={0}
       sx={{
-        width: 320,
+        width: '60%',
         borderRadius: 3,
         overflow: 'hidden',
         border: '1px solid',
