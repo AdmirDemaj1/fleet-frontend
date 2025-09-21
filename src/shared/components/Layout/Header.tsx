@@ -23,6 +23,7 @@ import {
   KeyboardArrowDown
 } from '@mui/icons-material';
 import { ThemeToggle } from '../Layout/ThemeToggle';
+import { useAuth } from '../../../features/auth';
 
 interface HeaderProps {
   // No props needed since we removed sidebar functionality
@@ -31,6 +32,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = () => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const theme = useTheme();
+  const { user, logout } = useAuth();
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -41,8 +43,8 @@ export const Header: React.FC<HeaderProps> = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    window.location.href = '/login';
+    handleClose();
+    logout();
   };
 
   return (
@@ -114,7 +116,7 @@ export const Header: React.FC<HeaderProps> = () => {
                   fontWeight: 600,
                 }}
               >
-                JD
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
               </Avatar>
               <KeyboardArrowDown 
                 fontSize="small" 
@@ -151,10 +153,10 @@ export const Header: React.FC<HeaderProps> = () => {
           >
             <Box sx={{ p: 2, pb: 1 }}>
               <Typography variant="subtitle2" fontWeight={600}>
-                John Doe
+                {user?.firstName} {user?.lastName}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                john.doe@fleet.com
+                {user?.email}
               </Typography>
             </Box>
             <Divider sx={{ mx: 1 }} />
