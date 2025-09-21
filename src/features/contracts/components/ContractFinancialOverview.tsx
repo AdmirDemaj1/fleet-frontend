@@ -325,6 +325,150 @@ export const ContractFinancialOverview: React.FC<ContractFinancialOverviewProps>
             </Paper>
           </Grid>
         </Grid>
+
+        {/* Principal and Interest Breakdown */}
+        {(contractConfig.principalAmount || contractConfig.interestAmount) && (
+          <>
+            <Box sx={{ mt: 4, mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                Principal & Interest Breakdown
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Detailed breakdown of contract financial composition
+              </Typography>
+            </Box>
+
+            <Grid container spacing={2}>
+              {contractConfig.principalAmount && (
+                <Grid item xs={12} md={6}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 2,
+                      bgcolor: alpha(theme.palette.primary.main, 0.04),
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-1px)',
+                        boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.15)}`
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Avatar
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          bgcolor: alpha(theme.palette.primary.main, 0.1),
+                          color: 'primary.main',
+                          mr: 1.5
+                        }}
+                      >
+                        <TrendingUp sx={{ fontSize: 20 }} />
+                      </Avatar>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                        Principal Amount
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ mb: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Total Principal
+                      </Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                        {formatCurrency(contractConfig.principalAmount)}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" color="success.main" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Paid
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
+                          {contractConfig.paidPrincipalAmount ? formatCurrency(contractConfig.paidPrincipalAmount) : '$0'}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" color="warning.main" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Remaining
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'warning.main' }}>
+                          {contractConfig.remainingPrincipalAmount ? formatCurrency(contractConfig.remainingPrincipalAmount) : '$0'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+              )}
+
+              {contractConfig.interestAmount && (
+                <Grid item xs={12} md={6}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 2,
+                      bgcolor: alpha(theme.palette.secondary.main, 0.04),
+                      border: `1px solid ${alpha(theme.palette.secondary.main, 0.1)}`,
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-1px)',
+                        boxShadow: `0 6px 16px ${alpha(theme.palette.secondary.main, 0.15)}`
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Avatar
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          bgcolor: alpha(theme.palette.secondary.main, 0.1),
+                          color: 'secondary.main',
+                          mr: 1.5
+                        }}
+                      >
+                        <AttachMoney sx={{ fontSize: 20 }} />
+                      </Avatar>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'secondary.main' }}>
+                        Interest Amount
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ mb: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Total Interest
+                      </Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'secondary.main' }}>
+                        {formatCurrency(contractConfig.interestAmount)}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" color="success.main" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Paid
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
+                          {contractConfig.paidInterestAmount ? formatCurrency(contractConfig.paidInterestAmount) : '$0'}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" color="warning.main" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Remaining
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600, color: 'warning.main' }}>
+                          {contractConfig.remainingInterestAmount ? formatCurrency(contractConfig.remainingInterestAmount) : '$0'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+              )}
+            </Grid>
+          </>
+        )}
       </Box>
     </Paper>
   );

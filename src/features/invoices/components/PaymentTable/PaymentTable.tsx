@@ -187,7 +187,7 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
 
   const renderSkeletonRow = () => (
     <TableRow>
-      {Array.from({ length: 9 }).map((_, index) => (
+      {Array.from({ length: 11 }).map((_, index) => (
         <TableCell key={index}>
           <Skeleton variant="text" />
         </TableCell>
@@ -201,7 +201,7 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
       console.error('Invalid payment object:', payment);
       return (
         <TableRow>
-          <TableCell colSpan={10}>
+          <TableCell colSpan={12}>
             <Typography variant="body2" color="error">
               Invalid payment data
             </Typography>
@@ -241,6 +241,30 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
           {payment.appliedAmount && parseFloat(String(payment.appliedAmount)) !== parseFloat(String(payment.amount)) && (
             <Typography variant="caption" color="text.secondary">
               Applied: {formatCurrency(payment.appliedAmount)}
+            </Typography>
+          )}
+        </TableCell>
+
+        <TableCell>
+          {payment.principalAmount ? (
+            <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.main' }}>
+              {formatCurrency(payment.principalAmount)}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              N/A
+            </Typography>
+          )}
+        </TableCell>
+
+        <TableCell>
+          {payment.interestAmount ? (
+            <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+              {formatCurrency(payment.interestAmount)}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              N/A
             </Typography>
           )}
         </TableCell>
@@ -400,6 +424,24 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
               </TableCell>
               <TableCell>
                 <TableSortLabel
+                  active={sortBy === 'principalAmount'}
+                  direction={sortBy === 'principalAmount' ? sortOrder : 'asc'}
+                  onClick={() => handleSort('principalAmount')}
+                >
+                  Principal
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortBy === 'interestAmount'}
+                  direction={sortBy === 'interestAmount' ? sortOrder : 'asc'}
+                  onClick={() => handleSort('interestAmount')}
+                >
+                  Interest
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
                   active={sortBy === 'dueDate'}
                   direction={sortBy === 'dueDate' ? sortOrder : 'asc'}
                   onClick={() => handleSort('dueDate')}
@@ -450,7 +492,7 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
             
             {!loading && payments.length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6 }}>
+                <TableCell colSpan={12} sx={{ textAlign: 'center', py: 6 }}>
                   <Typography variant="body1" color="text.secondary">
                     No payments found
                   </Typography>

@@ -13,6 +13,7 @@ export { ContractHeader } from "./ContractHeader";
 export { ContractFinancialOverview } from "./ContractFinancialOverview";
 export { ContractInformation } from "./ContractInformation";
 export { ContractTimeline } from "./ContractTimeline";
+export { ContractPaymentSchedule } from "./ContractPaymentSchedule";
 export { ContractPayments } from "./ContractPayments";
 export { ContractQuickActions } from "./ContractQuickActions";
 export { ContractDocuments } from "./ContractDocuments";

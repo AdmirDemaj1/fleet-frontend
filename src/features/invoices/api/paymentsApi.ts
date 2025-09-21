@@ -220,6 +220,21 @@ export const paymentsApi = createApi({
         body: paymentData,
       }),
       invalidatesTags: ['Payment'],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          
+          // Import contractApi and invalidate contract cache
+          const { contractApi } = await import('../../contracts/api/contractApi');
+          
+          // Invalidate all contract queries since new payments affect contract financial data
+          dispatch(contractApi.util.invalidateTags(['Contract']));
+          
+          console.log('✅ Contract cache invalidated after payment creation');
+        } catch (error) {
+          console.error('❌ Failed to invalidate contract cache:', error);
+        }
+      },
     }),
 
     updatePayment: builder.mutation<Payment, { id: string; data: UpdatePaymentDto }>({
@@ -232,6 +247,21 @@ export const paymentsApi = createApi({
         { type: 'Payment', id },
         'Payment'
       ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          
+          // Import contractApi and invalidate contract cache
+          const { contractApi } = await import('../../contracts/api/contractApi');
+          
+          // Invalidate all contract queries since payment changes affect contract financial data
+          dispatch(contractApi.util.invalidateTags(['Contract']));
+          
+          console.log('✅ Contract cache invalidated after payment update');
+        } catch (error) {
+          console.error('❌ Failed to invalidate contract cache:', error);
+        }
+      },
     }),
 
     deletePayment: builder.mutation<void, string>({
@@ -243,6 +273,21 @@ export const paymentsApi = createApi({
         { type: 'Payment', id },
         'Payment'
       ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          
+          // Import contractApi and invalidate contract cache
+          const { contractApi } = await import('../../contracts/api/contractApi');
+          
+          // Invalidate all contract queries since deleting payments affects contract financial data
+          dispatch(contractApi.util.invalidateTags(['Contract']));
+          
+          console.log('✅ Contract cache invalidated after payment deletion');
+        } catch (error) {
+          console.error('❌ Failed to invalidate contract cache:', error);
+        }
+      },
     }),
 
     registerPayment: builder.mutation<Payment, { contractId: string; data: RegisterPaymentDto }>({
@@ -252,6 +297,21 @@ export const paymentsApi = createApi({
         body: data,
       }),
       invalidatesTags: ['Payment'],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          
+          // Import contractApi and invalidate contract cache
+          const { contractApi } = await import('../../contracts/api/contractApi');
+          
+          // Invalidate all contract queries since new payments affect contract financial data
+          dispatch(contractApi.util.invalidateTags(['Contract']));
+          
+          console.log('✅ Contract cache invalidated after payment registration');
+        } catch (error) {
+          console.error('❌ Failed to invalidate contract cache:', error);
+        }
+      },
     }),
 
     markPaymentAsPaid: builder.mutation<Payment, { id: string; data: MarkPaymentPaidDto }>({
@@ -265,6 +325,21 @@ export const paymentsApi = createApi({
         'Payment',
         'CustomerCredit'
       ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          
+          // Import contractApi and invalidate contract cache
+          const { contractApi } = await import('../../contracts/api/contractApi');
+          
+          // Invalidate all contract queries since payment status changes affect contract financial data
+          dispatch(contractApi.util.invalidateTags(['Contract']));
+          
+          console.log('✅ Contract cache invalidated after payment update');
+        } catch (error) {
+          console.error('❌ Failed to invalidate contract cache:', error);
+        }
+      },
     }),
 
     markPaymentAsPaidWithCredit: builder.mutation<PaymentWithCreditResponse, { 
@@ -281,6 +356,21 @@ export const paymentsApi = createApi({
         'Payment',
         'CustomerCredit'
       ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          
+          // Import contractApi and invalidate contract cache
+          const { contractApi } = await import('../../contracts/api/contractApi');
+          
+          // Invalidate all contract queries since payment status changes affect contract financial data
+          dispatch(contractApi.util.invalidateTags(['Contract']));
+          
+          console.log('✅ Contract cache invalidated after payment with credit update');
+        } catch (error) {
+          console.error('❌ Failed to invalidate contract cache:', error);
+        }
+      },
     }),
 
     getCustomerCreditBalance: builder.query<CustomerCreditBalance, string>({

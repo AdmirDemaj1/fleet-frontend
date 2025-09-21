@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -22,18 +22,29 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Payment } from '../types/invoice.types';
+import { MarkPaymentPaidModal } from './MarkPaymentPaidModal';
 
 interface PaymentHeaderProps {
   payment: Payment;
-  onMarkAsPaid: () => void;
+  onMarkAsPaid: (data: {
+    paymentDate: string;
+    paymentMethod: string;
+    actualAmountReceived: number;
+    transactionReference?: string;
+    notes?: string;
+    overpaymentOption?: 'credit' | 'upcoming_payments';
+  }) => Promise<void>;
+  loading?: boolean;
 }
 
 export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
   payment,
-  onMarkAsPaid
+  onMarkAsPaid,
+  loading = false
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const [modalOpen, setModalOpen] = useState(false);
 
   const handleBack = () => {
     navigate('/payments');
@@ -211,7 +222,7 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
               variant="contained"
               size="large"
               startIcon={<CheckCircle />}
-              onClick={onMarkAsPaid}
+              onClick={() => setModalOpen(true)}
               sx={{
                 bgcolor: theme.palette.success.main,
                 color: theme.palette.success.contrastText,
@@ -279,6 +290,15 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
           </Button>
         </Box>
       </Box>
+
+      {/* Mark as Paid Modal */}
+      <MarkPaymentPaidModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        payment={payment}
+        onMarkAsPaid={onMarkAsPaid}
+        loading={loading}
+      />
     </Box>
   );
 };

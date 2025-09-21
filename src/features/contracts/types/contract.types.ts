@@ -36,7 +36,7 @@ export interface LoanContract extends BaseContract {
   interestRate: number;
   loanTermMonths: number;
   monthlyPayment: number;
-  processingFee?: number;
+  processingFeePercentage?: number;
   earlyRepaymentPenalty?: number;
   paymentScheduleType?: string;
 }
@@ -109,7 +109,7 @@ export interface CreateContractDto {
     interestRate: number;
     loanTermMonths: number;
     monthlyPayment: number;
-    processingFee?: number;
+    processingFeePercentage?: number;
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
   };
@@ -191,7 +191,7 @@ export interface ContractFormData {
     interestRate: number;
     loanTermMonths: number;
     monthlyPayment: number;
-    processingFee?: number;
+    processingFeePercentage?: number;
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
   };
@@ -228,6 +228,10 @@ export interface ContractResponse {
   endDate: string;
   totalAmount: string;
   remainingAmount: string;
+  interestAmount?: string;
+  principalAmount?: string;
+  remainingInterestAmount?: string;
+  remainingPrincipalAmount?: string;
   createdAt: string;
   updatedAt: string;
   documents?: ContractDocumentResponseDto[];

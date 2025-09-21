@@ -15,7 +15,9 @@ import {
   AttachMoney,
   Schedule,
   Description,
-  ReceiptLong
+  ReceiptLong,
+  TrendingUp,
+  Percent
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { Payment } from '../types/invoice.types';
@@ -96,9 +98,35 @@ export const PaymentInformation: React.FC<PaymentInformationProps> = ({ payment 
         <Typography variant="h3" sx={{ fontWeight: 800, color: theme.palette.primary.main, mb: 1 }}>
           {formatCurrency(payment.amount)}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {String(payment.type).replace('_', ' ').charAt(0).toUpperCase() + String(payment.type).replace('_', ' ').slice(1)} Payment
         </Typography>
+        
+        {/* Principal and Interest breakdown */}
+        {(payment.principalAmount || payment.interestAmount) && (
+          <Box sx={{ display: 'flex', gap: 3, mt: 2 }}>
+            {payment.principalAmount && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Principal Amount
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
+                  {formatCurrency(payment.principalAmount)}
+                </Typography>
+              </Box>
+            )}
+            {payment.interestAmount && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Interest Amount
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.warning.main }}>
+                  {formatCurrency(payment.interestAmount)}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
       </Box>
 
       {/* Payment Details Grid */}

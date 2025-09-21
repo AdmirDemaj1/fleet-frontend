@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useEuriborStatus } from '../../../features/euribor/hooks/useEuriborStatus';
 import {
   Drawer,
   List,
@@ -24,14 +25,14 @@ import {
   DirectionsCar as VehiclesIcon,
   Description as ContractsIcon,
   PersonAdd as EndorsersIcon,
-  Article as ArticleIcon,
   BusinessCenter,
   ExpandLess,
   ExpandMore,
   Analytics as AnalyticsIcon,
   KeyboardDoubleArrowLeft,
   KeyboardDoubleArrowRight,
-  Payment as PaymentIcon
+  Payment as PaymentIcon,
+  TrendingUp as EuriborIcon
 } from '@mui/icons-material';
 
 interface MenuItem {
@@ -91,6 +92,12 @@ const menuItems: MenuItem[] = [
     text: 'Endorsers', 
     icon: <EndorsersIcon />, 
     path: '/endorsers' 
+  },
+  { 
+    id: 'euribor-rates',
+    text: 'Euribor Rates', 
+    icon: <EuriborIcon />, 
+    path: '/euribor-rates' 
   },
   {
     id: 'Audit',
@@ -336,6 +343,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const euriborStatus = useEuriborStatus();
 
   const handleNavigate = useCallback((path: string) => {
     navigate(path);
@@ -471,10 +479,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             (item.path !== '/' && location.pathname.startsWith(item.path))
           ) : false;
           
+          // Dynamically add badge for Euribor rates if there are missing rates
+          const enhancedItem = item.id === 'euribor-rates' && euriborStatus.missingTodayRatesCount > 0
+            ? { ...item, badge: euriborStatus.missingTodayRatesCount }
+            : item;
+          
           return (
             <SidebarMenuItem
               key={item.id}
-              item={item}
+              item={enhancedItem}
               collapsed={collapsed && !isMobile}
               isSelected={isSelected}
               onNavigate={handleNavigate}
@@ -485,7 +498,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </List>
     </Box>
-  ), [theme, collapsed, isMobile, location.pathname, handleNavigate, onClose]);
+  ), [theme, collapsed, isMobile, location.pathname, handleNavigate, onClose, euriborStatus.missingTodayRatesCount]);
 
   // Enhanced collapse toggle section
   const CollapseToggleSection = useMemo(() => (

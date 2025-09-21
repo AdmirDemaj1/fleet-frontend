@@ -53,6 +53,12 @@ import { INVOICE_ROWS_PER_PAGE_OPTIONS } from '../../constants/invoiceConstants'
 import { InvoiceFilters } from './InvoiceFilters';
 import { InvoiceFilters as InvoiceFiltersType } from '../../types/invoiceFilters.types';
 import { ConfirmDialog } from '../../../../shared/components/ConfirmDialog';
+import { MarkPaymentPaidModal } from '../../../invoices/components/MarkPaymentPaidModal';
+import { 
+  useMarkPaymentAsPaidMutation, 
+  useMarkPaymentAsPaidWithCreditMutation 
+} from '../../../invoices/api/paymentsApi';
+import { Payment } from '../../../invoices/types/invoice.types';
 
 // Export types for external use
 export type { CustomerAccountInvoicesProps };
@@ -75,6 +81,14 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
     closeDeleteDialog 
   } = useInvoiceDialogStates();
   const { anchorEl, selectedInvoice, openMenu, closeMenu } = useInvoiceMenuState();
+  
+  // Payment API mutations
+  const [markAsPaid, { isLoading: isMarkingPaid }] = useMarkPaymentAsPaidMutation();
+  const [markAsPaidWithCredit, { isLoading: isMarkingPaidWithCredit }] = useMarkPaymentAsPaidWithCreditMutation();
+  
+  // Modal state
+  const [markPaymentModalOpen, setMarkPaymentModalOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   
   // Filters state
   const [filters, setFilters] = useState<InvoiceFiltersType>({
@@ -113,14 +127,73 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
     openDeleteDialog(invoiceId);
   };
 
-  const handleMarkAsPaid = async (invoiceId: string) => {
+  const handleMarkAsPaid = (invoiceId: string) => {
+    const invoice = invoices?.find(inv => inv.id === invoiceId);
+    if (invoice) {
+      setSelectedPayment(invoice as Payment);
+      setMarkPaymentModalOpen(true);
+    }
+  };
+
+  const handleMarkAsPaidConfirm = async (data: {
+    paymentDate: string;
+    paymentMethod: string;
+    actualAmountReceived: number;
+    transactionReference?: string;
+    notes?: string;
+    overpaymentOption?: 'credit' | 'upcoming_payments';
+  }) => {
+    if (!selectedPayment) return;
+
     try {
-      // Call API to mark invoice as paid
-      console.log(`Marking invoice ${invoiceId} as paid`);
-      showNotification('Invoice marked as paid', 'success');
+      const paymentAmount = Number(selectedPayment.amount);
+      const isOverpayment = data.actualAmountReceived > paymentAmount;
+
+      if (isOverpayment) {
+        // Handle overpayment case
+        const overpaymentAmount = data.actualAmountReceived - paymentAmount;
+        const updateFuturePayments = data.overpaymentOption === 'upcoming_payments';
+        
+        await markAsPaidWithCredit({
+          id: selectedPayment.id,
+          data: {
+            paymentDate: data.paymentDate,
+            paymentMethod: data.paymentMethod,
+            transactionReference: data.transactionReference,
+            notes: data.notes,
+            actualAmountReceived: data.actualAmountReceived,
+            applyCreditBalance: data.overpaymentOption === 'credit',
+            updateFuturePayments,
+            // overpaymentAmount: updateFuturePayments ? overpaymentAmount : undefined
+          }
+        }).unwrap();
+
+        const message = data.overpaymentOption === 'credit'
+          ? `Payment marked as paid. €${overpaymentAmount.toFixed(2)} added to customer credits.`
+          : `Payment marked as paid. €${overpaymentAmount.toFixed(2)} will be applied to upcoming payments.`;
+        
+        showNotification(message, 'success');
+      } else {
+        // Handle normal payment case
+        await markAsPaid({
+          id: selectedPayment.id,
+          data: {
+            paymentDate: data.paymentDate,
+            paymentMethod: data.paymentMethod,
+            transactionReference: data.transactionReference,
+            notes: data.notes
+          }
+        }).unwrap();
+
+        showNotification('Payment marked as paid successfully!', 'success');
+      }
+
       await fetchInvoices();
+      setMarkPaymentModalOpen(false);
+      setSelectedPayment(null);
     } catch (error) {
-      showNotification('Failed to mark invoice as paid', 'error');
+      console.error('Failed to mark payment as paid:', error);
+      showNotification('Failed to mark payment as paid. Please try again.', 'error');
     }
   };
 
@@ -499,6 +572,18 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Mark as Paid Modal */}
+      <MarkPaymentPaidModal
+        open={markPaymentModalOpen}
+        onClose={() => {
+          setMarkPaymentModalOpen(false);
+          setSelectedPayment(null);
+        }}
+        payment={selectedPayment}
+        onMarkAsPaid={handleMarkAsPaidConfirm}
+        loading={isMarkingPaid || isMarkingPaidWithCredit}
+      />
 
       {/* Delete Confirmation Dialog */}
             <ConfirmDialog

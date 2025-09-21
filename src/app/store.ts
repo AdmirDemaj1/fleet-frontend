@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import customerReducer from '../features/customers/slices/customerSlice';
 import vehicleReducer from '../features/vehicles/slices/vehicleSlice';
 import auditReducer from '../features/logs/slices/Auditslice';
+import authReducer from '../features/auth/slices/authSlice';
 
 import { auditApi } from '../features/logs/api/auditapi'; // Import auditApi
 import { contractApi } from '../features/contracts/api/contractApi'; // Import contractApi
@@ -12,6 +13,7 @@ import { endorserApi } from '../features/endorsers/api/endorserApi'; // Import e
 
 export const store = configureStore({
   reducer: {
+    auth: authReducer,
     customers: customerReducer,
     vehicles: vehicleReducer,
     audits: auditReducer,
@@ -30,7 +32,6 @@ export const store = configureStore({
       .concat(paymentsApi.middleware) // Add the paymentsApi middleware
       .concat(endorserApi.middleware) // Add the endorserApi middleware
       .concat(vehicleDocumentApi.middleware) // Add the vehicleDocumentApi middleware
-      .concat(paymentsApi.middleware) // Add the paymentsApi middleware
 });
 
 export type RootState = ReturnType<typeof store.getState>;
