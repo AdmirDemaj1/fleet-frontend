@@ -17,8 +17,7 @@ import {
   Tooltip,
   InputAdornment,
   useTheme,
-  alpha,
-  Avatar
+  alpha
 } from '@mui/material';
 import {
   DirectionsCar,
@@ -31,7 +30,7 @@ import {
 import { useGetAvailableVehiclesQuery } from '../../../api/contractApi';
 import { VehiclePickerProps, VehicleSummary } from '../../../types/contract.types';
 import { vehicleApi } from '../../../../vehicles/api/vehicleApi';
-import { VehicleCreationModal } from '../../../../../shared/components';
+import { VehicleCreationModal, BrandLogo } from '../../../../../shared/components';
 import { Vehicle } from '../../../../vehicles/types/vehicleType';
 
 // Simple debounce hook
@@ -410,15 +409,10 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
                 }
               }}
             >
-              <Avatar
-                sx={{
-                  bgcolor: theme.palette.success.main,
-                  width: 40,
-                  height: 40
-                }}
-              >
-                <DirectionsCar />
-              </Avatar>
+              <BrandLogo 
+                brandName={option.make}
+                size={120}
+              />
               
               <Box sx={{ flex: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -519,15 +513,10 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
           >
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: theme.palette.success.main,
-                    width: 50,
-                    height: 50
-                  }}
-                >
-                  <DirectionsCar />
-                </Avatar>
+                <BrandLogo 
+                  brandName={state.selectedVehicle.make}
+                  size={150}
+                />
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {state.selectedVehicle.year} {state.selectedVehicle.make} {state.selectedVehicle.model}

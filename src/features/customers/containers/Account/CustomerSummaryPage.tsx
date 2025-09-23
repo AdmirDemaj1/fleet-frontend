@@ -14,24 +14,6 @@ const CustomerSummaryPage: React.FC = () => {
     return <Box>Customer ID not found</Box>;
   }
 
-  const assetData = [
-    { 
-      name: 'ford focus', 
-      ipAddress: '67.227.228.4', 
-      type: 'endpoint' as const, 
-      status: 'active' as const, 
-      lastUpdated: '2025-07-12'
-    },
-    { 
-      name: 'another-asset.example.com', 
-      ipAddress: '192.168.1.1', 
-      type: 'server' as const, 
-      status: 'maintenance' as const, 
-      lastUpdated: '2025-07-10'
-    },
-    // ...other assets
-  ];
-
   return (
     <Box sx={{ display: 'flex' }}>
       <CustomerAccountSidebar customerId={id} />
@@ -42,7 +24,7 @@ const CustomerSummaryPage: React.FC = () => {
           invoicesLoading={invoicesLoading}
           invoicesError={invoicesError}
         />
-        <CustomerAssetSummary assets={assetData} />
+        <CustomerAssetSummary customerId={id} />
       </Box>
     </Box>
   );

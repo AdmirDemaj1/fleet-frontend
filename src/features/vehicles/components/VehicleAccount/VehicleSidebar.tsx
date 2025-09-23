@@ -7,7 +7,6 @@ import {
   List,
   ListItem,
   Chip,
-  Divider,
   useTheme,
   alpha,
   Stack,
@@ -28,7 +27,9 @@ import {
   Error as ErrorIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
-import { Vehicle, VehicleStatus, ConditionStatus } from '../../types/vehicleType';
+import { Vehicle, VehicleStatus } from '../../types/vehicleType';
+import { BrandLogo } from '../../../../shared/components';
+import { hasBrandLogo } from '../../../../shared/utils/brandLogos';
 
 interface VehicleSidebarProps {
   vehicle: Vehicle;
@@ -99,39 +100,7 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
     }
   };
 
-  const getConditionConfig = (condition?: ConditionStatus) => {
-    if (!condition) return null;
-    
-    switch (condition) {
-      case ConditionStatus.EXCELLENT:
-        return {
-          color: theme.palette.success.main,
-          bgcolor: alpha(theme.palette.success.main, 0.1),
-          label: 'Excellent'
-        };
-      case ConditionStatus.GOOD:
-        return {
-          color: theme.palette.primary.main,
-          bgcolor: alpha(theme.palette.primary.main, 0.1),
-          label: 'Good'
-        };
-      case ConditionStatus.FAIR:
-        return {
-          color: theme.palette.warning.main,
-          bgcolor: alpha(theme.palette.warning.main, 0.1),
-          label: 'Fair'
-        };
-      case ConditionStatus.POOR:
-      case ConditionStatus.NEEDS_REPAIR:
-        return {
-          color: theme.palette.error.main,
-          bgcolor: alpha(theme.palette.error.main, 0.1),
-          label: condition === ConditionStatus.POOR ? 'Poor' : 'Needs Repair'
-        };
-      default:
-        return null;
-    }
-  };
+
 
   const getDaysUntilExpiry = (expiryDate: string | undefined): number | null => {
     if (!expiryDate) return null;
@@ -156,7 +125,6 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
   };
 
   const statusConfig = getStatusConfig(vehicle.status);
-  const conditionConfig = getConditionConfig(vehicle.condition);
   const StatusIcon = statusConfig.icon;
 
   const utilizationRate = 85; // Mock data
@@ -181,17 +149,25 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-          <Avatar
-            sx={{
-              width: 56,
-              height: 56,
-              bgcolor: theme.palette.primary.main,
-              fontSize: '1.25rem',
-              fontWeight: 700
-            }}
-          >
-            {getVehicleInitials()}
-          </Avatar>
+          {hasBrandLogo(vehicle.make) ? (
+            <BrandLogo 
+              brandName={vehicle.make} 
+              size={56}
+              sx={{}}
+            />
+          ) : (
+            <Avatar
+              sx={{
+                width: 56,
+                height: 56,
+                bgcolor: theme.palette.primary.main,
+                fontSize: '1.25rem',
+                fontWeight: 700
+              }}
+            >
+              {getVehicleInitials()}
+            </Avatar>
+          )}
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
               {vehicle.make} {vehicle.model}
@@ -217,17 +193,7 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
               }
             }}
           />
-          {conditionConfig && (
-            <Chip
-              label={conditionConfig.label}
-              sx={{
-                bgcolor: conditionConfig.bgcolor,
-                color: conditionConfig.color,
-                fontWeight: 600,
-                fontSize: '0.75rem'
-              }}
-            />
-          )}
+
         </Stack>
       </Box>
 
@@ -253,7 +219,7 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
           </Box>
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              {formatMileage(vehicle.mileage)}
+              {formatMileage(vehicle.currentMileage)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Mileage
@@ -370,36 +336,36 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
         </Typography>
         
         <List dense disablePadding>
-          {vehicle.insuranceExpiryDate && (
+          {vehicle.tplExpiryDate && (
             <ListItem disablePadding sx={{ display: 'flex', justifyContent: 'space-between', py: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Security sx={{ 
                   fontSize: 16, 
-                  color: isExpired(vehicle.insuranceExpiryDate) ? 'error.main' :
-                        isExpiringSoon(vehicle.insuranceExpiryDate) ? 'warning.main' : 'success.main'
+                  color: isExpired(vehicle.tplExpiryDate) ? 'error.main' :
+                        isExpiringSoon(vehicle.tplExpiryDate) ? 'warning.main' : 'success.main'
                 }} />
-                <Typography variant="body2" color="text.secondary">Insurance</Typography>
+                <Typography variant="body2" color="text.secondary">TPL Insurance</Typography>
               </Box>
               <Typography 
                 variant="body2" 
                 sx={{ 
                   fontWeight: 500,
-                  color: isExpired(vehicle.insuranceExpiryDate) ? 'error.main' :
-                        isExpiringSoon(vehicle.insuranceExpiryDate) ? 'warning.main' : 'text.primary'
+                  color: isExpired(vehicle.tplExpiryDate) ? 'error.main' :
+                        isExpiringSoon(vehicle.tplExpiryDate) ? 'warning.main' : 'text.primary'
                 }}
               >
-                {format(new Date(vehicle.insuranceExpiryDate), 'MMM dd, yyyy')}
+                {format(new Date(vehicle.tplExpiryDate), 'MMM dd, yyyy')}
               </Typography>
             </ListItem>
           )}
 
-          {vehicle.registrationExpiryDate && (
+          {vehicle.registrationExpiry && (
             <ListItem disablePadding sx={{ display: 'flex', justifyContent: 'space-between', py: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Event sx={{ 
                   fontSize: 16, 
-                  color: isExpired(vehicle.registrationExpiryDate) ? 'error.main' :
-                        isExpiringSoon(vehicle.registrationExpiryDate) ? 'warning.main' : 'success.main'
+                  color: isExpired(vehicle.registrationExpiry) ? 'error.main' :
+                        isExpiringSoon(vehicle.registrationExpiry) ? 'warning.main' : 'success.main'
                 }} />
                 <Typography variant="body2" color="text.secondary">Registration</Typography>
               </Box>
@@ -407,11 +373,11 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
                 variant="body2" 
                 sx={{ 
                   fontWeight: 500,
-                  color: isExpired(vehicle.registrationExpiryDate) ? 'error.main' :
-                        isExpiringSoon(vehicle.registrationExpiryDate) ? 'warning.main' : 'text.primary'
+                  color: isExpired(vehicle.registrationExpiry) ? 'error.main' :
+                        isExpiringSoon(vehicle.registrationExpiry) ? 'warning.main' : 'text.primary'
                 }}
               >
-                {format(new Date(vehicle.registrationExpiryDate), 'MMM dd, yyyy')}
+                {format(new Date(vehicle.registrationExpiry), 'MMM dd, yyyy')}
               </Typography>
             </ListItem>
           )}

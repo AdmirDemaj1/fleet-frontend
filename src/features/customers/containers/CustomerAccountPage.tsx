@@ -14,7 +14,7 @@ const CustomerAccountPage: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <CustomerAccountMenu customerId={id} />
+      <CustomerAccountMenu />
       <Box sx={{ flexGrow: 1, pt: 3, pb: 3 }}>
         <Outlet />
       </Box>
