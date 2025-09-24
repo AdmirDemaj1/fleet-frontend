@@ -27,6 +27,7 @@ import {
 import { Vehicle, VehicleStatus } from '../../types/vehicleType';
 import { VehicleListSkeleton } from './VehicleListSkeleton';
 import { VehicleListEmpty } from './VehicleListEmpty';
+import { BrandLogo } from '../../../../shared/components';
 
 interface VehicleListProps {
   vehicles: Vehicle[];
@@ -180,13 +181,16 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                   </TableCell>
                   
                   <TableCell sx={{ fontSize: '0.8rem' }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                        {vehicle.year} {vehicle.make} {vehicle.model}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                        {vehicle.color ? `${vehicle.color} • ` : ''}{vehicle.currentMileage?.toLocaleString() || 0} mi
-                      </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <BrandLogo brandName={vehicle.make} size={40} />
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                          {vehicle.year} {vehicle.make} {vehicle.model}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                          {vehicle.color ? `${vehicle.color} • ` : ''}{vehicle.currentMileage?.toLocaleString() || 0} mi
+                        </Typography>
+                      </Box>
                     </Box>
                   </TableCell>
 

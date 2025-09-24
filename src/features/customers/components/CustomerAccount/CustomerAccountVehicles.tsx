@@ -44,6 +44,7 @@ import {
 import { Vehicle } from '../../../vehicles/types/vehicleType';
 import { formatCurrency } from '../../utils/vehicleUtils';
 import { renderVehicleStatusCell } from '../../utils/vehicleRenderUtils';
+import { BrandLogo } from '../../../../shared/components';
 import { VEHICLES_ROWS_PER_PAGE_OPTIONS } from '../../constants/vehicleConstants';
 import { VehicleFilters } from './VehicleFilters';
 import type { VehicleFilters as VehicleFiltersType } from '../../types/vehicleFilters.types';
@@ -285,15 +286,18 @@ const CustomerAccountVehicles: React.FC<CustomerAccountVehiclesProps> = ({ custo
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Box>
-                      <Typography variant="body2" fontWeight={500}>
-                        {vehicle.make} {vehicle.model}
-                      </Typography>
-                      {vehicle.color && (
-                        <Typography variant="caption" color="text.secondary">
-                          {vehicle.color}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <BrandLogo brandName={vehicle.make} size={45} />
+                      <Box>
+                        <Typography variant="body2" fontWeight={500}>
+                          {vehicle.make} {vehicle.model}
                         </Typography>
-                      )}
+                        {vehicle.color && (
+                          <Typography variant="caption" color="text.secondary">
+                            {vehicle.color}
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                   </TableCell>
                   <TableCell>

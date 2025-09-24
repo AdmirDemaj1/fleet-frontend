@@ -249,7 +249,7 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
     const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
     const maxAmount = Math.max(...paymentSchedule.map(item => item.payment));
-    const width = 900;
+    const width = 750;
     const height = 420;
     const paddingLeft = 80;
     const paddingRight = 40;
@@ -833,10 +833,17 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
             display: "flex", 
             alignItems: "center", 
             justifyContent: "center", 
-            overflow: "hidden",
+            overflow: "visible",
             position: "relative"
           }}>
-            <CustomChart />
+            <Box sx={{ 
+              width: "100%", 
+              maxWidth: 700,
+              display: "flex", 
+              justifyContent: "center" 
+            }}>
+              <CustomChart />
+            </Box>
           </Box>
         </Box>
       )}
