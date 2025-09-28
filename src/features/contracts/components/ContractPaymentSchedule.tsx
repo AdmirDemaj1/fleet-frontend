@@ -54,125 +54,357 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Payment Schedule - Contract ${contract.id}</title>
+          <title>Payment Schedule - Contract ${contract.contractNumber || contract.id}</title>
           <style>
             @media print {
-              @page { margin: 1in; }
+              @page { margin: 0.5in; }
             }
             body { 
-              font-family: Arial, sans-serif; 
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
               margin: 0;
-              padding: 20px;
+              padding: 0;
+              color: #333;
+              line-height: 1.3;
+              font-size: 11px;
             }
-            .header {
+            .letterhead {
+              background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+              color: white;
+              padding: 20px 25px;
+              margin-bottom: 25px;
+              position: relative;
+              overflow: hidden;
+            }
+            .letterhead::before {
+              content: '';
+              position: absolute;
+              top: -50%;
+              right: -10%;
+              width: 200px;
+              height: 200px;
+              background: rgba(255,255,255,0.1);
+              border-radius: 50%;
+              z-index: 1;
+            }
+            .letterhead-content {
+              position: relative;
+              z-index: 2;
+              display: flex;
+              align-items: center;
+              justify-content: flex-start;
+            }
+            .company-logo {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .company-logo img {
+              width: 120px;
+              height: 120px;
+              object-fit: contain;
+            }
+            .company-name {
+              font-size: 28px;
+              font-weight: 700;
+              margin: 0 0 6px 0;
+              text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            .company-tagline {
+              font-size: 14px;
+              opacity: 0.9;
+              margin: 0;
+              font-weight: 300;
+            }
+            .document-title {
               text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #1976d2;
-              padding-bottom: 20px;
+              margin: 25px 0 20px 0;
+              padding: 0 25px;
             }
-            .header h1 {
+            .document-title h1 {
               color: #1976d2;
-              margin-bottom: 10px;
+              font-size: 24px;
+              font-weight: 700;
+              margin: 0 0 8px 0;
+              border-bottom: 3px solid #1976d2;
+              padding-bottom: 8px;
+              display: inline-block;
+            }
+            .document-subtitle {
+              color: #666;
+              font-size: 12px;
+              margin: 8px 0;
+            }
+            .contract-info {
+              background: #f8f9fa;
+              border-left: 4px solid #1976d2;
+              padding: 15px 20px;
+              margin: 0 25px 20px 25px;
+              border-radius: 0 8px 8px 0;
+            }
+            .contract-info-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 12px;
+            }
+            .contract-info-item {
+              display: flex;
+              justify-content: space-between;
+            }
+            .contract-info-label {
+              font-weight: 600;
+              color: #555;
+              font-size: 10px;
+            }
+            .contract-info-value {
+              color: #1976d2;
+              font-weight: 600;
+              font-size: 11px;
             }
             .summary {
               display: grid;
               grid-template-columns: repeat(4, 1fr);
-              gap: 20px;
-              margin-bottom: 30px;
+              gap: 15px;
+              margin: 0 25px 25px 25px;
             }
             .summary-item {
               text-align: center;
-              padding: 15px;
-              background: #f5f5f5;
-              border-radius: 8px;
+              padding: 18px 12px;
+              background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+              border-radius: 10px;
+              border: 1px solid #dee2e6;
+              position: relative;
+              overflow: hidden;
+            }
+            .summary-item::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              height: 4px;
+              background: var(--accent-color, #1976d2);
+            }
+            .summary-item.primary { --accent-color: #1976d2; }
+            .summary-item.success { --accent-color: #4caf50; }
+            .summary-item.info { --accent-color: #2196f3; }
+            .summary-item.warning { --accent-color: #ff9800; }
+            .summary-item .icon {
+              width: 20px;
+              height: 20px;
+              margin: 0 auto 8px auto;
+              background: var(--accent-color, #1976d2);
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-size: 10px;
             }
             .summary-item .label {
-              font-size: 12px;
+              font-size: 10px;
               color: #666;
-              margin-bottom: 5px;
+              margin-bottom: 6px;
+              font-weight: 500;
+              text-transform: uppercase;
+              letter-spacing: 0.3px;
             }
             .summary-item .value {
               font-size: 16px;
-              font-weight: bold;
-              color: #1976d2;
+              font-weight: 700;
+              color: var(--accent-color, #1976d2);
+              margin: 0;
+            }
+            .table-container {
+              margin: 0 25px;
+              border-radius: 10px;
+              overflow: hidden;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+              border: 1px solid #dee2e6;
             }
             table { 
               width: 100%; 
               border-collapse: collapse; 
-              margin-top: 20px;
+              margin: 0;
+              background: white;
+              table-layout: fixed;
             }
             th, td { 
-              border: 1px solid #ddd; 
-              padding: 12px; 
+              padding: 10px 8px; 
               text-align: right;
+              border-bottom: 1px solid #e9ecef;
+              font-size: 10px;
             }
             th {
-              background-color: #1976d2;
+              background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
               color: white;
-              font-weight: bold;
+              font-weight: 600;
+              font-size: 10px;
+              text-transform: uppercase;
+              letter-spacing: 0.3px;
+              border-bottom: none;
+              height: 35px;
             }
+            th:first-child, td:first-child {
+              text-align: center;
+              width: 15%;
+            }
+            th:nth-child(2), td:nth-child(2) { width: 21.25%; }
+            th:nth-child(3), td:nth-child(3) { width: 21.25%; }
+            th:nth-child(4), td:nth-child(4) { width: 21.25%; }
+            th:nth-child(5), td:nth-child(5) { width: 21.25%; }
             tr:nth-child(even) {
-              background-color: #f9f9f9;
+              background-color: #fafbfc;
+            }
+            tr:hover {
+              background-color: #f1f3f4;
+            }
+            td {
+              font-size: 10px;
+              font-weight: 500;
+            }
+            .period-cell {
+              font-weight: 700;
+              color: #1976d2;
             }
             .footer {
-              margin-top: 30px;
+              margin: 30px 25px 15px 25px;
+              padding: 20px;
+              background: #f8f9fa;
+              border-radius: 10px;
+              border-left: 4px solid #1976d2;
               text-align: center;
-              font-size: 12px;
+            }
+            .footer-logo {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 0;
+            }
+            .footer-logo img {
+              width: 80px;
+              height: 80px;
+              object-fit: contain;
+            }
+            .footer-text {
+              font-size: 8px;
               color: #666;
+              margin: 2px 0;
+              line-height: 1.3;
+            }
+            .footer-company {
+              font-weight: 600;
+              color: #1976d2;
+              margin-top: 8px;
             }
           </style>
         </head>
         <body>
-          <div class="header">
+          <!-- Enhanced Letterhead with Antigone Branding -->
+          <div class="letterhead">
+            <div class="letterhead-content">
+              <div class="company-logo">
+                <img src="${window.location.origin}/images/logo/antigone-logo-exact.png" alt="Antigone Logo" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Document Title Section -->
+          <div class="document-title">
             <h1>Payment Schedule</h1>
-            <p>Contract ID: ${contract.id}</p>
-            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <p class="document-subtitle">Comprehensive amortization breakdown and payment analysis</p>
+          </div>
+
+          <!-- Contract Information -->
+          <div class="contract-info">
+            <div class="contract-info-grid">
+              <div class="contract-info-item">
+                <span class="contract-info-label">Contract Number:</span>
+                <span class="contract-info-value">${contract.contractNumber || contract.id}</span>
+              </div>
+              <div class="contract-info-item">
+                <span class="contract-info-label">Generated Date:</span>
+                <span class="contract-info-value">${new Date().toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</span>
+              </div>
+              <div class="contract-info-item">
+                <span class="contract-info-label">Contract Type:</span>
+                <span class="contract-info-value">${contract.type?.toUpperCase() || 'LOAN'}</span>
+              </div>
+              <div class="contract-info-item">
+                <span class="contract-info-label">Status:</span>
+                <span class="contract-info-value">${contract.status?.toUpperCase() || 'ACTIVE'}</span>
+              </div>
+            </div>
           </div>
           
+          <!-- Enhanced Financial Summary -->
           <div class="summary">
-            <div class="summary-item">
+            <div class="summary-item primary">
+              <div class="icon">€</div>
               <div class="label">Monthly Payment</div>
               <div class="value">${formatCurrency(summaryStats?.monthlyPayment || 0)}</div>
             </div>
-            <div class="summary-item">
+            <div class="summary-item success">
+              <div class="icon">↗</div>
               <div class="label">Total Principal</div>
               <div class="value">${formatCurrency(summaryStats?.totalPrincipal || 0)}</div>
             </div>
-            <div class="summary-item">
+            <div class="summary-item info">
+              <div class="icon">%</div>
               <div class="label">Total Interest</div>
               <div class="value">${formatCurrency(summaryStats?.totalInterest || 0)}</div>
             </div>
-            <div class="summary-item">
+            <div class="summary-item warning">
+              <div class="icon">Σ</div>
               <div class="label">Total Payments</div>
               <div class="value">${formatCurrency(summaryStats?.totalPayments || 0)}</div>
             </div>
           </div>
 
-          <table>
-            <thead>
-              <tr>
-                <th>Period</th>
-                <th>Payment</th>
-                <th>Interest</th>
-                <th>Principal</th>
-                <th>Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${paymentSchedule.map(row => `
+          <!-- Enhanced Payment Schedule Table -->
+          <div class="table-container">
+            <table>
+              <thead>
                 <tr>
-                  <td style="text-align: center;">${row.period}</td>
-                  <td>${formatCurrency(row.payment)}</td>
-                  <td>${formatCurrency(row.interest)}</td>
-                  <td>${formatCurrency(row.principal)}</td>
-                  <td>${formatCurrency(row.balance)}</td>
+                  <th>Payment Period</th>
+                  <th>Monthly Payment</th>
+                  <th>Interest Portion</th>
+                  <th>Principal Portion</th>
+                  <th>Remaining Balance</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${paymentSchedule.map(row => `
+                  <tr>
+                    <td class="period-cell">${row.period}</td>
+                    <td>${formatCurrency(row.payment)}</td>
+                    <td>${formatCurrency(row.interest)}</td>
+                    <td>${formatCurrency(row.principal)}</td>
+                    <td>${formatCurrency(row.balance)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
           
+          <!-- Enhanced Footer with Branding -->
           <div class="footer">
-            <p>This document was generated automatically. All amounts are in EUR.</p>
+            <div class="footer-logo">
+              <img src="${window.location.origin}/images/logo/antigone-logo-exact.png" alt="Antigone" />
+            </div>
+            <p class="footer-text">
+              This payment schedule was automatically generated by Antigone Fleet Management System.
+            </p>
+            <p class="footer-text">
+              All monetary amounts are displayed in Euros (EUR). This document serves as an amortization 
+              reference and should be kept with your contract documentation.
+            </p>
+            <p class="footer-text footer-company">
+              Antigone Fleet Management Solutions - Professional Financial Services
+            </p>
           </div>
         </body>
       </html>
