@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getApiUrl } from "../../../shared/utils/env";
+import { tokenStorage } from "../../auth/utils/tokenStorage";
 
 // Add these enums to match your backend
 export enum ContractDocumentType {
@@ -79,7 +80,7 @@ export const contractDocumentApi = createApi({
     baseUrl: getApiUrl(),
     prepareHeaders: (headers) => {
       // Add authorization header if needed
-      const token = localStorage.getItem("authToken");
+      const token = tokenStorage.getAccessToken();
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }

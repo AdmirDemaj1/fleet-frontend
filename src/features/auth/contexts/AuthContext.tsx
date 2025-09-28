@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import { 
   loginStart, 
@@ -7,10 +7,17 @@ import {
   signupStart,
   signupSuccess,
   signupFailure,
+  refreshTokenStart,
+  refreshTokenSuccess,
+  refreshTokenFailure,
   logout,
-  initializeAuth
+  initializeAuth,
+  syncAuthState
 } from '../slices/authSlice';
 import { LoginCredentials, SignupCredentials, User } from '../types/auth.types';
+import { authApi } from '../api/authApi';
+import { tokenStorage } from '../utils/tokenStorage';
+import '../utils/authDebug'; // Load debug utilities
 
 interface AuthContextType {
   user: User | null;
@@ -19,7 +26,8 @@ interface AuthContextType {
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
   signup: (credentials: SignupCredentials) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  refreshToken: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,38 +48,74 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const dispatch = useAppDispatch();
   const { user, isAuthenticated, isLoading, error } = useAppSelector(state => state.auth);
 
-  useEffect(() => {
-    dispatch(initializeAuth());
+  // Handle cross-tab authentication synchronization
+  const handleStorageChange = useCallback((event: StorageEvent) => {
+    if (event.key === 'fleet_access_token' || event.key === 'fleet_refresh_token' || event.key === 'fleet_user') {
+      console.log('🔄 Storage change detected in another tab:', event.key);
+      
+      // Get current token and user data
+      const tokenData = tokenStorage.getTokens();
+      const userData = tokenStorage.getUser();
+      
+      // Sync the auth state
+      dispatch(syncAuthState({
+        isAuthenticated: !!(tokenData && userData && !tokenStorage.isAccessTokenExpired()),
+        user: userData,
+        tokenData: tokenData
+      }));
+    }
   }, [dispatch]);
+
+  // Handle token refresh events from API interceptor
+  const handleTokenRefresh = useCallback((event: CustomEvent) => {
+    console.log('🔄 Token refreshed by API interceptor');
+    const { accessToken, refreshToken: newRefreshToken, expiresIn } = event.detail;
+    
+    // Update Redux state with new tokens
+    dispatch(refreshTokenSuccess({
+      accessToken,
+      refreshToken: newRefreshToken,
+      expiresIn
+    }));
+  }, [dispatch]);
+
+  useEffect(() => {
+    // Initialize auth state on app start
+    console.log('🚀 AuthProvider initializing...');
+    console.log('🔍 Current auth state before init:', { isAuthenticated, user: !!user, isLoading });
+    dispatch(initializeAuth());
+    
+    // Log state after a small delay to see the result
+    setTimeout(() => {
+      console.log('🔍 Auth state after init:', { isAuthenticated, user: !!user, isLoading });
+    }, 100);
+
+    // Add storage event listener for cross-tab sync
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Add token refresh event listener
+    window.addEventListener('tokenRefreshed', handleTokenRefresh as EventListener);
+    
+    // Cleanup on unmount
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('tokenRefreshed', handleTokenRefresh as EventListener);
+    };
+  }, [dispatch, handleStorageChange]);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
     try {
       dispatch(loginStart());
       
-      // Simulate API call - replace with actual API call later
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const authResponse = await authApi.signIn({
+        usernameOrEmail: credentials.usernameOrEmail,
+        password: credentials.password
+      });
       
-      // Mock successful login - replace with actual API response
-      if (credentials.email === 'admin@fleet.com' && credentials.password === 'password') {
-        const mockUser: User = {
-          id: '1',
-          email: credentials.email,
-          firstName: 'Admin',
-          lastName: 'User',
-          role: 'admin' as any,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        
-        dispatch(loginSuccess({ user: mockUser, token: mockToken }));
-      } else {
-        throw new Error('Invalid email or password');
-      }
-    } catch (error) {
-      dispatch(loginFailure(error instanceof Error ? error.message : 'Login failed'));
+      dispatch(loginSuccess(authResponse));
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+      dispatch(loginFailure(errorMessage));
       throw error;
     }
   };
@@ -80,37 +124,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       dispatch(signupStart());
       
-      // Validate passwords match
+      // Validate passwords match (frontend validation)
       if (credentials.password !== credentials.confirmPassword) {
         throw new Error('Passwords do not match');
       }
       
-      // Simulate API call - replace with actual API call later
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock successful signup - replace with actual API response
-      const mockUser: User = {
-        id: '2',
+      const signUpRequest = {
+        username: credentials.username,
         email: credentials.email,
+        password: credentials.password,
         firstName: credentials.firstName,
         lastName: credentials.lastName,
-        role: 'user' as any,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        phone: credentials.phone,
+        department: credentials.department,
+        secretKey: credentials.secretKey
       };
       
-      const mockToken = 'mock-jwt-token-' + Date.now();
+      const authResponse = await authApi.signUp(signUpRequest);
       
-      dispatch(signupSuccess({ user: mockUser, token: mockToken }));
-    } catch (error) {
-      dispatch(signupFailure(error instanceof Error ? error.message : 'Signup failed'));
+      dispatch(signupSuccess(authResponse));
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Signup failed';
+      dispatch(signupFailure(errorMessage));
       throw error;
     }
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const refreshToken = async (): Promise<void> => {
+    try {
+      dispatch(refreshTokenStart());
+      
+      const refreshToken = tokenStorage.getRefreshToken();
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+      
+      const refreshResponse = await authApi.refreshToken({ refreshToken });
+      
+      dispatch(refreshTokenSuccess(refreshResponse));
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Token refresh failed';
+      dispatch(refreshTokenFailure(errorMessage));
+      throw error;
+    }
+  };
+
+  const handleLogout = async (): Promise<void> => {
+    try {
+      // Call backend logout endpoint if user is authenticated
+      if (user?.id) {
+        await authApi.logout(user.id);
+      }
+    } catch (error) {
+      // Even if backend logout fails, clear local state
+      console.error('Logout API call failed:', error);
+    } finally {
+      // Always clear local auth state
+      dispatch(logout());
+    }
   };
 
   const value: AuthContextType = {
@@ -121,6 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     signup,
     logout: handleLogout,
+    refreshToken,
   };
 
   return (

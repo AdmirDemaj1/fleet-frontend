@@ -13,12 +13,18 @@ import {
 } from '../types/invoice.types';
 
 import { getApiUrl } from '../../../shared/utils/env';
+import { tokenStorage } from '../../auth/utils/tokenStorage';
 
 export const paymentsApi = createApi({
   reducerPath: 'paymentsApi',
   baseQuery: fetchBaseQuery({
     baseUrl: getApiUrl(),
     prepareHeaders: (headers) => {
+      // Add authorization header if needed
+      const token = tokenStorage.getAccessToken();
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
       headers.set('Accept', 'application/json');
       headers.set('Content-Type', 'application/json');
       return headers;

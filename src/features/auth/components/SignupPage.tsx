@@ -19,7 +19,11 @@ import {
   Email, 
   Lock, 
   Person,
-  PersonOutline 
+  PersonOutline,
+  AccountBox,
+  Phone,
+  Business,
+  VpnKey
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,11 +35,15 @@ export const SignupPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState<SignupCredentials>({
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
     firstName: '',
     lastName: '',
+    phone: '',
+    department: '',
+    secretKey: '',
   });
   const [validationErrors, setValidationErrors] = useState<Partial<SignupCredentials>>({});
 
@@ -58,6 +66,16 @@ export const SignupPage: React.FC = () => {
   const validateForm = (): boolean => {
     const errors: Partial<SignupCredentials> = {};
     
+    if (!formData.username.trim()) {
+      errors.username = 'Username is required';
+    } else if (formData.username.length < 3) {
+      errors.username = 'Username must be at least 3 characters long';
+    } else if (formData.username.length > 30) {
+      errors.username = 'Username must not exceed 30 characters';
+    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      errors.username = 'Username can only contain letters, numbers, and underscores';
+    }
+    
     if (!formData.firstName.trim()) {
       errors.firstName = 'First name is required';
     }
@@ -74,14 +92,26 @@ export const SignupPage: React.FC = () => {
     
     if (!formData.password) {
       errors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters long';
+    } else if (formData.password.length < 8) {
+      errors.password = 'Password must be at least 8 characters long';
+    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(formData.password)) {
+      errors.password = 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
     }
     
     if (!formData.confirmPassword) {
       errors.confirmPassword = 'Please confirm your password';
     } else if (formData.password !== formData.confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
+    }
+    
+    if (formData.phone && !/^\+?[1-9]\d{1,14}$/.test(formData.phone)) {
+      errors.phone = 'Please provide a valid phone number';
+    }
+    
+    if (!formData.secretKey.trim()) {
+      errors.secretKey = 'Secret key is required';
+    } else if (formData.secretKey.length < 8) {
+      errors.secretKey = 'Secret key must be at least 8 characters long';
     }
     
     setValidationErrors(errors);
@@ -147,7 +177,24 @@ export const SignupPage: React.FC = () => {
           )}
 
           <Box component="form" onSubmit={handleSubmit}>
-            <Grid container spacing={2}>
+            <TextField
+              fullWidth
+              label="Username"
+              value={formData.username}
+              onChange={handleChange('username')}
+              error={!!validationErrors.username}
+              helperText={validationErrors.username || 'Username can only contain letters, numbers, and underscores'}
+              margin="normal"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <AccountBox color={validationErrors.username ? 'error' : 'action'} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -205,12 +252,67 @@ export const SignupPage: React.FC = () => {
 
             <TextField
               fullWidth
+              label="Secret Key"
+              value={formData.secretKey}
+              onChange={handleChange('secretKey')}
+              error={!!validationErrors.secretKey}
+              helperText={validationErrors.secretKey}
+              margin="normal"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <VpnKey color={validationErrors.secretKey ? 'error' : 'action'} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mt: 2 }}
+            />
+
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Phone (Optional)"
+                  value={formData.phone}
+                  onChange={handleChange('phone')}
+                  error={!!validationErrors.phone}
+                  helperText={validationErrors.phone}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Phone color={validationErrors.phone ? 'error' : 'action'} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Department (Optional)"
+                  value={formData.department}
+                  onChange={handleChange('department')}
+                  error={!!validationErrors.department}
+                  helperText={validationErrors.department}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Business color={validationErrors.department ? 'error' : 'action'} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+            </Grid>
+
+            <TextField
+              fullWidth
               label="Password"
               type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={handleChange('password')}
               error={!!validationErrors.password}
-              helperText={validationErrors.password || 'Password must be at least 6 characters long'}
+              helperText={validationErrors.password || 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'}
               margin="normal"
               InputProps={{
                 startAdornment: (
