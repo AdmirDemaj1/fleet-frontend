@@ -25,7 +25,6 @@ import {
   DirectionsCar as VehiclesIcon,
   Description as ContractsIcon,
   PersonAdd as EndorsersIcon,
-  BusinessCenter,
   ExpandLess,
   ExpandMore,
   Analytics as AnalyticsIcon,
@@ -377,71 +376,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: collapsed && !isMobile ? 44 : 48,
-            height: collapsed && !isMobile ? 44 : 48,
-            borderRadius: collapsed && !isMobile ? 3 : 2.5,
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            boxShadow: collapsed && !isMobile 
-              ? `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`
-              : `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
             mr: (!collapsed || isMobile) ? 2 : 0,
             position: 'relative',
-            transition: theme.transitions.create(['width', 'height', 'margin', 'border-radius', 'box-shadow'], {
+            transition: theme.transitions.create(['margin'], {
               duration: theme.transitions.duration.standard,
             }),
             '&:hover': collapsed && !isMobile ? {
               transform: 'scale(1.1)',
-              boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.5)}`,
             } : {},
           }}
         >
-          <BusinessCenter 
-            sx={{ 
-              fontSize: collapsed && !isMobile ? 24 : 26, 
-              color: 'white',
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-              transition: theme.transitions.create(['font-size', 'transform'], {
+          <Box
+            component="img"
+            src={collapsed && !isMobile ? "/images/logo/icon.png" : "/images/logo/antigone-logo-exact.png"}
+            alt="Antigone Fleet"
+            sx={{
+              width: collapsed && !isMobile ? 40 : 'auto',
+              height: collapsed && !isMobile ? 40 : 'auto',
+              maxWidth: collapsed && !isMobile ? 40 : '85%',
+              maxHeight: collapsed && !isMobile ? 40 : '150px',
+              objectFit: 'contain',
+              transition: theme.transitions.create(['width', 'height', 'max-width', 'max-height'], {
                 duration: theme.transitions.duration.standard,
               }),
-            }} 
+              // Keep original colors for the icon
+              filter: 'none',
+            }}
           />
         </Box>
       </Zoom>
       
-      <Fade in={!collapsed || isMobile} timeout={200}>
-        <Box sx={{ 
-          display: (collapsed && !isMobile) ? 'none' : 'block',
-          overflow: 'hidden',
-        }}>
-          <Typography 
-            variant="h6" 
-            sx={{
-              color: theme.palette.primary.main,
-              fontWeight: 700,
-              fontSize: '1.1rem',
-              lineHeight: 1.2,
-              mb: 0.5,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            Fleet Manager
-          </Typography>
-          <Typography 
-            variant="caption" 
-            sx={{
-              color: alpha(theme.palette.text.secondary, 0.8),
-              fontSize: '0.75rem',
-              fontWeight: 500,
-              letterSpacing: 0.5,
-            }}
-          >
-            Management System
-          </Typography>
-        </Box>
-      </Fade>
+      {/* Hide text when expanded since logo contains the branding */}
     </Box>
   ), [theme, collapsed, isMobile]);
 
