@@ -10,6 +10,7 @@ import { contractDocumentApi } from '../features/contracts/api/contractDocumentA
 import { vehicleDocumentApi } from '../features/vehicles/api/vehicleDocumentApi'; // Import vehicleDocumentApi
 import { paymentsApi } from '../features/invoices/api/paymentsApi'; // Import paymentsApi
 import { endorserApi } from '../features/endorsers/api/endorserApi'; // Import endorserApi
+import { approvalApi } from '../features/approvals/api/approvalApi'; // Import approvalApi
 
 export const store = configureStore({
   reducer: {
@@ -23,6 +24,7 @@ export const store = configureStore({
     [vehicleDocumentApi.reducerPath]: vehicleDocumentApi.reducer, // Add the vehicleDocumentApi reducer
     [paymentsApi.reducerPath]: paymentsApi.reducer, // Add the paymentsApi reducer
     [endorserApi.reducerPath]: endorserApi.reducer, // Add the endorserApi reducer
+    [approvalApi.reducerPath]: approvalApi.reducer, // Add the approvalApi reducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -32,6 +34,7 @@ export const store = configureStore({
       .concat(paymentsApi.middleware) // Add the paymentsApi middleware
       .concat(endorserApi.middleware) // Add the endorserApi middleware
       .concat(vehicleDocumentApi.middleware) // Add the vehicleDocumentApi middleware
+      .concat(approvalApi.middleware) // Add the approvalApi middleware
 });
 
 export type RootState = ReturnType<typeof store.getState>;

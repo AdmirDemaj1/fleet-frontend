@@ -6,6 +6,7 @@ export interface User {
   firstName: string;
   lastName: string;
   status: string;
+  role: UserRole;
 }
 
 // Auth state interface
@@ -25,6 +26,12 @@ export interface LoginCredentials {
   password: string;
 }
 
+// User roles enum
+export enum UserRole {
+  LOW_TIER = 'low_tier',
+  ADMIN = 'admin'
+}
+
 // Signup credentials interface matching backend SignUpDto
 export interface SignupCredentials {
   username: string;
@@ -35,6 +42,7 @@ export interface SignupCredentials {
   lastName: string;
   phone?: string;
   department?: string;
+  role: UserRole; // User role selection
   secretKey: string; // Secret key for signup validation
 }
 
@@ -47,6 +55,7 @@ export interface AuthResponse {
     firstName: string;
     lastName: string;
     status: string;
+    role: UserRole;
   };
   accessToken: string;
   refreshToken: string;
@@ -83,6 +92,7 @@ export interface SignUpRequest {
   lastName: string;
   phone?: string;
   department?: string;
+  role: UserRole;
   secretKey: string;
 }
 
@@ -97,4 +107,38 @@ export interface RefreshTokenRequest {
 
 export interface LogoutResponse {
   message: string;
+}
+
+// Approval workflow response types
+export interface ApprovalWorkflowResult<T = any> {
+  requiresApproval: boolean;
+  approvalRequestId?: string;
+  data?: T;
+}
+
+// RBAC Testing types
+export interface UserPermissions {
+  canCreateCustomer: boolean;
+  canUpdateCustomer: boolean;
+  canDeleteCustomer: boolean;
+  canViewCustomer: boolean;
+  canApproveActions: boolean;
+}
+
+export interface UserApprovalNeeds {
+  createCustomer: boolean;
+  updateCustomer: boolean;
+  deleteCustomer: boolean;
+}
+
+export interface UserInfo {
+  userId: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  isAdmin: boolean;
+  isLowTier: boolean;
+  canApprove: boolean;
+  permissions: UserPermissions;
+  needsApprovalFor: UserApprovalNeeds;
 }

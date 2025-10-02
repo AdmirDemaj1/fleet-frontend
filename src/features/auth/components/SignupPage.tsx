@@ -11,7 +11,12 @@ import {
   Divider,
   InputAdornment,
   IconButton,
-  Grid
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText
 } from '@mui/material';
 import { 
   Visibility, 
@@ -23,11 +28,12 @@ import {
   AccountBox,
   Phone,
   Business,
-  VpnKey
+  VpnKey,
+  AdminPanelSettings
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { SignupCredentials } from '../types/auth.types';
+import { SignupCredentials, UserRole } from '../types/auth.types';
 
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -43,12 +49,13 @@ export const SignupPage: React.FC = () => {
     lastName: '',
     phone: '',
     department: '',
+    role: UserRole.LOW_TIER, // Default to low tier
     secretKey: '',
   });
   const [validationErrors, setValidationErrors] = useState<Partial<SignupCredentials>>({});
 
   const handleChange = (field: keyof SignupCredentials) => (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement> | any
   ) => {
     setFormData(prev => ({
       ...prev,
@@ -267,6 +274,51 @@ export const SignupPage: React.FC = () => {
               }}
               sx={{ mt: 2 }}
             />
+
+            <FormControl 
+              fullWidth 
+              margin="normal" 
+              error={!!validationErrors.role}
+              sx={{ mt: 2 }}
+            >
+              <InputLabel>Role</InputLabel>
+              <Select
+                value={formData.role}
+                onChange={handleChange('role')}
+                label="Role"
+                startAdornment={
+                  <InputAdornment position="start">
+                    <AdminPanelSettings color={validationErrors.role ? 'error' : 'action'} />
+                  </InputAdornment>
+                }
+              >
+                <MenuItem value={UserRole.LOW_TIER}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Person />
+                    <Box>
+                      <Typography variant="body2">Low Tier User</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Requires approval for most actions
+                      </Typography>
+                    </Box>
+                  </Box>
+                </MenuItem>
+                <MenuItem value={UserRole.ADMIN}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <AdminPanelSettings />
+                    <Box>
+                      <Typography variant="body2">Admin User</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Full access and approval rights
+                      </Typography>
+                    </Box>
+                  </Box>
+                </MenuItem>
+              </Select>
+              {validationErrors.role && (
+                <FormHelperText>{validationErrors.role}</FormHelperText>
+              )}
+            </FormControl>
 
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={6}>

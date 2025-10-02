@@ -67,7 +67,7 @@ class AuthApi {
    * Validate user token and get user data
    */
   async validateUser(userId: string): Promise<{ user: any }> {
-    const response = await api.get(`${this.AUTH_ENDPOINTS.VALIDATE}/${userId}`);
+    const response = await api.get<{ user: any }>(`${this.AUTH_ENDPOINTS.VALIDATE}/${userId}`);
     return response.data;
   }
 }
