@@ -30,23 +30,21 @@ import {
   MoreVert,
   Add,
   Upload,
-  Security,
+  Person,
+  Business,
   Event,
-  Warning,
-  CheckCircle,
-  Error as ErrorIcon,
 } from "@mui/icons-material";
 import { format } from "date-fns";
-import { Vehicle } from "../../types/vehicleType";
+import { Customer } from "../../types/customer.types";
 import { Document } from "../../../../shared/types/document.types";
 import { documentApi } from "../../../../shared/api/documentApi";
 
-interface VehicleDocumentsProps {
-  vehicle: Vehicle;
+interface CustomerDocumentsProps {
+  customer: Customer;
 }
 
-export const VehicleDocuments: React.FC<VehicleDocumentsProps> = ({
-  vehicle,
+export const CustomerDocuments: React.FC<CustomerDocumentsProps> = ({
+  customer,
 }) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -63,7 +61,7 @@ export const VehicleDocuments: React.FC<VehicleDocumentsProps> = ({
       try {
         setLoading(true);
         setError(null);
-        const data = await documentApi.getVehicleDocuments(vehicle.id);
+        const data = await documentApi.getCustomerDocuments(customer.id);
         setDocuments(data);
       } catch (err: any) {
         setError(err?.response?.data?.message || "Failed to load documents");
@@ -72,10 +70,10 @@ export const VehicleDocuments: React.FC<VehicleDocumentsProps> = ({
       }
     };
 
-    if (vehicle.id) {
+    if (customer.id) {
       fetchDocuments();
     }
-  }, [vehicle.id]);
+  }, [customer.id]);
 
   const handleMenuOpen = (
     event: React.MouseEvent<HTMLElement>,
@@ -169,46 +167,51 @@ export const VehicleDocuments: React.FC<VehicleDocumentsProps> = ({
   // Document categories for better organization
   const documentCategories = [
     {
-      title: "Legal Documents",
+      title: "Personal Documents",
       documents: documents.filter(
         (doc) =>
-          doc.title.toLowerCase().includes("registration") ||
-          doc.title.toLowerCase().includes("title") ||
-          doc.title.toLowerCase().includes("agreement")
+          doc.title.toLowerCase().includes("id") ||
+          doc.title.toLowerCase().includes("passport") ||
+          doc.title.toLowerCase().includes("license")
       ),
-      icon: <Assignment />,
+      icon: <Person />,
       color: theme.palette.primary.main,
     },
     {
-      title: "Insurance Documents",
+      title: "Business Documents",
       documents: documents.filter(
         (doc) =>
-          doc.title.toLowerCase().includes("insurance") ||
-          doc.title.toLowerCase().includes("policy")
+          doc.title.toLowerCase().includes("business") ||
+          doc.title.toLowerCase().includes("company") ||
+          doc.title.toLowerCase().includes("registration")
       ),
-      icon: <Security />,
+      icon: <Business />,
       color: theme.palette.success.main,
     },
     {
-      title: "Maintenance Records",
+      title: "Contract Documents",
       documents: documents.filter(
         (doc) =>
-          doc.title.toLowerCase().includes("maintenance") ||
-          doc.title.toLowerCase().includes("service") ||
-          doc.title.toLowerCase().includes("repair")
+          doc.title.toLowerCase().includes("contract") ||
+          doc.title.toLowerCase().includes("agreement")
       ),
-      icon: <Event />,
+      icon: <Assignment />,
       color: theme.palette.warning.main,
     },
     {
-      title: "Photos & Media",
+      title: "Other Documents",
       documents: documents.filter(
         (doc) =>
-          doc.type === "image" ||
-          doc.title.toLowerCase().includes("photo") ||
-          doc.title.toLowerCase().includes("image")
+          !doc.title.toLowerCase().includes("id") &&
+          !doc.title.toLowerCase().includes("passport") &&
+          !doc.title.toLowerCase().includes("license") &&
+          !doc.title.toLowerCase().includes("business") &&
+          !doc.title.toLowerCase().includes("company") &&
+          !doc.title.toLowerCase().includes("registration") &&
+          !doc.title.toLowerCase().includes("contract") &&
+          !doc.title.toLowerCase().includes("agreement")
       ),
-      icon: <Image />,
+      icon: <Event />,
       color: theme.palette.info.main,
     },
   ];
@@ -226,10 +229,10 @@ export const VehicleDocuments: React.FC<VehicleDocumentsProps> = ({
       >
         <Box>
           <Typography variant="h5" fontWeight={600} sx={{ mb: 0.5 }}>
-            Vehicle Documents
+            Customer Documents
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage vehicle documentation and certificates
+            Manage customer documentation and certificates
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1.5 }}>
@@ -401,169 +404,67 @@ export const VehicleDocuments: React.FC<VehicleDocumentsProps> = ({
           </Grid>
 
           {/* Document Status Cards */}
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              Document Status
+            </Typography>
+
+            <Grid container spacing={2}>
+              {/* Total Documents */}
+              <Grid item xs={12} sm={6} md={6}>
+                <Card
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${theme.palette.primary.main}`,
+                    bgcolor: alpha(theme.palette.primary.main, 0.05),
+                  }}
+                >
+                  <CardContent sx={{ textAlign: "center", p: 2 }}>
+                    <Assignment
+                      sx={{ fontSize: 32, color: "primary.main", mb: 1 }}
+                    />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Total Documents
+                    </Typography>
+                    <Typography
+                      variant="h5"
+                      sx={{ fontWeight: 700, color: "primary.main" }}
+                    >
+                      {documents.length}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Storage Used */}
+              <Grid item xs={12} sm={6} md={6}>
+                <Card
+                  sx={{
+                    borderRadius: 2,
+                    border: `1px solid ${theme.palette.info.main}`,
+                    bgcolor: alpha(theme.palette.info.main, 0.05),
+                  }}
+                >
+                  <CardContent sx={{ textAlign: "center", p: 2 }}>
+                    <CloudDownload
+                      sx={{ fontSize: 32, color: "info.main", mb: 1 }}
+                    />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Storage Used
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 500, color: "info.main" }}
+                    >
+                      {formatFileSize(1024 * 1024 * 2.5)} {/* Mock: 2.5MB */}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
         </>
       )}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-          Document Status
-        </Typography>
-
-        <Grid container spacing={2}>
-          {/* Insurance Status */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${
-                  vehicle.kaskoExpiryDate && new Date(vehicle.kaskoExpiryDate) < new Date()
-                    ? theme.palette.error.main
-                    : vehicle.kaskoExpiryDate && new Date(vehicle.kaskoExpiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                    ? theme.palette.warning.main
-                    : theme.palette.success.main
-                }`,
-                bgcolor: alpha(
-                  vehicle.kaskoExpiryDate && new Date(vehicle.kaskoExpiryDate) < new Date()
-                    ? theme.palette.error.main
-                    : vehicle.kaskoExpiryDate && new Date(vehicle.kaskoExpiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                    ? theme.palette.warning.main
-                    : theme.palette.success.main,
-                  0.05
-                ),
-              }}
-            >
-              <CardContent sx={{ textAlign: "center", p: 2 }}>
-                {vehicle.kaskoExpiryDate && new Date(vehicle.kaskoExpiryDate) < new Date() ? (
-                  <ErrorIcon
-                    sx={{ fontSize: 32, color: "error.main", mb: 1 }}
-                  />
-                ) : vehicle.kaskoExpiryDate && new Date(vehicle.kaskoExpiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? (
-                  <Warning
-                    sx={{ fontSize: 32, color: "warning.main", mb: 1 }}
-                  />
-                ) : (
-                  <CheckCircle
-                    sx={{ fontSize: 32, color: "success.main", mb: 1 }}
-                  />
-                )}
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Insurance
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {vehicle.kaskoExpiryDate
-                    ? format(
-                        new Date(vehicle.kaskoExpiryDate),
-                        "MMM dd, yyyy"
-                      )
-                    : "Not set"}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Registration Status */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${
-                  vehicle.registrationExpiry && new Date(vehicle.registrationExpiry) < new Date()
-                    ? theme.palette.error.main
-                    : vehicle.registrationExpiry && new Date(vehicle.registrationExpiry) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                    ? theme.palette.warning.main
-                    : theme.palette.success.main
-                }`,
-                bgcolor: alpha(
-                  vehicle.registrationExpiry && new Date(vehicle.registrationExpiry) < new Date()
-                    ? theme.palette.error.main
-                    : vehicle.registrationExpiry && new Date(vehicle.registrationExpiry) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                    ? theme.palette.warning.main
-                    : theme.palette.success.main,
-                  0.05
-                ),
-              }}
-            >
-              <CardContent sx={{ textAlign: "center", p: 2 }}>
-                {vehicle.registrationExpiry && new Date(vehicle.registrationExpiry) < new Date() ? (
-                  <ErrorIcon
-                    sx={{ fontSize: 32, color: "error.main", mb: 1 }}
-                  />
-                ) : vehicle.registrationExpiry && new Date(vehicle.registrationExpiry) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? (
-                  <Warning
-                    sx={{ fontSize: 32, color: "warning.main", mb: 1 }}
-                  />
-                ) : (
-                  <CheckCircle
-                    sx={{ fontSize: 32, color: "success.main", mb: 1 }}
-                  />
-                )}
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Registration
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {vehicle.registrationExpiry
-                    ? format(
-                        new Date(vehicle.registrationExpiry),
-                        "MMM dd, yyyy"
-                      )
-                    : "Not set"}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Total Documents */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${theme.palette.primary.main}`,
-                bgcolor: alpha(theme.palette.primary.main, 0.05),
-              }}
-            >
-              <CardContent sx={{ textAlign: "center", p: 2 }}>
-                <Assignment
-                  sx={{ fontSize: 32, color: "primary.main", mb: 1 }}
-                />
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Total Documents
-                </Typography>
-                <Typography
-                  variant="h5"
-                  sx={{ fontWeight: 700, color: "primary.main" }}
-                >
-                  {documents.length}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Storage Used */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${theme.palette.info.main}`,
-                bgcolor: alpha(theme.palette.info.main, 0.05),
-              }}
-            >
-              <CardContent sx={{ textAlign: "center", p: 2 }}>
-                <CloudDownload
-                  sx={{ fontSize: 32, color: "info.main", mb: 1 }}
-                />
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Storage Used
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 500, color: "info.main" }}
-                >
-                  {formatFileSize(1024 * 1024 * 2.5)} {/* Mock: 2.5MB */}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </Box>
 
       {/* Document Actions Menu */}
       <Menu
@@ -606,4 +507,4 @@ export const VehicleDocuments: React.FC<VehicleDocumentsProps> = ({
   );
 };
 
-export default VehicleDocuments;
+export default CustomerDocuments;

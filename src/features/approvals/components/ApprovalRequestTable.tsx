@@ -88,13 +88,21 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
         color: "default" as const,
         icon: <PendingIcon />,
       },
+      [ApprovalStatus.EXECUTED]: {
+        color: "primary" as const,
+        icon: <CheckIcon />,
+      },
     };
 
-    const config = configs[status];
+    const config = configs[status] || {
+      color: "default" as const,
+      icon: <PendingIcon />,
+    };
+
     return (
       <Chip
         size="small"
-        label={status.charAt(0).toUpperCase() + status.slice(1)}
+        label={status?.charAt(0).toUpperCase() + status?.slice(1) || 'Unknown'}
         color={config.color}
         icon={config.icon}
       />

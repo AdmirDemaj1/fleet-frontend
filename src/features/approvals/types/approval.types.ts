@@ -4,7 +4,8 @@ export enum ApprovalStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
-  EXPIRED = 'expired'
+  EXPIRED = 'expired',
+  EXECUTED = 'executed'
 }
 
 export interface ApprovalRequest {
@@ -88,6 +89,7 @@ export const APPROVAL_STATUS_OPTIONS = [
   { label: 'Approved', value: ApprovalStatus.APPROVED },
   { label: 'Rejected', value: ApprovalStatus.REJECTED },
   { label: 'Expired', value: ApprovalStatus.EXPIRED },
+  { label: 'Executed', value: ApprovalStatus.EXECUTED },
 ];
 
 export const RESOURCE_TYPE_OPTIONS = [

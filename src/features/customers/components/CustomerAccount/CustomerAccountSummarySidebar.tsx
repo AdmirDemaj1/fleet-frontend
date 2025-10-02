@@ -8,7 +8,7 @@ import {
   AttachMoney, Event, LocalShipping,
   Domain, CalendarMonth, Person, Business, Badge,
   Phone, LocationOn, Tag, Email,
-  History, CreditCard
+  History, CreditCard, Description
 } from '@mui/icons-material';
 import { CustomerType } from '../../types/customer.types';
 import { CustomerAccountSidebarProps } from '../../types/customerSidebar.types';
@@ -577,6 +577,26 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
               sx={{
                 bgcolor: (theme) => alpha(theme.palette.warning.main, 0.1),
                 color: 'warning.main',
+                fontWeight: 600,
+                minWidth: 32,
+                height: 24
+              }}
+            />
+          </ListItem>
+
+          <ListItem disablePadding sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Description sx={{ fontSize: 18, color: 'text.secondary' }} />
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Documents
+              </Typography>
+            </Box>
+            <Chip
+              label={customerData?.documents?.length || 0}
+              size="small"
+              sx={{
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                color: 'primary.main',
                 fontWeight: 600,
                 minWidth: 32,
                 height: 24
