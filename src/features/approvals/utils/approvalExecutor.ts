@@ -39,7 +39,7 @@ export const getEndpointFromApprovalRequest = (approvalRequest: ApprovalRequest)
     case 'create_contract':
       return {
         method: 'POST',
-        endpoint: '/contracts',
+        endpoint: '/contracts/with-dependencies',
         data: requestData
       };
     
@@ -61,7 +61,7 @@ export const getEndpointFromApprovalRequest = (approvalRequest: ApprovalRequest)
     case 'create_vehicle':
       return {
         method: 'POST',
-        endpoint: '/vehicles',
+        endpoint: '/vehicles/with-documents',
         data: requestData
       };
     
@@ -123,6 +123,7 @@ export const getEndpointFromApprovalRequest = (approvalRequest: ApprovalRequest)
 
 // Execute an approved request
 export const executeApprovalRequest = async (approvalRequest: ApprovalRequest): Promise<any> => {
+  console.log("approvalRequest", approvalRequest);
   const { method, endpoint, data } = getEndpointFromApprovalRequest(approvalRequest);
   
   // Add approvalRequestId as query parameter to the endpoint

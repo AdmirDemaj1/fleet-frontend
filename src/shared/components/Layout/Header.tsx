@@ -84,7 +84,8 @@ export const Header: React.FC<HeaderProps> = () => {
               fontSize: '1rem',
             }}
           >
-            Antigone Financial
+            {/* Antigone Financial */}
+            Fleet Manager
           </Typography>
         </Box>
         

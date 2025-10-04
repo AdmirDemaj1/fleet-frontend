@@ -1,22 +1,22 @@
 // Contract Types - Based on backend DTOs
 
-import { ContractDocumentResponseDto } from '../api/contractDocumentApi';
+import { ContractDocumentResponseDto } from "../api/contractDocumentApi";
 
 export enum ContractType {
-  LOAN = 'loan',
-  LEASING = 'leasing'
+  LOAN = "loan",
+  LEASING = "leasing",
 }
 
 export enum ContractStatus {
-  DRAFT = 'draft',
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled'
+  DRAFT = "draft",
+  ACTIVE = "active",
+  COMPLETED = "completed",
+  CANCELLED = "cancelled",
 }
 
 export enum CollateralType {
-  VEHICLE = 'vehicle',
-  ENDORSER = 'endorser'
+  VEHICLE = "vehicle",
+  ENDORSER = "endorser",
 }
 
 // Base Contract interface
@@ -97,7 +97,7 @@ export interface CreateContractDto {
   endDate: string;
   totalAmount: number;
   interestRate: number;
-  
+
   // Contract type-specific details
   loanDetails?: {
     type: ContractType;
@@ -113,7 +113,7 @@ export interface CreateContractDto {
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
   };
-  
+
   leasingDetails?: {
     type: ContractType;
     contractNumber: string;
@@ -128,13 +128,13 @@ export interface CreateContractDto {
     withPurchaseOption?: boolean;
     purchaseOptionPrice?: number;
   };
-  
+
   // Vehicle assignments
   vehicleIds?: string[];
-  
+
   // Collaterals
   collaterals?: {
-    type: 'vehicle';
+    type: "vehicle";
     description: string;
     value: number;
     active: boolean;
@@ -148,7 +148,7 @@ export interface CreateContractDto {
     registrationCertificate?: string;
     insurancePolicy?: string;
   }[];
-  
+
   // Endorser guarantees
   endorserCollaterals?: {
     description: string;
@@ -163,12 +163,12 @@ export interface CreateContractDto {
 
   // Custom guarantee amount for contract
   guaranteeForContract?: number;
-  
+
   // Documents are handled separately via the document upload API
-  
+
   // Session key for linking uploaded documents to this contract (optional if no documents)
   sessionKey?: string;
-  
+
   // Contract terms
   terms?: Record<string, any>;
 }
@@ -182,7 +182,7 @@ export interface ContractFormData {
   startDate: string;
   endDate: string;
   totalAmount: number;
-  
+
   // Loan specific fields
   loanDetails?: {
     contractNumber: string;
@@ -195,7 +195,7 @@ export interface ContractFormData {
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
   };
-  
+
   // Leasing specific fields
   leasingDetails?: {
     residualValue: number;
@@ -205,7 +205,7 @@ export interface ContractFormData {
     withPurchaseOption?: boolean;
     purchaseOptionPrice?: number;
   };
-  
+
   // Additional components
   selectedVehicles: string[];
   selectedVehicleData?: VehicleSummary[]; // Full vehicle data including documents
@@ -235,7 +235,7 @@ export interface ContractResponse {
   createdAt: string;
   updatedAt: string;
   documents?: ContractDocumentResponseDto[];
-  
+
   // Additional nested objects from backend
   vehicles?: {
     id: string;
@@ -245,7 +245,7 @@ export interface ContractResponse {
     vin: string;
     status: string;
   }[];
-  
+
   collaterals?: {
     id: string;
     type: string;
@@ -253,7 +253,7 @@ export interface ContractResponse {
     value: number;
     active: boolean;
   }[];
-  
+
   endorsers?: {
     id: string;
     name: string;

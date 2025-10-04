@@ -42,7 +42,12 @@ export const vehicleDocumentApi = createApi({
   endpoints: (builder) => ({
     // Upload a vehicle document
     uploadDocument: builder.mutation<
-      VehicleDocument & { sessionKey?: string },
+      VehicleDocument & { 
+        sessionKey?: string;
+        requiresApproval?: boolean;
+        approvalRequestId?: string;
+        message?: string;
+      },
       {
         file: File;
         data: UploadVehicleDocumentRequestData;

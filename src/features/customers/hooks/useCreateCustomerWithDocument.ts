@@ -38,21 +38,21 @@ export const useCreateCustomerWithDocument = () => {
       }
       
       // 2. Generate registration PDF for the newly created customer/endorser
-      if (customer.id) {
-        try {
-          await documentApi.generateCustomerRegistrationPdf(customer.id);
-          console.log('Registration PDF generated successfully for customer:', customer.id);
-        } catch (pdfError) {
-          console.error('Failed to generate registration PDF:', pdfError);
-          // Don't fail the entire customer creation if PDF generation fails
-          const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
-          showError(`${entityType} created but failed to generate registration document`);
-        }
-      } else {
-        console.error('Customer created but no ID returned');
-        const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
-        showError(`${entityType} created but cannot generate registration document (no ID)`);
-      }
+      // if (customer.id) {
+      //   try {
+      //     // await documentApi.generateCustomerRegistrationPdf(customer.id);
+      //     console.log('Registration PDF generated successfully for customer:', customer.id);
+      //   } catch (pdfError) {
+      //     console.error('Failed to generate registration PDF:', pdfError);
+      //     // Don't fail the entire customer creation if PDF generation fails
+      //     const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
+      //     showError(`${entityType} created but failed to generate registration document`);
+      //   }
+      // } else {
+      //   console.error('Customer created but no ID returned');
+      //   const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
+      //   showError(`${entityType} created but cannot generate registration document (no ID)`);
+      // }
       
       setResult({ customer, isDownloading: false });
       const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
