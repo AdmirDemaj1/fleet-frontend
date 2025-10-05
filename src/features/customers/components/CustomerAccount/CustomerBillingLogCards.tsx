@@ -94,7 +94,7 @@ const CustomerBillingAndLogsCards: React.FC<CustomerBillingAndLogsCardsProps> = 
   }, [logs]);
 
   return (
-    <Grid container spacing={2} sx={{ mb: 2 }}>
+    <Grid container spacing={2} sx={{ mb: 2,}}>
       {/* Invoice Card */}
       <Grid item xs={12} md={6}>
         <Card 

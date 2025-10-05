@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { Controller, useFormContext } from 'react-hook-form';
 import { VehicleStatus } from '../../types/vehicleType';
+import { BrandAutocomplete } from '../../../../shared/components';
 
 export const BasicInfoStep: React.FC = () => {
   const { control, formState: { errors } } = useFormContext();
@@ -129,21 +130,13 @@ export const BasicInfoStep: React.FC = () => {
             name="make"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                label="Make"
-                required
-                fullWidth
-                placeholder="e.g., Toyota, BMW, Ford"
-                error={!!errors.make}
-                helperText={errors.make?.message as string || 'Vehicle manufacturer'}
+              <BrandAutocomplete
                 value={field.value || ''}
-                inputProps={{ maxLength: 50 }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2
-                  }
-                }}
+                onChange={(value) => field.onChange(value || '')}
+                error={!!errors.make}
+                helperText={errors.make?.message as string}
+                required
+                sx={{ width: '100%' }}
               />
             )}
           />

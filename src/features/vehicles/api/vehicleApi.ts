@@ -85,6 +85,18 @@ export const vehicleApi = {
     return response.data;
   },
 
+  // Get vehicles by customer ID with pagination support
+  getVehiclesByCustomerId: async (customerId: string, params?: { limit?: number; offset?: number }): Promise<PaginatedVehicleResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+    
+    const response = await api.get<PaginatedVehicleResponse>(
+      `/vehicles/customer/${customerId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    );
+    return response.data;
+  },
+
   // Create a new vehicle
   createVehicle: async (vehicleData: Partial<Vehicle>): Promise<Vehicle> => {
     const response = await api.post<Vehicle>('/vehicles', vehicleData);
