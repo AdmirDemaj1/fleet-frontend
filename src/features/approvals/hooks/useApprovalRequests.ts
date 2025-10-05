@@ -68,8 +68,12 @@ export const useApprovalRequests = (currentUser?: { id: string; role: string }) 
         approved: true,
         reason: data.reason,
       };
-      await processRequest({ id: requestId, decision }).unwrap();
-      showNotification('Request approved successfully', 'success');
+      const response = await processRequest({ id: requestId, decision }).unwrap();
+      // Use message from response if available, otherwise use default
+      showNotification(
+        response.message || 'Request approved successfully',
+        response.error ? 'error' : 'success'
+      );
       refetch();
     } catch (error: any) {
       showNotification(
@@ -85,8 +89,12 @@ export const useApprovalRequests = (currentUser?: { id: string; role: string }) 
         approved: false,
         reason: data.reason,
       };
-      await processRequest({ id: requestId, decision }).unwrap();
-      showNotification('Request rejected successfully', 'success');
+      const response = await processRequest({ id: requestId, decision }).unwrap();
+      // Use message from response if available, otherwise use default
+      showNotification(
+        response.message || 'Request rejected successfully',
+        response.error ? 'error' : 'success'
+      );
       refetch();
     } catch (error: any) {
       showNotification(
@@ -98,8 +106,12 @@ export const useApprovalRequests = (currentUser?: { id: string; role: string }) 
 
   const handleCancel = useCallback(async (requestId: string) => {
     try {
-      await cancelRequest(requestId).unwrap();
-      showNotification('Request cancelled successfully', 'success');
+      const response = await cancelRequest(requestId).unwrap();
+      // Use message from response if available, otherwise use default
+      showNotification(
+        response.message || 'Request cancelled successfully',
+        response.error ? 'error' : 'success'
+      );
       refetch();
     } catch (error: any) {
       showNotification(
@@ -120,14 +132,18 @@ export const useApprovalRequests = (currentUser?: { id: string; role: string }) 
     try {
       const result = await executeApprovalRequest(request);
       
-      // Get action description for user-friendly message
-      const actionDescription = request.action.replace(/_/g, ' ').toLowerCase();
-      const resourceType = request.resourceType?.toLowerCase() || 'resource';
-      
-      showNotification(
-        `Successfully executed ${actionDescription} for ${resourceType}`,
-        'success'
-      );
+      // Use message from response if available, otherwise use default
+      if (result?.message) {
+        showNotification(result.message, result.error ? 'error' : 'success');
+      } else {
+        // Use default success message
+        const actionDescription = request.action.replace(/_/g, ' ').toLowerCase();
+        const resourceType = request.resourceType?.toLowerCase() || 'resource';
+        showNotification(
+          `Successfully executed ${actionDescription} for ${resourceType}`,
+          'success'
+        );
+      }
       
       // Log the result for debugging
       console.log('Execution result:', result);

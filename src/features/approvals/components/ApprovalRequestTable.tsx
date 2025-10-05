@@ -92,6 +92,10 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
         color: "primary" as const,
         icon: <CheckIcon />,
       },
+      [ApprovalStatus.CANNOT_BE_EXECUTED]: {
+        color: "error" as const,
+        icon: <CloseIcon />,
+      },
     };
 
     const config = configs[status] || {
@@ -119,7 +123,7 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
 
   const canCancel = (request: ApprovalRequest): boolean => {
     return (
-      request.status === ApprovalStatus.PENDING &&
+      (request.status === ApprovalStatus.PENDING || request.status === ApprovalStatus.CANNOT_BE_EXECUTED) &&
       (request.requestorId === currentUser?.id || currentUser?.role === "admin")
     );
   };

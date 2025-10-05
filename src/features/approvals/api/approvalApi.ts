@@ -6,6 +6,7 @@ import {
   ApprovalQueryParams,
   PaginatedApprovalResponseDto,
   ApprovalDecisionDto,
+  ApprovalActionResponse,
 } from '../types/approval.types';
 
 export const approvalApi = createApi({
@@ -56,7 +57,7 @@ export const approvalApi = createApi({
       providesTags: (_result, _error, id) => [{ type: 'ApprovalRequest', id }],
     }),
 
-    processApprovalRequest: builder.mutation<ApprovalRequest, { id: string; decision: ApprovalDecisionDto }>({
+    processApprovalRequest: builder.mutation<ApprovalActionResponse, { id: string; decision: ApprovalDecisionDto }>({
       query: ({ id, decision }) => ({
         url: `/approvals/${id}/decision`,
         method: 'PUT',
@@ -68,7 +69,7 @@ export const approvalApi = createApi({
       ],
     }),
 
-    cancelRequest: builder.mutation<void, string>({
+    cancelRequest: builder.mutation<ApprovalActionResponse, string>({
       query: (id) => ({
         url: `/approvals/${id}`,
         method: 'DELETE',

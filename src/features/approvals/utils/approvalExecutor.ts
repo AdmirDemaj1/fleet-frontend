@@ -88,10 +88,36 @@ export const getEndpointFromApprovalRequest = (approvalRequest: ApprovalRequest)
       };
     
     case 'update_payment':
-      return {
-        method: 'PUT',
-        endpoint: `/payments/${entityId}`,
-        data: requestData
+      // Get the payment ID from requestData
+      const paymentId = requestData?.id;
+      if (!paymentId) {
+        throw new Error('Payment ID is required in requestData');
+      }
+
+      // Remove id from request data since it's in the URL
+      const { id: _, ...requestDataWithoutId } = requestData;
+
+      // Special handling for mark as paid actions
+      if (requestData.updateFuturePayments !== undefined || requestData.applyCreditBalance !== undefined) {
+        console.log('Handling mark as paid with credit:', {
+          paymentId,
+          requestData: requestDataWithoutId
+        });
+        return {
+          method: 'PATCH',
+          endpoint: `/payments/${paymentId}/mark-paid-with-credit`,
+          data: requestDataWithoutId
+        };
+      } else {
+        console.log('Handling mark as paid:', {
+          paymentId,
+          requestData: requestDataWithoutId
+        });
+        return {
+          method: 'PATCH',
+          endpoint: `/payments/${paymentId}/mark-paid`,
+          data: requestDataWithoutId
+        };
       };
     
     case 'delete_payment':
@@ -99,6 +125,30 @@ export const getEndpointFromApprovalRequest = (approvalRequest: ApprovalRequest)
         method: 'DELETE',
         endpoint: `/payments/${entityId}`,
         data: null
+      };
+    
+    case 'mark_payment_as_paid':
+      console.log('Mark payment as paid request data:', {
+        requestData,
+        entityId,
+        resourceId: approvalRequest.resourceId
+      });
+      return {
+        method: 'PATCH',
+        endpoint: `/payments/${approvalRequest.resourceId}/mark-paid`,
+        data: requestData
+      };
+    
+    case 'mark_payment_as_paid_with_credit':
+      console.log('Mark payment as paid with credit request data:', {
+        requestData,
+        entityId,
+        resourceId: approvalRequest.resourceId
+      });
+      return {
+        method: 'PATCH',
+        endpoint: `/payments/${approvalRequest.resourceId}/mark-paid-with-credit`,
+        data: requestData
       };
     
     // Document endpoints
@@ -123,11 +173,21 @@ export const getEndpointFromApprovalRequest = (approvalRequest: ApprovalRequest)
 
 // Execute an approved request
 export const executeApprovalRequest = async (approvalRequest: ApprovalRequest): Promise<any> => {
-  console.log("approvalRequest", approvalRequest);
+  console.log("Full approval request:", approvalRequest);
+  console.log("Executing approval request:", {
+    id: approvalRequest.id,
+    action: approvalRequest.action,
+    entityId: approvalRequest.entityId,
+    resourceId: approvalRequest.resourceId,
+    requestData: approvalRequest.requestData
+  });
   const { method, endpoint, data } = getEndpointFromApprovalRequest(approvalRequest);
   
   // Add approvalRequestId as query parameter to the endpoint
   const urlWithApprovalId = `${endpoint}${endpoint.includes('?') ? '&' : '?'}approvalRequestId=${approvalRequest.id}`;
+  
+  // Log the final URL for debugging
+  console.log('Executing approval request with URL:', urlWithApprovalId);
   
   try {
     let response;
@@ -139,16 +199,31 @@ export const executeApprovalRequest = async (approvalRequest: ApprovalRequest): 
       case 'PUT':
         response = await api.put(urlWithApprovalId, data);
         break;
+      case 'PATCH':
+        response = await api.patch(urlWithApprovalId, data);
+        break;
       case 'DELETE':
         response = await api.delete(urlWithApprovalId);
         break;
       default:
         throw new Error(`Unsupported HTTP method: ${method}`);
     }
+
+    // Check for response message
+    const responseData = response.data as { message?: string; requiresApproval?: boolean; error?: boolean };
+    if (responseData?.message && responseData.error) {
+      // Only throw if it's marked as an error
+      throw new Error(responseData.message);
+    } else {
+      // Otherwise, it's a success message
+      console.log('Execution response:', responseData);
+    }
     
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to execute approval request:', error);
-    throw error;
+    // Extract error message from response if available
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to execute request';
+    throw new Error(errorMessage);
   }
 };

@@ -271,17 +271,23 @@ export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
           {renderRequestDetails(cancelModal.request)}
           <Divider sx={{ my: 2 }} />
           <Alert severity="warning">
-            Are you sure you want to cancel this request? This action cannot be undone.
+            {cancelModal.request?.status === 'cannot_be_executed' ? (
+              <>This request cannot be executed and will be deleted. This action cannot be undone.</>
+            ) : (
+              <>Are you sure you want to cancel this request? This action cannot be undone.</>
+            )}
           </Alert>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onCancelCancel}>No, Keep Request</Button>
+          <Button onClick={onCancelCancel}>
+            {cancelModal.request?.status === 'cannot_be_executed' ? 'No, Keep Request' : 'No, Keep Request'}
+          </Button>
           <Button 
             onClick={handleCancel}
             variant="contained"
             color="error"
           >
-            Yes, Cancel Request
+            {cancelModal.request?.status === 'cannot_be_executed' ? 'Yes, Delete Request' : 'Yes, Cancel Request'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -558,6 +564,14 @@ export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
                         <Typography variant="body2" color="text.secondary">
                           {dayjs(viewModal.request.executedAt).format('MMM DD, YYYY HH:mm')}
                         </Typography>
+                      </Box>
+                    )}
+                    {viewModal.request.status === 'cannot_be_executed' && viewModal.request.cannotExecuteReason && (
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="error" sx={{ fontWeight: 500 }}>Cannot Be Executed:</Typography>
+                        <Alert severity="error" sx={{ mt: 1 }}>
+                          {viewModal.request.cannotExecuteReason}
+                        </Alert>
                       </Box>
                     )}
                   </Box>

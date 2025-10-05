@@ -5,7 +5,8 @@ export enum ApprovalStatus {
   APPROVED = 'approved',
   REJECTED = 'rejected',
   EXPIRED = 'expired',
-  EXECUTED = 'executed'
+  EXECUTED = 'executed',
+  CANNOT_BE_EXECUTED = 'cannot_be_executed'
 }
 
 export interface ApprovalRequest {
@@ -49,6 +50,7 @@ export interface ApprovalRequest {
   executedByName?: string;
   executedAt?: string;
   isExecuted?: boolean;
+  cannotExecuteReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -82,6 +84,14 @@ export interface ApprovalDecisionDto {
   reason?: string;
 }
 
+// Response type for approval actions
+export interface ApprovalActionResponse {
+  message: string;
+  error: boolean;
+  requiresApproval?: boolean;
+  approvalRequestId?: string;
+}
+
 // Filter options
 export const APPROVAL_STATUS_OPTIONS = [
   { label: 'All Statuses', value: '' },
@@ -90,6 +100,7 @@ export const APPROVAL_STATUS_OPTIONS = [
   { label: 'Rejected', value: ApprovalStatus.REJECTED },
   { label: 'Expired', value: ApprovalStatus.EXPIRED },
   { label: 'Executed', value: ApprovalStatus.EXECUTED },
+  { label: 'Cannot Be Executed', value: ApprovalStatus.CANNOT_BE_EXECUTED },
 ];
 
 export const RESOURCE_TYPE_OPTIONS = [
