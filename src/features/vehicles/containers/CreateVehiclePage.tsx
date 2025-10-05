@@ -5,8 +5,10 @@ import { VehicleForm } from "../components/VehicleForm/VehicleForm";
 import { Vehicle } from "../types/vehicleType";
 import { vehicleApi } from "../api/vehicleApi";
 import { STEP_CONFIG } from "../utils/vehicleFormValidation";
+import { useNotification } from "../../../shared/hooks/useNotification";
 
 export const CreateVehiclePage: React.FC = () => {
+  const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,20 +33,31 @@ export const CreateVehiclePage: React.FC = () => {
       console.log("Creating vehicle with data:", vehicleData);
 
       // Use the appropriate API method based on whether we have a session key
-      let newVehicle: Vehicle;
+      let response;
       if (vehicleData.sessionKey) {
         console.log(
           "🔗 Creating vehicle with documents using session key:",
           vehicleData.sessionKey
         );
-        newVehicle = await vehicleApi.createVehicleWithDocuments(vehicleData as Partial<Vehicle> & { sessionKey: string });
+        response = await vehicleApi.createVehicleWithDocuments(
+          vehicleData as Partial<Vehicle> & { sessionKey: string }
+        );
       } else {
         console.log("📝 Creating vehicle without documents");
         const { sessionKey, ...vehicleDataWithoutSession } = vehicleData;
-        newVehicle = await vehicleApi.createVehicle(vehicleDataWithoutSession);
+        response = await vehicleApi.createVehicle(vehicleDataWithoutSession);
       }
 
-      setSuccess(`Vehicle ${vehicleData.licensePlate} created successfully!`);
+      console.log("responseeeeeeeeeeee", response)
+
+      // Check if response indicates approval is required
+      if (response.requiresApproval) {
+        showSuccess("Action requires approval. Request has been submitted.");
+      } else {
+        setSuccess(`Vehicle ${vehicleData.licensePlate} created successfully!`);
+      }
+
+      const newVehicle = response as Vehicle;
 
       // Redirect to the vehicle details page after a short delay
       setTimeout(() => {

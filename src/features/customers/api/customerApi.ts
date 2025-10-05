@@ -112,8 +112,31 @@ export const customerApi = {
     return response.data;
   },
 
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`${API_ENDPOINTS.CUSTOMERS}/${id}`);
+  delete: async (id: string): Promise<{ requiresApproval?: boolean; approvalRequestId?: string; message?: string }> => {
+    try {
+      const response = await api.delete(`${API_ENDPOINTS.CUSTOMERS}/${id}`, {
+        responseType: 'json',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      console.log('Delete response:', response);
+      
+      // If the response is JSON, return it
+      if (response.data && typeof response.data === 'object') {
+        return response.data;
+      }
+      
+      // If we got here without an error, assume success without approval
+      return { message: 'Customer deleted successfully' };
+    } catch (error: any) {
+      // If the error response contains approval data, return it
+      if (error.response?.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
   },
 
   getContracts: async (

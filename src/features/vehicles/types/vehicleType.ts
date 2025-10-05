@@ -70,6 +70,9 @@ export interface Vehicle {
   updatedAt: string;
   createdBy?: string;
   updatedBy?: string;
+  requiresApproval?: boolean;
+  approvalRequestId?: string;
+  message?: string;
 }
 
 export interface MaintenanceRecord {

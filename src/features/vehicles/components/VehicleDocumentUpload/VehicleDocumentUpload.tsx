@@ -407,8 +407,14 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
       const updatedDocuments = [...documents, newDocument];
       onDocumentsChange(updatedDocuments);
 
+      console.log("🚀 Response:", response);
+
       // Show success notification
-      showSuccess("Document uploaded successfully!");
+      if (response["requiresApproval"] === true) {
+        showSuccess("Action requires approval. Request has been submitted.");
+      } else {
+        showSuccess("Document uploaded successfully!");
+      }
 
       // Reset and close dialog
       setPendingFile(null);

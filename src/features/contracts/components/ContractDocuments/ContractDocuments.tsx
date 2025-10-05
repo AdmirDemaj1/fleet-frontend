@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { tokenStorage } from "../../../auth/utils/tokenStorage";
 import {
   Box,
   Typography,
@@ -119,8 +120,8 @@ export const ContractDocuments: React.FC<ContractDocumentsProps> = ({
           headers: {
             accept: "application/pdf",
             // Add authorization if needed
-            ...(localStorage.getItem("authToken") && {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            ...(tokenStorage.getAccessToken() && {
+              Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
             }),
           },
         }
@@ -162,8 +163,8 @@ export const ContractDocuments: React.FC<ContractDocumentsProps> = ({
           headers: {
             accept: "application/pdf",
             // Add authorization if needed
-            ...(localStorage.getItem("authToken") && {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+            ...(tokenStorage.getAccessToken() && {
+              Authorization: `Bearer ${tokenStorage.getAccessToken()}`,
             }),
           },
         }

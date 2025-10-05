@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { getApiUrl } from '../../../shared/utils/env';
+import { tokenStorage } from '../../auth/utils/tokenStorage';
 import {
   Endorser,
   EndorserRelationship,
@@ -17,7 +18,7 @@ export const endorserApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: getApiUrl(),
     prepareHeaders: (headers) => {
-      const token = localStorage.getItem('authToken');
+      const token = tokenStorage.getAccessToken();
       if (token) {
         headers.set('authorization', `Bearer ${token}`);
       }

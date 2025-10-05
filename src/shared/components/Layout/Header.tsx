@@ -42,9 +42,14 @@ export const Header: React.FC<HeaderProps> = () => {
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     handleClose();
-    logout();
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Even if logout fails, the local state should be cleared
+    }
   };
 
   return (
@@ -79,7 +84,8 @@ export const Header: React.FC<HeaderProps> = () => {
               fontSize: '1rem',
             }}
           >
-            Antigone Financial
+            {/* Antigone Financial */}
+            Fleet Manager
           </Typography>
         </Box>
         

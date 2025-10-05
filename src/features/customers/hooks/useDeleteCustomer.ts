@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { customerApi } from '../api/customerApi';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import { useCustomers } from './useCustomers';
@@ -15,8 +14,15 @@ export const useDeleteCustomer = () => {
     setError(null);
     
     try {
-      await customerApi.delete(id);
-      showSuccess('Customer deleted successfully');
+      const response = await customerApi.delete(id) as { requiresApproval?: boolean; approvalRequestId?: string; message?: string };
+      console.log('Delete customer response:', response);
+
+      if (response.requiresApproval) {
+        showSuccess(response.message || 'Action requires approval. Request has been submitted.');
+      } else {
+        showSuccess('Customer deleted successfully');
+         // Only refetch if the delete was immediate
+      }
       refetch();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete customer';

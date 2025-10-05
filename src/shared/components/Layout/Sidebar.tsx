@@ -31,7 +31,9 @@ import {
   KeyboardDoubleArrowLeft,
   KeyboardDoubleArrowRight,
   Payment as PaymentIcon,
-  TrendingUp as EuriborIcon
+  TrendingUp as EuriborIcon,
+  Security as SecurityIcon,
+  Assignment as ApprovalsIcon
 } from '@mui/icons-material';
 
 interface MenuItem {
@@ -87,6 +89,12 @@ const menuItems: MenuItem[] = [
     path: '/payments' 
   },
   { 
+    id: 'approvals',
+    text: 'Approval Requests', 
+    icon: <ApprovalsIcon />, 
+    path: '/approvals' 
+  },
+  { 
     id: 'endorsers',
     text: 'Endorsers', 
     icon: <EndorsersIcon />, 
@@ -103,6 +111,12 @@ const menuItems: MenuItem[] = [
     text: 'Audit Logs',
     icon: <AnalyticsIcon />,
     path: '/logs'
+  },
+  { 
+    id: 'rbac-testing',
+    text: 'RBAC Testing', 
+    icon: <SecurityIcon />, 
+    path: '/rbac-testing' 
   }
 ];
 

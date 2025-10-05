@@ -22,7 +22,7 @@ export const LoginPage: React.FC = () => {
   const { login, isLoading, error } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<LoginCredentials>({
-    email: '',
+    usernameOrEmail: '',
     password: '',
   });
   const [validationErrors, setValidationErrors] = useState<Partial<LoginCredentials>>({});
@@ -46,10 +46,8 @@ export const LoginPage: React.FC = () => {
   const validateForm = (): boolean => {
     const errors: Partial<LoginCredentials> = {};
     
-    if (!formData.email) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
+    if (!formData.usernameOrEmail) {
+      errors.usernameOrEmail = 'Username or email is required';
     }
     
     if (!formData.password) {
@@ -117,17 +115,16 @@ export const LoginPage: React.FC = () => {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Email Address"
-              type="email"
-              value={formData.email}
-              onChange={handleChange('email')}
-              error={!!validationErrors.email}
-              helperText={validationErrors.email}
+              label="Username or Email Address"
+              value={formData.usernameOrEmail}
+              onChange={handleChange('usernameOrEmail')}
+              error={!!validationErrors.usernameOrEmail}
+              helperText={validationErrors.usernameOrEmail}
               margin="normal"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Email color={validationErrors.email ? 'error' : 'action'} />
+                    <Email color={validationErrors.usernameOrEmail ? 'error' : 'action'} />
                   </InputAdornment>
                 ),
               }}
@@ -204,7 +201,7 @@ export const LoginPage: React.FC = () => {
 
           <Box mt={4} textAlign="center">
             <Typography variant="caption" color="text.secondary">
-              Demo credentials: admin@fleet.com / password
+              Demo credentials: admin@fleet.com or admin_user / password
             </Typography>
           </Box>
         </CardContent>

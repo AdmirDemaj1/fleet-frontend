@@ -5,16 +5,12 @@ import {
   Alert
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
-import { 
-  useGetPaymentByIdQuery, 
-  useMarkPaymentAsPaidMutation, 
-  useMarkPaymentAsPaidWithCreditMutation 
-} from '../api/paymentsApi';
+import { useGetPaymentByIdQuery } from '../api/paymentsApi';
+import { useMarkPaymentAsPaid } from '../hooks';
 import { PaymentHeader } from '../components/PaymentHeader';
 import { PaymentInformation } from '../components/PaymentInformation';
 import { PaymentRelatedInfo } from '../components/PaymentRelatedInfo';
 import { LoadingSpinner } from '../../../shared/components/LoadingSpinner';
-import { useNotification } from '../../../shared/hooks/useNotification';
 
 const PaymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,9 +22,7 @@ const PaymentDetailPage: React.FC = () => {
     error
   } = useGetPaymentByIdQuery(id!);
 
-  const [markAsPaid, { isLoading: isMarkingPaid }] = useMarkPaymentAsPaidMutation();
-  const [markAsPaidWithCredit, { isLoading: isMarkingPaidWithCredit }] = useMarkPaymentAsPaidWithCreditMutation();
-  const { showNotification } = useNotification();
+  const { markAsPaid, markAsPaidWithCredit, isLoading: isMarkingPayment } = useMarkPaymentAsPaid();
 
   const handleMarkAsPaid = async (data: {
     paymentDate: string;
@@ -46,45 +40,29 @@ const PaymentDetailPage: React.FC = () => {
 
       if (isOverpayment) {
         // Handle overpayment case
-        const overpaymentAmount = data.actualAmountReceived - paymentAmount;
         const updateFuturePayments = data.overpaymentOption === 'upcoming_payments';
         
-        await markAsPaidWithCredit({
-          id: payment.id,
-          data: {
-            paymentDate: data.paymentDate,
-            paymentMethod: data.paymentMethod,
-            transactionReference: data.transactionReference,
-            notes: data.notes,
-            actualAmountReceived: data.actualAmountReceived,
-            applyCreditBalance: data.overpaymentOption === 'credit',
-            updateFuturePayments,
-            // overpaymentAmount: updateFuturePayments ? overpaymentAmount : undefined
-          }
-        }).unwrap();
-
-        const message = data.overpaymentOption === 'credit'
-          ? `Payment marked as paid. €${overpaymentAmount.toFixed(2)} added to customer credits.`
-          : `Payment marked as paid. €${overpaymentAmount.toFixed(2)} will be applied to upcoming payments.`;
-        
-        showNotification(message, 'success');
+        await markAsPaidWithCredit(payment.id, {
+          paymentDate: data.paymentDate,
+          paymentMethod: data.paymentMethod,
+          transactionReference: data.transactionReference,
+          notes: data.notes,
+          actualAmountReceived: data.actualAmountReceived,
+          applyCreditBalance: data.overpaymentOption === 'credit',
+          updateFuturePayments,
+        });
       } else {
         // Handle normal payment case
-        await markAsPaid({
-          id: payment.id,
-          data: {
-            paymentDate: data.paymentDate,
-            paymentMethod: data.paymentMethod,
-            transactionReference: data.transactionReference,
-            notes: data.notes
-          }
-        }).unwrap();
-
-        showNotification('Payment marked as paid successfully!', 'success');
+        await markAsPaid(payment.id, {
+          paymentDate: data.paymentDate,
+          paymentMethod: data.paymentMethod,
+          transactionReference: data.transactionReference,
+          notes: data.notes
+        });
       }
     } catch (error) {
+      // Error handling is done in the hook
       console.error('Failed to mark payment as paid:', error);
-      showNotification('Failed to mark payment as paid. Please try again.', 'error');
     }
   };
 
@@ -130,7 +108,7 @@ const PaymentDetailPage: React.FC = () => {
         <PaymentHeader 
           payment={payment} 
           onMarkAsPaid={handleMarkAsPaid}
-          loading={isMarkingPaid || isMarkingPaidWithCredit}
+          loading={isMarkingPayment}
         />
 
       {/* Main Content */}

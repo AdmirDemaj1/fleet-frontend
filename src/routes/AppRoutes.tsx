@@ -20,7 +20,8 @@ import { ContractsPage, CreateContractPage, ContractDetailsPage } from '../featu
 import { PaymentsPage , PaymentDetailPage } from '../features/invoices/containers';
 import { EndorsersPage, EndorserDetailsPage } from '../features/endorsers/containers';
 import { EuriborRatesPage } from '../features/euribor/containers';
-import { LoginPage, SignupPage, ProtectedRoute } from '../features/auth';
+import { ApprovalRequestsPage } from '../features/approvals/containers';
+import { LoginPage, SignupPage, ProtectedRoute, RbacTestingPanel } from '../features/auth';
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -88,6 +89,10 @@ export const AppRoutes: React.FC = () => {
         <Route path='logs' element={<AuditPage />} />
 
         <Route path="euribor-rates" element={<EuriborRatesPage />} />
+
+        <Route path="approvals" element={<ApprovalRequestsPage />} />
+
+        <Route path="rbac-testing" element={<RbacTestingPanel />} />
 
         <Route path="assets" element={<div>Assets Page</div>} />
       </Route>

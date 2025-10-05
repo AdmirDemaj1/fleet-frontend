@@ -13,12 +13,18 @@ import {
 } from '../types/invoice.types';
 
 import { getApiUrl } from '../../../shared/utils/env';
+import { tokenStorage } from '../../auth/utils/tokenStorage';
 
 export const paymentsApi = createApi({
   reducerPath: 'paymentsApi',
   baseQuery: fetchBaseQuery({
     baseUrl: getApiUrl(),
     prepareHeaders: (headers) => {
+      // Add authorization header if needed
+      const token = tokenStorage.getAccessToken();
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
       headers.set('Accept', 'application/json');
       headers.set('Content-Type', 'application/json');
       return headers;
@@ -213,13 +219,24 @@ export const paymentsApi = createApi({
       },
     }),
 
-    createPayment: builder.mutation<Payment, CreatePaymentDto>({
+    createPayment: builder.mutation<{ requiresApproval?: boolean; approvalRequestId?: string; message?: string; data?: Payment }, CreatePaymentDto>({
       query: (paymentData) => ({
         url: '/payments',
         method: 'POST',
         body: paymentData,
       }),
       invalidatesTags: ['Payment'],
+      transformResponse: (response: any) => {
+        // Handle both approval request response and direct payment response
+        if (response.requiresApproval) {
+          return {
+            requiresApproval: true,
+            approvalRequestId: response.approvalRequestId,
+            message: response.message || "Action requires approval. Request has been submitted."
+          };
+        }
+        return { data: response };
+      },
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
@@ -314,12 +331,23 @@ export const paymentsApi = createApi({
       },
     }),
 
-    markPaymentAsPaid: builder.mutation<Payment, { id: string; data: MarkPaymentPaidDto }>({
+    markPaymentAsPaid: builder.mutation<{ requiresApproval?: boolean; approvalRequestId?: string; message?: string; data?: Payment }, { id: string; data: MarkPaymentPaidDto }>({
       query: ({ id, data }) => ({
         url: `/payments/${id}/mark-paid`,
         method: 'PATCH',
         body: data,
       }),
+      transformResponse: (response: any) => {
+        // Handle both approval request response and direct payment response
+        if (response.requiresApproval) {
+          return {
+            requiresApproval: true,
+            approvalRequestId: response.approvalRequestId,
+            message: response.message || "Action requires approval. Request has been submitted."
+          };
+        }
+        return { data: response };
+      },
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Payment', id },
         'Payment',
@@ -342,7 +370,7 @@ export const paymentsApi = createApi({
       },
     }),
 
-    markPaymentAsPaidWithCredit: builder.mutation<PaymentWithCreditResponse, { 
+    markPaymentAsPaidWithCredit: builder.mutation<{ requiresApproval?: boolean; approvalRequestId?: string; message?: string; data?: PaymentWithCreditResponse }, { 
       id: string; 
       data: MarkPaymentPaidWithCreditDto 
     }>({
@@ -351,6 +379,17 @@ export const paymentsApi = createApi({
         method: 'PATCH',
         body: data,
       }),
+      transformResponse: (response: any) => {
+        // Handle both approval request response and direct payment response
+        if (response.requiresApproval) {
+          return {
+            requiresApproval: true,
+            approvalRequestId: response.approvalRequestId,
+            message: response.message || "Action requires approval. Request has been submitted."
+          };
+        }
+        return { data: response };
+      },
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Payment', id },
         'Payment',

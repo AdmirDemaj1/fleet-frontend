@@ -1,3 +1,5 @@
+import { Document } from '../../../shared/types/document.types';
+
 export enum CustomerType {
     INDIVIDUAL = 'individual',
     BUSINESS = 'business',
@@ -9,7 +11,7 @@ export enum CustomerType {
   }
   
   export interface BaseCustomer {
-    id?: string;
+    id: string;
     type: CustomerType;
     address: string;
     phone: string;
@@ -19,6 +21,7 @@ export enum CustomerType {
     additionalNotes?: string;
     createdAt?: Date | string; // Accept string from API
     updatedAt?: Date | string; // Accept string from API
+    documents?: Document[]; // Array of documents
   }
   
   

@@ -1,26 +1,37 @@
-import React from 'react';
-import { Box } from '@mui/material';
-import { useParams } from 'react-router-dom';
-import CustomerAccountSidebar from '../../components/CustomerAccount/CustomerAccountSummarySidebar';
-import CustomerAssetSummary from './../../components/CustomerAccount/CustomerAssetSummary';
-import CustomerBillingAndLogsCards from '../../components/CustomerAccount/CustomerBillingLogCards';
-import { useRecentInvoices } from '../../hooks/useRecentInvoices';
+import React from "react";
+import { Box, CircularProgress, Alert } from "@mui/material";
+import { useParams } from "react-router-dom";
+import CustomerAccountSidebar from "../../components/CustomerAccount/CustomerAccountSummarySidebar";
+import CustomerAssetSummary from "./../../components/CustomerAccount/CustomerAssetSummary";
+import CustomerBillingAndLogsCards from "../../components/CustomerAccount/CustomerBillingLogCards";
+import { CustomerDocuments } from "../../components/CustomerAccount/CustomerDocuments";
+import { useRecentInvoices } from "../../hooks/useRecentInvoices";
+import { useCustomer } from "../../hooks/useCustomer";
 
 const CustomerSummaryPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { invoices: recentInvoices, loading: invoicesLoading, error: invoicesError } = useRecentInvoices(id || '');
+  const {
+    invoices: recentInvoices,
+    loading: invoicesLoading,
+    error: invoicesError,
+  } = useRecentInvoices(id || "");
+  // const {
+  //   customer,
+  //   loading: customerLoading,
+  //   error: customerError,
+  // } = useCustomer(id || "");
 
   if (!id) {
     return <Box>Customer ID not found</Box>;
   }
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: "flex" }}>
       <CustomerAccountSidebar customerId={id} />
       <Box sx={{ flexGrow: 1, pl: 3 }}>
-        <CustomerBillingAndLogsCards 
+        <CustomerBillingAndLogsCards
           customerId={id}
-          recentInvoices={recentInvoices} 
+          recentInvoices={recentInvoices}
           invoicesLoading={invoicesLoading}
           invoicesError={invoicesError}
         />
