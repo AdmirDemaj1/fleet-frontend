@@ -9,6 +9,7 @@ import {
   ContractSummary,
   CollateralSummary,
   PaginatedResponse,
+  Administrator,
 } from "../types/customer.types";
 import { CustomerLog } from "../types/customerLogs.types";
 
@@ -92,10 +93,24 @@ export const customerApi = {
     return response.data;
   },
 
-  create: async (data: CreateCustomerDto): Promise<Customer> => {
+  create: async (data: CreateCustomerDto | any): Promise<Customer> => {
     console.log("API create called with data:", data);
     try {
-      const response = await api.post<Customer>(API_ENDPOINTS.CUSTOMERS, data);
+      // Check if this is an administrator by checking for administrator-specific fields
+      // (since type property is not sent for administrators)
+      const isAdministrator = !!(
+        data.companyName && 
+        data.administratorName && 
+        data.administratorId && 
+        data.administratorPosition &&
+        !data.individualDetails &&
+        !data.businessDetails
+      );
+      const endpoint = isAdministrator ? API_ENDPOINTS.ADMINISTRATORS : API_ENDPOINTS.CUSTOMERS;
+      
+      console.log(`Using endpoint: ${endpoint} (isAdministrator: ${isAdministrator})`);
+      
+      const response = await api.post<Customer>(endpoint, data);
       console.log("API create response:", response.data);
       return response.data;
     } catch (error) {
@@ -254,6 +269,11 @@ export const customerApi = {
       ? `/customers/${id}/payments?${queryString}`
       : `/customers/${id}/payments`;
     const response = await api.get<any[]>(url);
+    return response.data;
+  },
+
+  getAdministrators: async (): Promise<Administrator[]> => {
+    const response = await api.get<Administrator[]>('/administrators');
     return response.data;
   },
 };

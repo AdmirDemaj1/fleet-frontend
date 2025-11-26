@@ -151,6 +151,7 @@ export interface CreateContractDto {
 
   // Endorser guarantees
   endorserCollaterals?: {
+    type: "vehicle" | "property" | "personal_guarantee" | "other";
     description: string;
     value: number;
     endorserId: string;
@@ -211,6 +212,7 @@ export interface ContractFormData {
   selectedVehicleData?: VehicleSummary[]; // Full vehicle data including documents
   selectedEndorsers: string[];
   guaranteeForContract?: number; // Amount the endorser guarantees for the contract
+  vehicleAsCollateral?: boolean; // Track if selected vehicle should be used as collateral
   collaterals: VehicleCollateral[];
   endorserCollaterals: EndorserCollateral[];
   documents: any[]; // Will be ContractDocument[] when imported
@@ -357,6 +359,8 @@ export interface VehiclePickerProps {
   selectedVehicleIds: string[];
   onVehicleSelect: (vehicleIds: string[]) => void;
   onVehicleDataChange?: (vehicles: VehicleSummary[]) => void; // New callback for full vehicle data
+  vehicleAsCollateral?: boolean; // Track if vehicle should be used as collateral
+  onVehicleAsCollateralChange?: (isCollateral: boolean) => void; // Callback for collateral checkbox
   customerId?: string;
   error?: string;
 }

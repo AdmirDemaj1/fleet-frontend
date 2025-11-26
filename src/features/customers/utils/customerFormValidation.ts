@@ -70,61 +70,19 @@ export const createCustomerValidationSchema = (customerType: CustomerType) => {
       .required('NUIS/NIPT is required')
       .min(8, 'NUIS/NIPT must be between 8 and 15 characters')
       .max(15, 'NUIS/NIPT must be between 8 and 15 characters'),
-    administratorName: yup
-      .string()
-      .required('Administrator name is required')
-      .min(2, 'Administrator name must be at least 2 characters')
-      .max(100, 'Administrator name cannot exceed 100 characters'),
-    administratorId: yup
-      .string()
-      .required('Administrator ID is required')
-      .min(10, 'Administrator ID must be between 10 and 20 characters')
-      .max(20, 'Administrator ID must be between 10 and 20 characters'),
-    administratorPosition: yup
-      .string()
-      .required('Administrator position is required')
-      .min(2, 'Administrator position must be at least 2 characters')
-      .max(50, 'Administrator position cannot exceed 50 characters'),
+    administratorIds: yup.array().of(yup.string()).optional(),
     mainShareholders: yup.string().optional(),
+    shareholders: yup.array().of(
+      yup.object().shape({
+        name: yup.string()
+      })
+    ).optional(),
     ...baseContactSchema
   });
 
-  const endorserSchema = yup.object({
-    type: yup.string().oneOf([CustomerType.ENDORSER]).required(),
-    firstName: yup
-      .string()
-      .required('First name is required')
-      .min(2, 'First name must be at least 2 characters')
-      .max(50, 'First name cannot exceed 50 characters'),
-    lastName: yup
-      .string()
-      .required('Last name is required')
-      .min(2, 'Last name must be at least 2 characters')
-      .max(50, 'Last name cannot exceed 50 characters'),
-    idNumber: yup
-      .string()
-      .required('ID number is required')
-      .min(10, 'ID number must be between 10 and 20 characters')
-      .max(20, 'ID number must be between 10 and 20 characters'),
-    dateOfBirth: yup
-      .string()
-      .required('Date of birth is required'),
-    guaranteedAmount: yup
-      .number()
-      .optional()
-      .min(0, 'Guaranteed amount must be positive'),
-    relationshipToCustomer: yup
-      .string()
-      .optional()
-      .max(100, 'Relationship description cannot exceed 100 characters'),
-    financialInformation: yup.object().optional(),
-    active: yup.boolean().optional(),
-    notes: yup
-      .string()
-      .optional()
-      .max(1000, 'Notes cannot exceed 1000 characters'),
-    ...baseContactSchema
-  });
+ 
+
+
 
   return yup.object({
     customerType: yup.string().oneOf(Object.values(CustomerType)).required('Customer type is required'),
@@ -136,11 +94,6 @@ export const createCustomerValidationSchema = (customerType: CustomerType) => {
     businessDetails: yup.lazy(() => 
       customerType === CustomerType.BUSINESS
         ? businessSchema.required('Business details are required')
-        : yup.mixed().optional()
-    ),
-    endorserDetails: yup.lazy(() => 
-      customerType === CustomerType.ENDORSER
-        ? endorserSchema.required('Endorser details are required')
         : yup.mixed().optional()
     )
   });
@@ -164,16 +117,30 @@ export const STEP_FIELDS = {
   BUSINESS_DETAILS: [
     'businessDetails.legalName',
     'businessDetails.nuisNipt',
-    'businessDetails.administratorName',
-    'businessDetails.administratorId',
-    'businessDetails.administratorPosition',
     'businessDetails.mainShareholders',
+    'businessDetails.shareholders',
+    'businessDetails.administratorIds',
     'businessDetails.address',
     'businessDetails.phone',
     'businessDetails.email',
     'businessDetails.secondaryPhone',
     'businessDetails.secondaryEmail',
     'businessDetails.additionalNotes'
+  ],
+  ADMINISTRATOR_DETAILS: [
+    'administratorDetails.nuisNipt',
+    'administratorDetails.companyName',
+    'administratorDetails.companyEmail',
+    'administratorDetails.companyPhone',
+    'administratorDetails.administratorName',
+    'administratorDetails.administratorId',
+    'administratorDetails.administratorPosition',
+    'administratorDetails.address',
+    'administratorDetails.phone',
+    'administratorDetails.email',
+    'administratorDetails.secondaryPhone',
+    'administratorDetails.secondaryEmail',
+    'administratorDetails.additionalNotes'
   ],
   ENDORSER_DETAILS: [
     'endorserDetails.firstName',
@@ -209,12 +176,21 @@ export const REQUIRED_FIELDS = {
   BUSINESS_DETAILS: [
     'businessDetails.legalName',
     'businessDetails.nuisNipt',
-    'businessDetails.administratorName',
-    'businessDetails.administratorId',
-    'businessDetails.administratorPosition',
     'businessDetails.address',
     'businessDetails.phone',
     'businessDetails.email'
+  ],
+  ADMINISTRATOR_DETAILS: [
+    'administratorDetails.nuisNipt',
+    'administratorDetails.companyName',
+    'administratorDetails.companyEmail',
+    'administratorDetails.companyPhone',
+    'administratorDetails.administratorName',
+    'administratorDetails.administratorId',
+    'administratorDetails.administratorPosition',
+    'administratorDetails.address',
+    'administratorDetails.phone',
+    'administratorDetails.email'
   ],
   ENDORSER_DETAILS: [
     'endorserDetails.firstName',

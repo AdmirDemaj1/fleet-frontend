@@ -3,7 +3,7 @@ import {
   Box, Typography, Chip, Avatar, alpha
 } from '@mui/material';
 import { 
-  Person, Business, Badge, CalendarMonth, Email, Phone, Tag
+  Person, Business, Badge, CalendarMonth, Email, Phone, Tag, SupervisorAccount
 } from '@mui/icons-material';
 import { CustomerType } from '../../../types/customer.types';
 import { STATUS_CONFIG } from '../../../constants/sidebarConstants';
@@ -21,6 +21,8 @@ const CustomerAccountHeader: React.FC<CustomerAccountHeaderProps> = ({
   const getCustomerDisplayName = () => {
     if (customerData?.type === CustomerType.INDIVIDUAL) {
       return `${customerData.firstName || ''} ${customerData.lastName || ''}`.trim() || 'Individual Customer';
+    } else if (customerData?.type === CustomerType.ADMINISTRATOR) {
+      return customerData?.companyName || customerData?.administratorName || 'Administrator Customer';
     }
     return customerData?.legalName || customerData?.administratorName || 'Business Customer';
   };
@@ -31,8 +33,12 @@ const CustomerAccountHeader: React.FC<CustomerAccountHeaderProps> = ({
       const lastName = customerData.lastName || '';
       return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
     }
+    const companyName = customerData?.companyName || '';
     const legalName = customerData?.legalName || '';
     const adminName = customerData?.administratorName || '';
+    if (companyName) {
+      return companyName.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase();
+    }
     if (legalName) {
       return legalName.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase();
     }
@@ -68,6 +74,8 @@ const CustomerAccountHeader: React.FC<CustomerAccountHeaderProps> = ({
           sx={{ 
             bgcolor: customerData?.type === CustomerType.INDIVIDUAL 
               ? 'primary.main'
+              : customerData?.type === CustomerType.ADMINISTRATOR
+              ? 'warning.main'
               : 'secondary.main',
             width: 56,
             height: 56,
@@ -78,12 +86,16 @@ const CustomerAccountHeader: React.FC<CustomerAccountHeaderProps> = ({
             fontWeight: 700,
             background: (theme) => customerData?.type === CustomerType.INDIVIDUAL
               ? `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`
+              : customerData?.type === CustomerType.ADMINISTRATOR
+              ? `linear-gradient(135deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`
               : `linear-gradient(135deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.dark})`
           }}
         >
           {initials.length > 0 ? initials : (
             customerData?.type === CustomerType.INDIVIDUAL ? (
               <Person sx={{ fontSize: 28, color: 'white' }} />
+            ) : customerData?.type === CustomerType.ADMINISTRATOR ? (
+              <SupervisorAccount sx={{ fontSize: 28, color: 'white' }} />
             ) : (
               <Business sx={{ fontSize: 28, color: 'white' }} />
             )

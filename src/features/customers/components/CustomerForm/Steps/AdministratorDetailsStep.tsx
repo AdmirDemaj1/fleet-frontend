@@ -6,11 +6,7 @@ import {
   Box,
   InputAdornment,
   useTheme,
-  alpha,
-  Divider,
-  IconButton,
-  Button,
-  Paper
+  alpha
 } from '@mui/material';
 import {
   Business,
@@ -18,24 +14,16 @@ import {
   Email,
   Phone,
   Home,
-  Groups,
-  Add,
-  Remove
+  Person,
+  AccountBox,
+  Work
 } from '@mui/icons-material';
-import { Controller, useFormContext, useFieldArray } from 'react-hook-form';
+import { Controller, useFormContext } from 'react-hook-form';
 import { MuiTelInput } from 'mui-tel-input';
-import { AdministratorPicker } from '../../AdministratorPicker';
 
-export const BusinessDetailsStep: React.FC = () => {
+export const AdministratorDetailsStep: React.FC = () => {
   const theme = useTheme();
-  const { control, formState: { errors }, setValue, watch } = useFormContext();
-  const watchedAdministratorIds = watch('businessDetails.administratorIds') || [];
-
-  // Field array for shareholders
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'businessDetails.shareholders'
-  });
+  const { control, formState: { errors } } = useFormContext();
 
   const fieldStyle = {
     '& .MuiOutlinedInput-root': {
@@ -61,7 +49,7 @@ export const BusinessDetailsStep: React.FC = () => {
 
   return (
     <Box>
-      {/* Business Information Section */}
+      {/* Company Information Section */}
       <Box mb={5}>
         <Typography variant="h6" component="h3" gutterBottom fontWeight={600} sx={{ 
           display: 'flex', 
@@ -71,27 +59,27 @@ export const BusinessDetailsStep: React.FC = () => {
           mb: 3
         }}>
           <Business />
-          Business Information
+          Company Information
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Enter the business registration and legal details
+          Enter the company registration and legal details
         </Typography>
 
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Controller
-              name="businessDetails.legalName"
+              name="administratorDetails.companyName"
               control={control}
               defaultValue=""
-              rules={{ required: 'Legal name is required' }}
+              rules={{ required: 'Company name is required' }}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Legal Name"
+                  label="Company Name"
                   fullWidth
                   required
-                  error={!!getNestedError('businessDetails.legalName')}
-                  helperText={getNestedError('businessDetails.legalName')?.message}
+                  error={!!getNestedError('administratorDetails.companyName')}
+                  helperText={getNestedError('administratorDetails.companyName')?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -107,7 +95,7 @@ export const BusinessDetailsStep: React.FC = () => {
 
           <Grid item xs={12} sm={6}>
             <Controller
-              name="businessDetails.nuisNipt"
+              name="administratorDetails.nuisNipt"
               control={control}
               defaultValue=""
               rules={{ required: 'NUIS/NIPT is required' }}
@@ -117,8 +105,8 @@ export const BusinessDetailsStep: React.FC = () => {
                   label="NUIS/NIPT"
                   fullWidth
                   required
-                  error={!!getNestedError('businessDetails.nuisNipt')}
-                  helperText={getNestedError('businessDetails.nuisNipt')?.message}
+                  error={!!getNestedError('administratorDetails.nuisNipt')}
+                  helperText={getNestedError('administratorDetails.nuisNipt')?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -132,108 +120,161 @@ export const BusinessDetailsStep: React.FC = () => {
             />
           </Grid>
 
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="administratorDetails.companyEmail"
+              control={control}
+              defaultValue=""
+              rules={{ 
+                required: 'Company email is required',
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: 'Invalid email address'
+                }
+              }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Company Email"
+                  type="email"
+                  fullWidth
+                  required
+                  error={!!getNestedError('administratorDetails.companyEmail')}
+                  helperText={getNestedError('administratorDetails.companyEmail')?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Email color="action" fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={fieldStyle}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Controller
+              name="administratorDetails.companyPhone"
+              control={control}
+              defaultValue=""
+              rules={{ required: 'Company phone is required' }}
+              render={({ field }) => (
+                <MuiTelInput
+                  {...field}
+                  label="Company Phone"
+                  fullWidth
+                  required
+                  defaultCountry="AL"
+                  error={!!getNestedError('administratorDetails.companyPhone')}
+                  helperText={getNestedError('administratorDetails.companyPhone')?.message}
+                  sx={fieldStyle}
+                />
+              )}
+            />
+          </Grid>
         </Grid>
       </Box>
 
-      {/* Shareholders Section */}
+      {/* Administrator Information Section */}
       <Box mb={5}>
         <Typography variant="h6" component="h3" gutterBottom fontWeight={600} sx={{ 
           display: 'flex', 
           alignItems: 'center', 
           gap: 1,
           color: theme.palette.primary.main,
-          mb: 2
+          mb: 3
         }}>
-          <Groups />
-          Main Shareholders (Optional)
+          <AccountBox />
+          Administrator Information
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Add the main shareholders or owners of the business
+          Details of the administrator or authorized representative
         </Typography>
 
-        {fields.length === 0 && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mb: 2 }}>
-              No shareholders added yet
-            </Typography>
-          </Box>
-        )}
-
-        {fields.map((field, index) => (
-          <Paper
-            key={field.id}
-            elevation={0}
-            sx={{
-              p: 2,
-              mb: 2,
-              border: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.background.paper, 0.5)
-            }}
-          >
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={10}>
-                <Controller
-                  name={`businessDetails.shareholders.${index}.name` as const}
-                  control={control}
-                  defaultValue=""
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label={`Shareholder ${index + 1}`}
-                      fullWidth
-                      placeholder="Enter shareholder name"
-                      error={!!getNestedError(`businessDetails.shareholders.${index}.name`)}
-                      helperText={getNestedError(`businessDetails.shareholders.${index}.name`)?.message}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Groups color="action" fontSize="small" />
-                          </InputAdornment>
-                        ),
-                      }}
-                      sx={fieldStyle}
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} sm={2}>
-                <IconButton
-                  onClick={() => remove(index)}
-                  color="error"
-                  sx={{
-                    '&:hover': {
-                      bgcolor: alpha(theme.palette.error.main, 0.1)
-                    }
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="administratorDetails.administratorName"
+              control={control}
+              defaultValue=""
+              rules={{ required: 'Administrator name is required' }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Administrator Name"
+                  fullWidth
+                  required
+                  error={!!getNestedError('administratorDetails.administratorName')}
+                  helperText={getNestedError('administratorDetails.administratorName')?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Person color="action" fontSize="small" />
+                      </InputAdornment>
+                    ),
                   }}
-                  aria-label={`Remove shareholder ${index + 1}`}
-                >
-                  <Remove />
-                </IconButton>
-              </Grid>
-            </Grid>
-          </Paper>
-        ))}
+                  sx={fieldStyle}
+                />
+              )}
+            />
+          </Grid>
 
-        <Button
-          variant="outlined"
-          startIcon={<Add />}
-          onClick={() => append({ name: '' })}
-          sx={{
-            borderRadius: 2,
-            textTransform: 'none',
-            borderStyle: 'dashed',
-            borderWidth: 2,
-            py: 1.5,
-            '&:hover': {
-              borderStyle: 'dashed',
-              borderWidth: 2,
-              bgcolor: alpha(theme.palette.primary.main, 0.05)
-            }
-          }}
-        >
-          Add Shareholder
-        </Button>
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="administratorDetails.administratorId"
+              control={control}
+              defaultValue=""
+              rules={{ required: 'Administrator ID is required' }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Administrator ID"
+                  fullWidth
+                  required
+                  error={!!getNestedError('administratorDetails.administratorId')}
+                  helperText={getNestedError('administratorDetails.administratorId')?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Badge color="action" fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={fieldStyle}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Controller
+              name="administratorDetails.administratorPosition"
+              control={control}
+              defaultValue=""
+              rules={{ required: 'Administrator position is required' }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Administrator Position"
+                  fullWidth
+                  required
+                  error={!!getNestedError('administratorDetails.administratorPosition')}
+                  helperText={getNestedError('administratorDetails.administratorPosition')?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Work color="action" fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={fieldStyle}
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
       </Box>
 
       {/* Contact Information Section */}
@@ -249,13 +290,13 @@ export const BusinessDetailsStep: React.FC = () => {
           Contact Information
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Business contact details and address information
+          Personal contact details and address information for the administrator
         </Typography>
 
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Controller
-              name="businessDetails.address"
+              name="administratorDetails.address"
               control={control}
               defaultValue=""
               rules={{ required: 'Address is required' }}
@@ -267,8 +308,8 @@ export const BusinessDetailsStep: React.FC = () => {
                   required
                   multiline
                   rows={3}
-                  error={!!getNestedError('businessDetails.address')}
-                  helperText={getNestedError('businessDetails.address')?.message}
+                  error={!!getNestedError('administratorDetails.address')}
+                  helperText={getNestedError('administratorDetails.address')?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
@@ -284,7 +325,7 @@ export const BusinessDetailsStep: React.FC = () => {
 
           <Grid item xs={12} sm={6}>
             <Controller
-              name="businessDetails.phone"
+              name="administratorDetails.phone"
               control={control}
               defaultValue=""
               rules={{ required: 'Phone number is required' }}
@@ -295,8 +336,8 @@ export const BusinessDetailsStep: React.FC = () => {
                   fullWidth
                   required
                   defaultCountry="AL"
-                  error={!!getNestedError('businessDetails.phone')}
-                  helperText={getNestedError('businessDetails.phone')?.message}
+                  error={!!getNestedError('administratorDetails.phone')}
+                  helperText={getNestedError('administratorDetails.phone')?.message}
                   sx={fieldStyle}
                 />
               )}
@@ -305,7 +346,7 @@ export const BusinessDetailsStep: React.FC = () => {
 
           <Grid item xs={12} sm={6}>
             <Controller
-              name="businessDetails.email"
+              name="administratorDetails.email"
               control={control}
               defaultValue=""
               rules={{ 
@@ -322,8 +363,8 @@ export const BusinessDetailsStep: React.FC = () => {
                   type="email"
                   fullWidth
                   required
-                  error={!!getNestedError('businessDetails.email')}
-                  helperText={getNestedError('businessDetails.email')?.message}
+                  error={!!getNestedError('administratorDetails.email')}
+                  helperText={getNestedError('administratorDetails.email')?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -339,7 +380,7 @@ export const BusinessDetailsStep: React.FC = () => {
 
           <Grid item xs={12} sm={6}>
             <Controller
-              name="businessDetails.secondaryPhone"
+              name="administratorDetails.secondaryPhone"
               control={control}
               defaultValue=""
               render={({ field }) => (
@@ -348,8 +389,8 @@ export const BusinessDetailsStep: React.FC = () => {
                   label="Secondary Phone (Optional)"
                   fullWidth
                   defaultCountry="AL"
-                  error={!!getNestedError('businessDetails.secondaryPhone')}
-                  helperText={getNestedError('businessDetails.secondaryPhone')?.message}
+                  error={!!getNestedError('administratorDetails.secondaryPhone')}
+                  helperText={getNestedError('administratorDetails.secondaryPhone')?.message}
                   sx={fieldStyle}
                 />
               )}
@@ -358,7 +399,7 @@ export const BusinessDetailsStep: React.FC = () => {
 
           <Grid item xs={12} sm={6}>
             <Controller
-              name="businessDetails.secondaryEmail"
+              name="administratorDetails.secondaryEmail"
               control={control}
               defaultValue=""
               render={({ field }) => (
@@ -367,8 +408,8 @@ export const BusinessDetailsStep: React.FC = () => {
                   label="Secondary Email (Optional)"
                   type="email"
                   fullWidth
-                  error={!!getNestedError('businessDetails.secondaryEmail')}
-                  helperText={getNestedError('businessDetails.secondaryEmail')?.message}
+                  error={!!getNestedError('administratorDetails.secondaryEmail')}
+                  helperText={getNestedError('administratorDetails.secondaryEmail')?.message}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -384,7 +425,7 @@ export const BusinessDetailsStep: React.FC = () => {
 
           <Grid item xs={12}>
             <Controller
-              name="businessDetails.additionalNotes"
+              name="administratorDetails.additionalNotes"
               control={control}
               defaultValue=""
               render={({ field }) => (
@@ -394,8 +435,8 @@ export const BusinessDetailsStep: React.FC = () => {
                   fullWidth
                   multiline
                   rows={3}
-                  error={!!getNestedError('businessDetails.additionalNotes')}
-                  helperText={getNestedError('businessDetails.additionalNotes')?.message}
+                  error={!!getNestedError('administratorDetails.additionalNotes')}
+                  helperText={getNestedError('administratorDetails.additionalNotes')?.message}
                   sx={fieldStyle}
                 />
               )}
@@ -403,18 +444,7 @@ export const BusinessDetailsStep: React.FC = () => {
           </Grid>
         </Grid>
       </Box>
-
-      {/* Administrator Selection Section */}
-      <Box mb={5}>
-        <Divider sx={{ mb: 4 }} />
-        <AdministratorPicker
-          selectedAdministratorIds={watchedAdministratorIds}
-          onAdministratorSelect={(ids) => {
-            setValue('businessDetails.administratorIds', ids, { shouldValidate: true });
-          }}
-          error={getNestedError('businessDetails.administratorIds')?.message}
-        />
-      </Box>
     </Box>
   );
 };
+

@@ -17,7 +17,9 @@ import {
   Tooltip,
   InputAdornment,
   useTheme,
-  alpha
+  alpha,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import {
   DirectionsCar,
@@ -25,7 +27,8 @@ import {
   Clear,
   Add,
   CheckCircle,
-  Refresh
+  Refresh,
+  Security
 } from '@mui/icons-material';
 import { useGetAvailableVehiclesQuery } from '../../../api/contractApi';
 import { VehiclePickerProps, VehicleSummary } from '../../../types/contract.types';
@@ -72,6 +75,8 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
   selectedVehicleIds,
   onVehicleSelect,
   onVehicleDataChange,
+  vehicleAsCollateral = false,
+  onVehicleAsCollateralChange,
   error
 }) => {
   const theme = useTheme();
@@ -579,6 +584,38 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
                     ⛽ Fuel Type: <strong>{state.selectedVehicle.fuelType}</strong>
                   </Typography>
                 )}
+
+                {/* Collateral Checkbox */}
+                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={vehicleAsCollateral}
+                        onChange={(e) => {
+                          if (onVehicleAsCollateralChange) {
+                            onVehicleAsCollateralChange(e.target.checked);
+                          }
+                        }}
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Security sx={{ fontSize: 18, color: vehicleAsCollateral ? 'primary.main' : 'text.secondary' }} />
+                        <Typography variant="body2" sx={{ fontWeight: vehicleAsCollateral ? 600 : 400 }}>
+                          Use this vehicle as collateral
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  {vehicleAsCollateral && (
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      <Typography variant="caption">
+                        This vehicle will be added as collateral for the contract with an estimated value of ${(state.selectedVehicle.marketValue || state.selectedVehicle.currentValuation || 0).toLocaleString()}
+                      </Typography>
+                    </Alert>
+                  )}
+                </Box>
               </Box>
             </CardContent>
           </Card>

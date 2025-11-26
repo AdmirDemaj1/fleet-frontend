@@ -4,13 +4,16 @@ import { useDispatch } from 'react-redux';
 import {
   Box,
   Button,
-  Typography
+  Typography,
+  Divider
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { CustomerList } from '../components/CustomerList';
 import { CustomerListFilters } from '../components/CustomerList/CustomerListFilters';
+import { AdministratorsTable } from '../components/AdministratorsTable';
 import { useCustomers } from '../hooks/useCustomers';
 import { useDeleteCustomer } from '../hooks/useDeleteCustomer';
+import { useAdministrators } from '../hooks/useAdministrators';
 import { setFilters } from '../slices/customerSlice';
 import { CustomerType } from '../types/customer.types';
 import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
@@ -21,6 +24,7 @@ export const CustomersPage: React.FC = () => {
   const dispatch = useDispatch();
   const { customers, loading, totalCount } = useCustomers();
   const { deleteCustomer } = useDeleteCustomer();
+  const { administrators, loading: loadingAdministrators } = useAdministrators();
   
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -73,7 +77,9 @@ export const CustomersPage: React.FC = () => {
 
   const confirmDelete = async () => {
     if (customerToDelete) {
-      await deleteCustomer(customerToDelete);
+      // Find the customer to get its type
+      const customer = customers.find(c => c.id === customerToDelete);
+      await deleteCustomer(customerToDelete, customer?.type);
       setDeleteDialogOpen(false);
       setCustomerToDelete(null);
       
@@ -140,6 +146,18 @@ export const CustomersPage: React.FC = () => {
         onRowsPerPageChange={handleRowsPerPageChange}
         onDelete={handleDelete}
       />
+
+      <Divider sx={{ my: 4 }} />
+
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Administrators
+        </Typography>
+        <AdministratorsTable
+          administrators={administrators}
+          loading={loadingAdministrators}
+        />
+      </Box>
 
       <ConfirmDialog
         open={deleteDialogOpen}

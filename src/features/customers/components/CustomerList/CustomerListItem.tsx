@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TableRow,
   TableCell,
@@ -12,8 +12,8 @@ import {
   Divider,
   Tooltip,
   alpha,
-  useTheme
-} from '@mui/material';
+  useTheme,
+} from "@mui/material";
 import {
   MoreVert,
   Email as EmailIcon,
@@ -27,10 +27,11 @@ import {
   History,
   AccountBox,
   Dashboard,
-  Delete
-} from '@mui/icons-material';
-import { Customer, CustomerType } from '../../types/customer.types';
-import dayjs from 'dayjs';
+  Delete,
+  SupervisorAccount,
+} from "@mui/icons-material";
+import { Customer, CustomerType } from "../../types/customer.types";
+import dayjs from "dayjs";
 
 interface CustomerListItemProps {
   customer: Customer;
@@ -39,16 +40,16 @@ interface CustomerListItemProps {
 
 export const CustomerListItem: React.FC<CustomerListItemProps> = ({
   customer,
-  onDelete
+  onDelete,
 }) => {
   const navigate = useNavigate();
   const theme = useTheme();
-  
+
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
   // Helper function to get the correct base path based on customer type
   const getBasePath = () => {
-    return customer.type === CustomerType.ENDORSER ? 'endorsers' : 'customers';
+    return "customers";
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -71,56 +72,57 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
       if (business.legalName) {
         return business.legalName;
       }
-    } else if (customer.type === CustomerType.ENDORSER) {
-      const endorser = customer as any;
-      if (endorser.firstName && endorser.lastName) {
-        return `${endorser.firstName} ${endorser.lastName}`;
+    } else if (customer.type === CustomerType.ADMINISTRATOR) {
+      const administrator = customer as any;
+      if (administrator.companyName) {
+        return administrator.companyName;
       }
     }
-    
+
     if (customer.email) {
       // Use the part before @ in the email as name
-      const emailName = customer.email.split('@')[0];
+      const emailName = customer.email.split("@")[0];
       // Format it by replacing dots and hyphens with spaces and capitalizing
       return emailName
         .split(/[.-]/)
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
     }
-    
+
     // Fallback to ID if no email
     return `Customer ${customer.id?.substring(0, 8)}`;
   };
 
   // Format date for display
   const formatDate = (dateString?: string | Date): string => {
-    if (!dateString) return 'N/A';
-    return dayjs(dateString).format('MMM D, YYYY');
+    if (!dateString) return "N/A";
+    return dayjs(dateString).format("MMM D, YYYY");
   };
 
   const isIndividual = customer.type === CustomerType.INDIVIDUAL;
-  const isEndorser = customer.type === CustomerType.ENDORSER;
+  const isAdministrator = customer.type === CustomerType.ADMINISTRATOR;
+ 
 
   return (
     <>
-      <TableRow 
+      <TableRow
         hover
-        sx={{ 
-          transition: 'all 0.2s',
-          '&:hover': {
-            backgroundColor: alpha(theme.palette.primary.main, 0.02)
-          }
+        sx={{
+          transition: "all 0.2s",
+          "&:hover": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.02),
+          },
         }}
       >
         <TableCell sx={{ py: 1.5 }}>
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              cursor: 'pointer',
-              '&:hover': {
-                color: theme.palette.primary.main
-              }
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              cursor: "pointer",
+              "&:hover": {
+                color: theme.palette.primary.main,
+              },
             }}
             onClick={() => navigate(`/${getBasePath()}/${customer.id}`)}
           >
@@ -129,121 +131,129 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
                 width: 36,
                 height: 36,
                 bgcolor: alpha(
-                  isIndividual 
-                    ? theme.palette.primary.main 
-                    : isEndorser
-                    ? theme.palette.info.main
+                  isIndividual
+                    ? theme.palette.primary.main
+                    : isAdministrator
+                    ? theme.palette.warning.main
                     : theme.palette.secondary.main,
                   0.1
                 ),
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 1.5
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mr: 1.5,
               }}
             >
               {isIndividual ? (
-                <Person 
+                <Person
                   fontSize="small"
-                  sx={{ color: theme.palette.primary.main }} 
+                  sx={{ color: theme.palette.primary.main }}
                 />
-              ) : isEndorser ? (
-                <Security 
+              ) : isAdministrator ? (
+                <SupervisorAccount
                   fontSize="small"
-                  sx={{ color: theme.palette.info.main }} 
+                  sx={{ color: theme.palette.warning.main }}
                 />
               ) : (
-                <BusinessCenter 
+                <BusinessCenter
                   fontSize="small"
-                  sx={{ color: theme.palette.secondary.main }} 
+                  sx={{ color: theme.palette.secondary.main }}
                 />
               )}
             </Box>
             <Box>
-              <Typography 
-                variant="body1" 
+              <Typography
+                variant="body1"
                 fontWeight={500}
                 id={`customer-${customer.id}`}
-                sx={{ 
-                  transition: 'color 0.2s ease',
-                  borderBottom: '1px dotted transparent',
-                  '&:hover': {
+                sx={{
+                  transition: "color 0.2s ease",
+                  borderBottom: "1px dotted transparent",
+                  "&:hover": {
                     borderBottomColor: theme.palette.primary.main,
-                  }
+                  },
                 }}
               >
                 {getDisplayName(customer)}
               </Typography>
-              <Typography 
-                variant="caption" 
+              <Typography
+                variant="caption"
                 color="text.secondary"
-                sx={{ display: 'block' }}
+                sx={{ display: "block" }}
               >
                 ID: {customer.id?.slice(0, 8)}
               </Typography>
             </Box>
           </Box>
         </TableCell>
-        
+
         <TableCell>
           <Chip
-            label={isIndividual ? 'Individual' : isEndorser ? 'Endorser' : 'Business'}
+            label={
+              isIndividual
+                ? "Individual"
+                : isAdministrator
+                ? "Administrator"
+                : "Business"
+            }
             size="small"
-            color={isIndividual ? 'primary' : isEndorser ? 'info' : 'secondary'}
+            color={
+              isIndividual
+                ? "primary"
+                : isAdministrator
+                ? "warning"
+                : "secondary"
+            }
             variant="outlined"
-            sx={{ 
+            sx={{
               fontWeight: 500,
               px: 0.5,
-              '& .MuiChip-label': { px: 1 }
+              "& .MuiChip-label": { px: 1 },
             }}
           />
         </TableCell>
-        
+
         <TableCell>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <EmailIcon 
-              fontSize="small" 
-              sx={{ color: 'text.secondary', mr: 1, opacity: 0.7 }} 
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <EmailIcon
+              fontSize="small"
+              sx={{ color: "text.secondary", mr: 1, opacity: 0.7 }}
             />
             <Tooltip title={customer.email}>
-              <Typography 
-                variant="body2" 
-                noWrap 
-                sx={{ maxWidth: 150 }}
-              >
+              <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
                 {customer.email}
               </Typography>
             </Tooltip>
           </Box>
         </TableCell>
-        
+
         <TableCell>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <PhoneIcon 
-              fontSize="small" 
-              sx={{ color: 'text.secondary', mr: 1, opacity: 0.7 }} 
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <PhoneIcon
+              fontSize="small"
+              sx={{ color: "text.secondary", mr: 1, opacity: 0.7 }}
             />
             <Typography variant="body2">{customer.phone}</Typography>
           </Box>
         </TableCell>
-        
+
         <TableCell>
           <Typography variant="body2" color="text.secondary">
             {formatDate(customer.createdAt)}
           </Typography>
         </TableCell>
-        
+
         <TableCell align="right">
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
             <Tooltip title="More options">
               <IconButton
                 size="small"
                 onClick={handleMenuOpen}
                 aria-haspopup="true"
-                sx={{ 
-                  transition: 'transform 0.2s',
-                  '&:hover': { transform: 'scale(1.1)' }
+                sx={{
+                  transition: "transform 0.2s",
+                  "&:hover": { transform: "scale(1.1)" },
                 }}
               >
                 <MoreVert fontSize="small" />
@@ -252,22 +262,22 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           </Box>
         </TableCell>
       </TableRow>
-      
+
       <Menu
         anchorEl={menuAnchorEl}
         open={Boolean(menuAnchorEl)}
         onClose={handleMenuClose}
         PaperProps={{
           elevation: 3,
-          sx: { 
+          sx: {
             minWidth: 200,
             borderRadius: 1,
-            overflow: 'hidden'
-          }
+            overflow: "hidden",
+          },
         }}
       >
         {/* Overview group */}
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             navigate(`/${getBasePath()}/${customer.id}`);
             handleMenuClose();
@@ -277,7 +287,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <AccountBox fontSize="small" sx={{ mr: 1.5 }} />
           Customer Details
         </MenuItem>
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             navigate(`/${getBasePath()}/${customer.id}/summary`);
             handleMenuClose();
@@ -287,11 +297,11 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <Dashboard fontSize="small" sx={{ mr: 1.5 }} />
           Dashboard
         </MenuItem>
-        
+
         <Divider />
-        
+
         {/* Assets & Contracts group */}
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             navigate(`/${getBasePath()}/${customer.id}/contracts`);
             handleMenuClose();
@@ -301,7 +311,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <BusinessCenter fontSize="small" sx={{ mr: 1.5 }} />
           Contracts
         </MenuItem>
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             navigate(`/${getBasePath()}/${customer.id}/vehicles`);
             handleMenuClose();
@@ -311,11 +321,11 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <DirectionsCar fontSize="small" sx={{ mr: 1.5 }} />
           Vehicles
         </MenuItem>
-        
+
         <Divider />
-        
+
         {/* Finance group */}
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             navigate(`/${getBasePath()}/${customer.id}/invoices`);
             handleMenuClose();
@@ -325,7 +335,7 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <Receipt fontSize="small" sx={{ mr: 1.5 }} />
           Invoices
         </MenuItem>
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             navigate(`/${getBasePath()}/${customer.id}/export`);
             handleMenuClose();
@@ -335,11 +345,11 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <FileDownload fontSize="small" sx={{ mr: 1.5 }} />
           Export Data
         </MenuItem>
-        
+
         <Divider />
-        
+
         {/* History group */}
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             navigate(`/${getBasePath()}/${customer.id}/logs`);
             handleMenuClose();
@@ -349,11 +359,11 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <History fontSize="small" sx={{ mr: 1.5 }} />
           Activity Logs
         </MenuItem>
-        
+
         <Divider />
-        
+
         {/* Danger zone */}
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             onDelete(customer.id!);
             handleMenuClose();

@@ -3,7 +3,7 @@ import { Document } from '../../../shared/types/document.types';
 export enum CustomerType {
     INDIVIDUAL = 'individual',
     BUSINESS = 'business',
-    ENDORSER = 'endorser'
+    ADMINISTRATOR = 'administrator',
   }
 
   export interface CustomerAccountMenuProps {
@@ -36,26 +36,23 @@ export enum CustomerType {
     type: CustomerType.BUSINESS;
     legalName?: string; // Optional in list response
     nuisNipt?: string; // Optional in list response
-    administratorName?: string; // Optional in list response
-    administratorId?: string; // Optional in list response
-    administratorPosition?: string; // Optional in list response
-    mainShareholders?: string; // Optional in list response
+    shareholders?: string[]; // Array of shareholder names
+    administratorIds?: string[]; // Selected administrator customer IDs
   }
 
-  export interface EndorserCustomer extends BaseCustomer {
-    type: CustomerType.ENDORSER;
-    firstName?: string; // Optional in list response
-    lastName?: string; // Optional in list response
-    idNumber?: string; // Optional in list response
-    dateOfBirth?: string; // Optional in list response
-    guaranteedAmount?: number;
-    relationshipToCustomer?: string;
-    financialInformation?: Record<string, any>;
-    active?: boolean;
-    notes?: string;
+ 
+  export interface AdministratorCustomer extends BaseCustomer {
+    type: CustomerType.ADMINISTRATOR;
+    nuisNipt?: string;
+    companyName?: string;
+    companyEmail?: string;
+    companyPhone?: string;
+    administratorName?: string;
+    administratorId?: string;
+    administratorPosition?: string;
   }
-  
-  export type Customer = IndividualCustomer | BusinessCustomer | EndorserCustomer;
+
+  export type Customer = IndividualCustomer | BusinessCustomer | AdministratorCustomer;
   
   export interface CreateIndividualCustomerDto {
     type: CustomerType.INDIVIDUAL;
@@ -75,10 +72,8 @@ export enum CustomerType {
     type: CustomerType.BUSINESS;
     legalName: string;
     nuisNipt: string;
-    administratorName: string;
-    administratorId: string;
-    administratorPosition: string;
-    mainShareholders?: string;
+    shareholders?: string[]; // Array of shareholder names
+    administratorIds?: string[]; // Selected administrator customer IDs
     address: string;
     phone: string;
     email: string;
@@ -87,29 +82,28 @@ export enum CustomerType {
     additionalNotes?: string;
   }
 
-  export interface CreateEndorserDto {
-    type: CustomerType.ENDORSER;
-    firstName: string;
-    lastName: string;
-    idNumber: string;
-    dateOfBirth: string;
+
+  export interface CreateAdministratorCustomerDto {
+    type: CustomerType.ADMINISTRATOR;
+    nuisNipt: string;
+    companyName: string;
+    companyEmail: string;
+    companyPhone: string;
+    administratorName: string;
+    administratorId: string;
+    administratorPosition: string;
     address: string;
     phone: string;
     email: string;
     secondaryPhone?: string;
     secondaryEmail?: string;
     additionalNotes?: string;
-    guaranteedAmount?: number;
-    relationshipToCustomer?: string;
-    financialInformation?: Record<string, any>;
-    active?: boolean;
-    notes?: string;
   }
-  
+
   export interface CreateCustomerDto {
     individualDetails?: CreateIndividualCustomerDto;
     businessDetails?: CreateBusinessCustomerDto;
-    endorserDetails?: CreateEndorserDto;
+    administratorDetails?: CreateAdministratorCustomerDto;
   }
 
   export interface UpdateEndorserDto {
@@ -130,28 +124,7 @@ export enum CustomerType {
     notes?: string;
   }
 
-  export interface EndorserResponseDto {
-    id: string;
-    type: CustomerType.ENDORSER;
-    firstName: string;
-    lastName: string;
-    idNumber: string;
-    dateOfBirth: string; // Changed from Date to string to match API response
-    address: string;
-    phone: string;
-    email: string;
-    secondaryPhone?: string;
-    secondaryEmail?: string;
-    additionalNotes?: string;
-    guaranteedAmount?: number;
-    remainingGuaranteeCapacity?: number; // Updated field name to match API response
-    relationshipToCustomer?: string;
-    financialInformation?: Record<string, any>;
-    active: boolean;
-    notes?: string;
-    createdAt: string; // Changed from Date to string to match API response
-    updatedAt: string; // Changed from Date to string to match API response
-  }
+
 
   export interface EndorserContract {
     contractId: string;
@@ -188,17 +161,12 @@ export enum CustomerType {
     cancelledContracts: number;
   }
 
-  export interface EndorserWithContractsDto {
-    endorser: EndorserResponseDto;
-    contracts: EndorserContract[];
-    summary: EndorserContractSummary;
-  }
+ 
   
   export interface UpdateCustomerDto {
     id: string;
     individualDetails?: Partial<CreateIndividualCustomerDto>;
     businessDetails?: Partial<CreateBusinessCustomerDto>;
-    endorserDetails?: Partial<CreateEndorserDto>;
   }
   
   export interface ContractSummary {
@@ -252,4 +220,23 @@ export enum CustomerType {
   export interface PaginatedResponse<T> {
     data: T[];
     meta: PaginationMeta;
+  }
+
+  export interface Administrator {
+    id: string;
+    nuisNipt: string;
+    companyName: string;
+    companyEmail: string;
+    companyPhone: string;
+    administratorName: string;
+    administratorId: string;
+    administratorPosition: string;
+    address: string;
+    phone: string;
+    email: string;
+    secondaryPhone?: string;
+    secondaryEmail?: string;
+    additionalNotes?: string;
+    createdAt: Date;
+    updatedAt: Date;
   }

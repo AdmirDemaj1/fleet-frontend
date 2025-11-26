@@ -1,0 +1,2 @@
+export { AdministratorsTable } from './AdministratorsTable';
+

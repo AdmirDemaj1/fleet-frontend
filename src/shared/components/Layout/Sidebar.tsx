@@ -33,7 +33,8 @@ import {
   Payment as PaymentIcon,
   TrendingUp as EuriborIcon,
   Security as SecurityIcon,
-  Assignment as ApprovalsIcon
+  Assignment as ApprovalsIcon,
+  SupervisorAccount as AdministratorIcon
 } from '@mui/icons-material';
 
 interface MenuItem {

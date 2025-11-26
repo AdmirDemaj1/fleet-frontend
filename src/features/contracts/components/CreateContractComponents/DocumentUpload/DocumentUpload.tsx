@@ -121,15 +121,6 @@ const REQUIRED_DOCUMENTS = [
     requiresExpiryDate: false,
   },
   {
-    category: DocumentCategory.ENDORSER_ID,
-    name: "Endorser ID",
-    description: "Endorser identification documents",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: false,
-  },
-  {
     category: DocumentCategory.CONTRACT_AGREEMENT,
     name: "Contract Agreement",
     description: "Contract agreement documents",
@@ -158,8 +149,17 @@ const REQUIRED_DOCUMENTS = [
   },
 ];
 
-// Vehicle-related documents that are now provided automatically via vehicle picker
-const VEHICLE_DOCUMENTS = [
+// Optional documents that can be uploaded manually if needed
+const OPTIONAL_DOCUMENTS = [
+  {
+    category: DocumentCategory.ENDORSER_ID,
+    name: "Endorser ID",
+    description: "Endorser identification documents (optional)",
+    isRequired: false,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: false,
+  },
   {
     category: DocumentCategory.INSURANCE,
     name: "Insurance Certificate",
@@ -189,8 +189,8 @@ const VEHICLE_DOCUMENTS = [
   },
 ];
 
-// Combined array for dropdown selection (required + optional vehicle documents)
-const ALL_DOCUMENTS = [...REQUIRED_DOCUMENTS, ...VEHICLE_DOCUMENTS];
+// Combined array for dropdown selection (required + optional documents)
+const ALL_DOCUMENTS = [...REQUIRED_DOCUMENTS, ...OPTIONAL_DOCUMENTS];
 
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   documents,
@@ -697,14 +697,14 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         document category. Documents will be reviewed and verified by our team.
       </Typography>
 
-      {/* Information about vehicle documents */}
+      {/* Information about optional documents */}
       <Alert severity="info" sx={{ mb: 3 }}>
         <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-          📋 Vehicle Documents Automatically Included
+          📋 Document Requirements Updated
         </Typography>
         <Typography variant="body2">
-          Vehicle-related documents (Insurance, TPL, CASCO) are no longer required to be uploaded here.
-          These documents are automatically provided from the selected vehicle in the previous step.
+          • Vehicle-related documents (Insurance, TPL, CASCO) are automatically provided from the selected vehicle.<br />
+          • Endorser documents are optional and not required for contract creation.
         </Typography>
       </Alert>
 
@@ -811,12 +811,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         </Alert>
       )}
 
-      {customerId && !endorserId && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          No endorser selected. You can still upload documents, but endorser
-          information will not be associated.
-        </Alert>
-      )}
 
       {/* Missing Required Documents Alert */}
       {missingRequired.length > 0 && (

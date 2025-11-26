@@ -26,8 +26,7 @@ import {
   Business,
   BusinessCenter,
   DirectionsCar,
-  CalendarMonth,
-  Security
+  CalendarMonth
 } from '@mui/icons-material';
 import { CustomerType } from '../../types/customer.types';
 
@@ -43,6 +42,7 @@ interface CustomerListFiltersProps {
   hasCollaterals?: boolean;
   onHasCollateralsChange: (value: boolean | undefined) => void;
   onClearFilters: () => void;
+  hideTypeFilter?: boolean; // Add this prop to hide the type filter
 }
 
 export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
@@ -56,7 +56,8 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
   onHasContractsChange,
   hasCollaterals,
   onHasCollateralsChange,
-  onClearFilters
+  onClearFilters,
+  hideTypeFilter = false
 }) => {
   const theme = useTheme();
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -121,42 +122,38 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
           
           <Grid item xs={12} md={4}>
             <Box sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
-              <FormControl sx={{ minWidth: 140 }}>
-                <InputLabel id="customer-type-label" size="small">Customer Type</InputLabel>
-                <Select
-                  labelId="customer-type-label"
-                  value={typeFilter}
-                  onChange={(e) => onTypeChange(e.target.value as CustomerType | '')}
-                  label="Customer Type"
-                  size="small"
-                  sx={{ 
-                    borderRadius: 2,
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      transition: 'all 0.2s'
-                    }
-                  }}
-                >
-                  <MenuItem value="">All Types</MenuItem>
-                  <MenuItem value={CustomerType.INDIVIDUAL}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Person fontSize="small" sx={{ mr: 1, color: theme.palette.primary.main }} />
-                      Individual
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value={CustomerType.BUSINESS}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Business fontSize="small" sx={{ mr: 1, color: theme.palette.secondary.main }} />
-                      Business
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value={CustomerType.ENDORSER}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Security fontSize="small" sx={{ mr: 1, color: theme.palette.info.main }} />
-                      Endorser
-                    </Box>
-                  </MenuItem>
-                </Select>
-              </FormControl>
+              {!hideTypeFilter && (
+                <FormControl sx={{ minWidth: 140 }}>
+                  <InputLabel id="customer-type-label" size="small">Customer Type</InputLabel>
+                  <Select
+                    labelId="customer-type-label"
+                    value={typeFilter}
+                    onChange={(e) => onTypeChange(e.target.value as CustomerType | '')}
+                    label="Customer Type"
+                    size="small"
+                    sx={{ 
+                      borderRadius: 2,
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        transition: 'all 0.2s'
+                      }
+                    }}
+                  >
+                    <MenuItem value="">All Types</MenuItem>
+                    <MenuItem value={CustomerType.INDIVIDUAL}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Person fontSize="small" sx={{ mr: 1, color: theme.palette.primary.main }} />
+                        Individual
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value={CustomerType.BUSINESS}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Business fontSize="small" sx={{ mr: 1, color: theme.palette.secondary.main }} />
+                        Business
+                      </Box>
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+              )}
               
               <Tooltip title="More filters">
                 <IconButton 
@@ -299,7 +296,10 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                 size="small"
                 onDelete={() => onTypeChange('')}
                 sx={{ borderRadius: 1.5 }}
-                icon={typeFilter === CustomerType.INDIVIDUAL ? <Person fontSize="small" /> : <Business fontSize="small" />}
+                icon={
+                  typeFilter === CustomerType.INDIVIDUAL ? <Person fontSize="small" /> : 
+                  <Business fontSize="small" />
+                }
               />
             )}
             
