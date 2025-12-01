@@ -986,7 +986,7 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               Total Interest
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 700, color: "info.main" }}>
-              {formatCurrency(summaryStats.totalInterest)}
+              {formatCurrency(summaryStats?.totalInterest || 0)}
             </Typography>
           </Box>
         </Grid>

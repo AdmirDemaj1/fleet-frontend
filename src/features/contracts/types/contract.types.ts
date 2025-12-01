@@ -109,6 +109,7 @@ export interface CreateContractDto {
     interestRate: number;
     loanTermMonths: number;
     monthlyPayment: number;
+    totalInterest: number;
     processingFeePercentage?: number;
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
@@ -192,6 +193,7 @@ export interface ContractFormData {
     interestRate: number;
     loanTermMonths: number;
     monthlyPayment: number;
+    totalInterest?: number;
     processingFeePercentage?: number;
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;

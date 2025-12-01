@@ -405,6 +405,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
 
         // Add loan details if it's a loan contract
         if (data.type === ContractType.LOAN && data.loanDetails) {
+          // Calculate total interest
+          const totalInterest =
+            data.loanDetails.monthlyPayment * data.loanDetails.loanTermMonths -
+            data.totalAmount;
+
           submitData.loanDetails = {
             type: data.type,
             contractNumber: data.contractNumber,
@@ -415,6 +420,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             interestRate: data.loanDetails.interestRate,
             loanTermMonths: data.loanDetails.loanTermMonths,
             monthlyPayment: data.loanDetails.monthlyPayment,
+            totalInterest: Math.round(totalInterest * 100) / 100, // Round to 2 decimal places
             processingFeePercentage: data.loanDetails.processingFeePercentage,
             earlyRepaymentPenalty: data.loanDetails.earlyRepaymentPenalty,
             paymentScheduleType:
