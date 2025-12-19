@@ -25,18 +25,45 @@ export const documentApi = {
     await api.post(`/documents/generate/customer-registration/${customerId}`);
   },
 
-  // Download customer registration PDF specifically
+  // Download customer registration PDF - generates and downloads in one call
+  // POST /documents/customer/{customerId}/registration-pdf
   downloadCustomerRegistrationPdf: async (customerId: string): Promise<Blob> => {
+    console.log('🔄 Downloading registration PDF for customer:', customerId);
+    
     const response = await api.post<Blob>(
       `/documents/customer/${customerId}/registration-pdf`,
-      {}, // Empty body for POST request
+      {}, // Empty body as per API spec
       {
         responseType: 'blob',
         headers: {
           'Accept': 'application/pdf',
+          'Content-Type': 'application/json',
         },
       }
     );
+    
+    console.log('✅ PDF received:', response.data.size, 'bytes');
+    return response.data;
+  },
+
+  // Download administrator registration PDF - generates and downloads in one call
+  // POST /documents/administrator/{administratorId}/registration-pdf
+  downloadAdministratorRegistrationPdf: async (administratorId: string): Promise<Blob> => {
+    console.log('🔄 Downloading registration PDF for administrator:', administratorId);
+    
+    const response = await api.post<Blob>(
+      `/documents/administrator/${administratorId}/registration-pdf`,
+      {}, // Empty body as per API spec
+      {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/pdf',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    
+    console.log('✅ PDF received:', response.data.size, 'bytes');
     return response.data;
   },
 

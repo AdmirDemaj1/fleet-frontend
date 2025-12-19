@@ -103,19 +103,50 @@ export const vehicleApi = {
     return response.data;
   },
 
-  // Create a new vehicle with documents (using session key)
-  createVehicleWithDocuments: async (vehicleData: Partial<Vehicle> & { sessionKey: string }): Promise<Vehicle> => {
-    // Get user ID for header
-  
-    // Get or generate a consistent user ID
-    let userId = localStorage.getItem("userId");
-    if (!userId) {
-      userId = crypto.randomUUID();
-      localStorage.setItem("userId", userId);
+  // Create a new vehicle with documents (using multipart/form-data)
+  createVehicleWithDocuments: async (data: {
+    vehicleData: Partial<Vehicle>;
+    files?: File[];
+    documents?: { type: string; title: string; description?: string; expiryDate: string }[];
+  }): Promise<any> => {
+    const formData = new FormData();
+
+    // Add files
+    if (data.files && data.files.length > 0) {
+      data.files.forEach((file) => {
+        formData.append('files', file);
+      });
     }
-    const response = await api.post<Vehicle>('/vehicles/with-documents', vehicleData, {
+
+    // Add document metadata as JSON string
+    if (data.documents && data.documents.length > 0) {
+      formData.append('documents', JSON.stringify(data.documents));
+    }
+
+    // Add vehicle fields
+    const vehicleData = data.vehicleData;
+    if (vehicleData.licensePlate) formData.append('licensePlate', vehicleData.licensePlate);
+    if (vehicleData.vin) formData.append('vin', vehicleData.vin);
+    if (vehicleData.make) formData.append('make', vehicleData.make);
+    if (vehicleData.model) formData.append('model', vehicleData.model);
+    if (vehicleData.year) formData.append('year', String(vehicleData.year));
+    if (vehicleData.color) formData.append('color', vehicleData.color);
+    if (vehicleData.status) formData.append('status', vehicleData.status);
+    if (vehicleData.fuelType) formData.append('fuelType', vehicleData.fuelType);
+    if (vehicleData.legalOwner) formData.append('legalOwner', vehicleData.legalOwner);
+    if (vehicleData.isLiquidAsset !== undefined) formData.append('isLiquidAsset', String(vehicleData.isLiquidAsset));
+    if (vehicleData.purchaseDate) formData.append('purchaseDate', vehicleData.purchaseDate);
+    if (vehicleData.currentValuation !== undefined) formData.append('currentValuation', String(vehicleData.currentValuation));
+    if (vehicleData.marketValue !== undefined) formData.append('marketValue', String(vehicleData.marketValue));
+    if (vehicleData.depreciatedValue !== undefined) formData.append('depreciatedValue', String(vehicleData.depreciatedValue));
+
+    console.log('🚗 Creating vehicle with documents:');
+    console.log('📁 Files:', data.files?.length || 0);
+    console.log('📋 Documents metadata:', data.documents?.length || 0);
+
+    const response = await api.post<any>('/vehicles/with-documents', formData, {
       headers: {
-        'x-user-id': userId
+        'Content-Type': 'multipart/form-data',
       }
     });
     return response.data;

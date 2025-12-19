@@ -34,7 +34,8 @@ import {
   TrendingUp as EuriborIcon,
   Security as SecurityIcon,
   Assignment as ApprovalsIcon,
-  SupervisorAccount as AdministratorIcon
+  SupervisorAccount as AdministratorIcon,
+  EventBusy as ExpiringDocumentsIcon
 } from '@mui/icons-material';
 
 interface MenuItem {
@@ -112,6 +113,12 @@ const menuItems: MenuItem[] = [
     text: 'Audit Logs',
     icon: <AnalyticsIcon />,
     path: '/logs'
+  },
+  { 
+    id: 'expiring-documents',
+    text: 'Expiring Documents', 
+    icon: <ExpiringDocumentsIcon />, 
+    path: '/documents/expiring' 
   },
   { 
     id: 'rbac-testing',

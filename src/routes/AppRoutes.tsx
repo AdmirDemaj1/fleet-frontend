@@ -39,6 +39,7 @@ import {
   ProtectedRoute,
   RbacTestingPanel,
 } from "../features/auth";
+import { ExpiringDocumentsPage } from "../features/documents";
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -109,6 +110,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="euribor-rates" element={<EuriborRatesPage />} />
 
         <Route path="approvals" element={<ApprovalRequestsPage />} />
+
+        <Route path="documents/expiring" element={<ExpiringDocumentsPage />} />
 
         <Route path="rbac-testing" element={<RbacTestingPanel />} />
 

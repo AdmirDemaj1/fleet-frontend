@@ -1,12 +1,11 @@
-import { useState } from 'react';
-import { customerApi } from '../api/customerApi';
-import { endorserApi } from '../api/endorserApi';
-import { documentApi, downloadFile } from '../api/documentApi';
-import { CreateCustomerDto, Customer, EndorserResponseDto } from '../types/customer.types';
-import { useNotification } from '../../../shared/hooks/useNotification';
+import { useState } from "react";
+import { customerApi } from "../api/customerApi";
+import { documentApi, downloadFile } from "../api/documentApi";
+import { CreateCustomerDto, Customer } from "../types/customer.types";
+import { useNotification } from "../../../shared/hooks/useNotification";
 
 interface CreateCustomerResult {
-  customer: Customer | EndorserResponseDto | null;
+  customer: Customer | null;
   isDownloading: boolean;
 }
 
@@ -15,52 +14,39 @@ export const useCreateCustomerWithDocument = () => {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateCustomerResult>({
     customer: null,
-    isDownloading: false
+    isDownloading: false,
   });
   const { showSuccess, showError } = useNotification();
 
-  const createCustomer = async (data: CreateCustomerDto): Promise<Customer | EndorserResponseDto> => {
+  const createCustomer = async (data: CreateCustomerDto): Promise<Customer> => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      let customer: Customer | EndorserResponseDto;
-      
-      // Check if we're creating an endorser
-      if (data.endorserDetails) {
-        console.log('Creating endorser with data:', data.endorserDetails);
-        customer = await endorserApi.createEndorser(data.endorserDetails);
-        console.log('Endorser created successfully:', customer);
-      } else {
-        console.log('Creating customer with data:', data);
-        customer = await customerApi.create(data);
-        console.log('Customer created successfully:', customer);
-      }
-      
-      // 2. Generate registration PDF for the newly created customer/endorser
-      // if (customer.id) {
-      //   try {
-      //     // await documentApi.generateCustomerRegistrationPdf(customer.id);
-      //     console.log('Registration PDF generated successfully for customer:', customer.id);
-      //   } catch (pdfError) {
-      //     console.error('Failed to generate registration PDF:', pdfError);
-      //     // Don't fail the entire customer creation if PDF generation fails
-      //     const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
-      //     showError(`${entityType} created but failed to generate registration document`);
-      //   }
-      // } else {
-      //   console.error('Customer created but no ID returned');
-      //   const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
-      //   showError(`${entityType} created but cannot generate registration document (no ID)`);
-      // }
-      
+      console.log("Creating customer with data:", data);
+      // customerApi.create already extracts the customer from the wrapped response
+      const customer = await customerApi.create(data);
+      console.log("Customer created:", customer);
+      console.log("Customer ID:", customer?.id);
+
       setResult({ customer, isDownloading: false });
-      const entityType = data.endorserDetails ? 'Endorser' : 'Customer';
+
+      // Determine customer type for success message
+      let entityType = "Customer";
+      if (data.administratorDetails) {
+        entityType = "Administrator";
+      } else if (data.businessDetails) {
+        entityType = "Business Customer";
+      } else if (data.individualDetails) {
+        entityType = "Individual Customer";
+      }
+
       showSuccess(`${entityType} created successfully`);
       return customer;
     } catch (err) {
-      console.error('Error creating customer:', err);
-      const message = err instanceof Error ? err.message : 'Failed to create customer';
+      console.error("Error creating customer:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to create customer";
       setError(message);
       showError(message);
       throw err;
@@ -69,31 +55,72 @@ export const useCreateCustomerWithDocument = () => {
     }
   };
 
+  // Detect if customer is an administrator based on data structure
+  const isAdministrator = (customer: Customer | null): boolean => {
+    if (!customer) return false;
+    return !!(
+      (customer as any).administratorName && 
+      (customer as any).companyName
+    );
+  };
+
   const downloadRegistrationDocument = async (customerId: string) => {
     if (!customerId) {
-      showError('Customer ID is required for document download');
+      showError("Customer ID is required for document download");
       return;
     }
 
-    setResult(prev => ({ ...prev, isDownloading: true }));
-    
+    setResult((prev) => ({ ...prev, isDownloading: true }));
+
     try {
-      // Download the pre-generated registration PDF
-      const pdfBlob = await documentApi.downloadCustomerRegistrationPdf(customerId);
+      const isAdmin = isAdministrator(result.customer);
+      const entityType = isAdmin ? "administrator" : "customer";
+      
+      console.log(
+        `📄 Downloading registration document for ${entityType}:`,
+        customerId
+      );
+
+      // Use the correct endpoint based on entity type
+      const pdfBlob = isAdmin
+        ? await documentApi.downloadAdministratorRegistrationPdf(customerId)
+        : await documentApi.downloadCustomerRegistrationPdf(customerId);
+
+      console.log("📄 PDF blob received:", pdfBlob.size, "bytes");
 
       // Generate filename with timestamp
-      const fileName = `customer-registration-${customerId}-${Date.now()}.pdf`;
-      
+      const fileName = `${entityType}-registration-${customerId}-${Date.now()}.pdf`;
+
       // Trigger download
       downloadFile(pdfBlob, fileName);
-      
-      showSuccess('Registration document downloaded successfully');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to download registration document';
+
+      showSuccess("Registration document downloaded successfully");
+    } catch (err: any) {
+      console.error("❌ Failed to download registration document:", err);
+
+      // Try to get more detailed error message
+      let message = "Failed to download registration document";
+      if (err.response?.data) {
+        // If the response is a blob (error response), try to read it
+        if (err.response.data instanceof Blob) {
+          try {
+            const text = await err.response.data.text();
+            const errorData = JSON.parse(text);
+            message = errorData.message || message;
+          } catch {
+            // Ignore parsing errors
+          }
+        } else if (typeof err.response.data === "object") {
+          message = err.response.data.message || message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+
       setError(message);
       showError(message);
     } finally {
-      setResult(prev => ({ ...prev, isDownloading: false }));
+      setResult((prev) => ({ ...prev, isDownloading: false }));
     }
   };
 
@@ -109,6 +136,6 @@ export const useCreateCustomerWithDocument = () => {
     error,
     customer: result.customer,
     isDownloading: result.isDownloading,
-    reset
+    reset,
   };
 };

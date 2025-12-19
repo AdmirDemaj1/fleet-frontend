@@ -24,37 +24,27 @@ export enum ContractDocumentStatus {
   EXPIRED = "expired",
 }
 
-// Types for the API - Updated to match your backend DTO
-export interface UploadContractDocumentDto {
-  type: ContractDocumentType; // Use the enum for type safety
-  title: string;
-  description?: string;
-  customerId: string;
-  endorserId?: string;
-  metadata?: Record<string, any>;
-  expiryDate?: string;
-  sessionKey: string;
-}
-
-// Interface for the actual upload request (without sessionKey in body)
+// Interface for the actual upload request (standalone document upload)
 export interface UploadRequestData {
   type: ContractDocumentType;
   title: string;
   description?: string;
-  expiryDate?: string;
+  expiryDate: string; // Required for all documents
+  customerId?: string;
+  contractId?: string;
+  vehicleId?: string;
   metadata?: Record<string, any>;
 }
-// Updated interfaces to match backend DTOs
 
-// Then update your interfaces to use these enums
+// Response DTO
 export interface ContractDocumentResponseDto {
   id: string;
-  type: ContractDocumentType; // ✅ More type-safe
+  type: ContractDocumentType;
   title: string;
   description?: string;
   fileName: string;
   filePath: string;
-  status: ContractDocumentStatus; // ✅ More type-safe
+  status: ContractDocumentStatus;
   contractId: string;
   customerId?: string;
   endorserId?: string;
@@ -67,11 +57,11 @@ export interface ContractDocumentResponseDto {
 }
 
 export interface DocumentRequirementsDto {
-  requiredDocuments: ContractDocumentType[]; // ✅ More type-safe
-  optionalDocuments: ContractDocumentType[]; // ✅ More type-safe
-  documentStatus: Record<ContractDocumentType, ContractDocumentStatus>; // ✅ More type-safe
+  requiredDocuments: ContractDocumentType[];
+  optionalDocuments: ContractDocumentType[];
+  documentStatus: Record<ContractDocumentType, ContractDocumentStatus>;
   isComplete: boolean;
-  missingDocuments: ContractDocumentType[]; // ✅ More type-safe
+  missingDocuments: ContractDocumentType[];
 }
 
 export const contractDocumentApi = createApi({
@@ -98,72 +88,60 @@ export const contractDocumentApi = createApi({
   }),
   tagTypes: ["ContractDocument"],
   endpoints: (builder) => ({
-    // Test endpoint to verify backend connection - using a simple GET to test connectivity
+    // Test endpoint to verify backend connection
     testConnection: builder.query<any, void>({
-      query: () => "/", // Root endpoint to test basic connectivity
+      query: () => "/",
     }),
 
-    // Upload a contract document
+    // Upload a standalone contract document using /documents/upload endpoint
+    // Note: For new contracts, documents should be uploaded with the contract creation request
     uploadDocument: builder.mutation<
-      ContractDocumentResponseDto & { sessionKey?: string },
+      ContractDocumentResponseDto,
       {
         file: File;
         data: UploadRequestData;
-        sessionKey?: string;
       }
     >({
-      query: ({ file, data, sessionKey }) => {
+      query: ({ file, data }) => {
         const formData = new FormData();
 
-        // Generate a UUID for entityId
-        const entityId = crypto.randomUUID();
-
-        // Add file first (required)
+        // Add file (required)
         formData.append("file", file);
 
-        // Add required fields for new endpoint
-        formData.append("entityType", "contract");
-        formData.append("entityId", entityId); // Use generated UUID
-        formData.append("documentType", data.type);
+        // Add required fields matching the endpoint format
+        formData.append("type", data.type);
         formData.append("title", data.title);
-
-        // Add session key only if provided (for subsequent uploads)
-        if (sessionKey) {
-          formData.append("sessionKey", sessionKey);
-        }
+        formData.append("expiryDate", data.expiryDate); // Required for all documents
 
         // Add optional fields
+        if (data.customerId) {
+          formData.append("customerId", data.customerId);
+        }
+        if (data.contractId) {
+          formData.append("contractId", data.contractId);
+        }
+        if (data.vehicleId) {
+          formData.append("vehicleId", data.vehicleId);
+        }
         if (data.description) {
           formData.append("description", data.description);
         }
-        if (data.expiryDate) {
-          formData.append("expiryDate", data.expiryDate);
-        }
+
+        // Add metadata as JSON string
         if (data.metadata) {
-          // Add metadata as individual fields
-          Object.entries(data.metadata).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) {
-              formData.append(`metadata[${key}]`, String(value));
-            }
-          });
+          formData.append("metadata", JSON.stringify(data.metadata));
         }
 
         console.log("🔗 Contract Document API Request Details:");
-        console.log("URL:", `/document-management/upload`);
+        console.log("URL:", `/documents/upload`);
         console.log("Method: POST");
-        console.log(
-          "Session Key:",
-          sessionKey || "Not provided (first upload)"
-        );
-        console.log("Entity ID:", entityId);
-        console.log("Entity Type: contract");
         console.log("FormData entries:");
-        for (let [key, value] of formData.entries()) {
+        for (const [key, value] of formData.entries()) {
           console.log(`  ${key}:`, value);
         }
 
         return {
-          url: `/document-management/upload`,
+          url: `/documents/upload`,
           method: "POST",
           body: formData,
           // Don't set Content-Type header, let the browser set it with boundary
@@ -174,14 +152,14 @@ export const contractDocumentApi = createApi({
 
     // Get all documents for a contract
     getContractDocuments: builder.query<ContractDocumentResponseDto[], string>({
-      query: (contractId) => `/contract-documents/contract/${contractId}`,
+      query: (contractId) => `/documents/contract/${contractId}`,
       providesTags: ["ContractDocument"],
     }),
 
     // Get document requirements for a contract
     getDocumentRequirements: builder.query<DocumentRequirementsDto, string>({
       query: (contractId) =>
-        `/contract-documents/contract/${contractId}/requirements`,
+        `/documents/contract/${contractId}/requirements`,
       providesTags: ["ContractDocument"],
     }),
 
@@ -194,7 +172,7 @@ export const contractDocumentApi = createApi({
       }
     >({
       query: ({ documentId, status }) => ({
-        url: `/contract-documents/${documentId}/status`,
+        url: `/documents/${documentId}/status`,
         method: "PATCH",
         body: { status },
       }),
@@ -204,7 +182,7 @@ export const contractDocumentApi = createApi({
     // Delete a document
     deleteDocument: builder.mutation<{ message: string }, string>({
       query: (documentId) => ({
-        url: `/document-management/pending/${documentId}`,
+        url: `/documents/${documentId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["ContractDocument"],
@@ -216,54 +194,9 @@ export const contractDocumentApi = createApi({
       string
     >({
       query: (contractId) => ({
-        url: `/contract-documents/contract/${contractId}/generate-agreement`,
+        url: `/documents/contract/${contractId}/generate-agreement`,
         method: "POST",
       }),
-      invalidatesTags: ["ContractDocument"],
-    }),
-
-    // Remove a pending document
-    removePendingDocument: builder.mutation<
-      { message: string },
-      {
-        documentId: string;
-        sessionKey: string;
-      }
-    >({
-      query: ({ documentId, sessionKey }) => {
-        console.log("documentId", documentId);
-        console.log("sessionKey", sessionKey);
-        return {
-          url: `/document-management/pending/${documentId}?sessionKey=${sessionKey}`,
-          method: "DELETE",
-        };
-      },
-      invalidatesTags: ["ContractDocument"],
-    }),
-
-    // Replace a pending document
-    replacePendingDocument: builder.mutation<
-      ContractDocumentResponseDto,
-      {
-        documentId: string;
-        sessionKey: string;
-        file: File;
-        metadata?: Record<string, any>;
-      }
-    >({
-      query: ({ documentId, sessionKey, file, metadata }) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (metadata) {
-          formData.append("metadata", JSON.stringify(metadata));
-        }
-
-        return {
-          url: `/contract-documents/pending/${documentId}/replace?sessionKey=${sessionKey}`,
-          method: "POST",
-          body: formData,
-        };
-      },
       invalidatesTags: ["ContractDocument"],
     }),
   }),
@@ -277,6 +210,4 @@ export const {
   useUpdateDocumentStatusMutation,
   useDeleteDocumentMutation,
   useGenerateContractAgreementMutation,
-  useRemovePendingDocumentMutation,
-  useReplacePendingDocumentMutation,
 } = contractDocumentApi;

@@ -42,7 +42,6 @@ import {
   ContractFormProps,
   ContractFormData,
   ContractType,
-  CreateContractDto,
 } from "../../../types/contract.types";
 import { generateContractNumber } from "../../../utils/contractNumberGenerator";
 import { euriborApi } from "../../../../euribor/api/euriborApi";
@@ -91,7 +90,6 @@ export const ContractForm: React.FC<ContractFormProps> = ({
 }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [submitError, setSubmitError] = useState<string>("");
-  const [sessionKey, setSessionKey] = useState<string | null>(null); // Backend will generate session key on first upload
 
   // Euribor rate state - Store as percentages (e.g., 3 for 3%, not 0.03)
   const [euriborRate, setEuriborRate] = useState<number>(0);
@@ -99,12 +97,6 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   const [loadingEuribor, setLoadingEuribor] = useState<boolean>(false);
   const [euriborError, setEuriborError] = useState<string | null>(null);
   const [euriborDate, setEuriborDate] = useState<string | null>(null);
-
-  // Debug session key changes
-  const handleSessionKeyChange = useCallback((newSessionKey: string) => {
-    console.log("🔑 ContractForm: Session key being set:", newSessionKey);
-    setSessionKey(newSessionKey);
-  }, []);
 
   const methods = useForm<ContractFormData>({
     defaultValues: {
@@ -124,6 +116,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       },
       selectedVehicles: [],
       selectedVehicleData: [], // Initialize vehicle data array
+      selectedCustomerData: null, // Initialize customer data with documents
       selectedEndorsers: [],
       guaranteeForContract: 0,
       vehicleAsCollateral: false, // Track if selected vehicle should be used as collateral
@@ -238,11 +231,21 @@ export const ContractForm: React.FC<ContractFormProps> = ({
     const totalPercentage = Number(euriborRate) + Number(marginRate);
     // Convert to decimal for the form (e.g., 5 -> 0.05)
     const totalDecimal = totalPercentage / 100;
-    
+
     setValue("loanDetails.interestRate", totalDecimal, {
       shouldValidate: true,
     });
-    console.log("📊 Interest rate:", euriborRate, "+", marginRate, "=", totalPercentage, "% (", totalDecimal, "decimal)");
+    console.log(
+      "📊 Interest rate:",
+      euriborRate,
+      "+",
+      marginRate,
+      "=",
+      totalPercentage,
+      "% (",
+      totalDecimal,
+      "decimal)"
+    );
   }, [euriborRate, marginRate, setValue]);
 
   // Debug logging
@@ -318,14 +321,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         // Debug logging
         console.log("🚀 Contract Submission Debug:");
         console.log("  📋 Form Data:", data);
-        console.log("  🔑 Current Session Key:", sessionKey);
         console.log("  📄 Documents Count:", data.documents?.length || 0);
         console.log(
           "  📤 Has Documents:",
           data.documents && data.documents.length > 0
         );
-        console.log("  📤 Session Key Type:", typeof sessionKey);
-        console.log("  📤 Session Key Truthy:", !!sessionKey);
         console.log("  💰 Guarantee Amount:", data.guaranteeForContract || 0);
         console.log(
           "  👤 Selected Endorsers:",
@@ -353,6 +353,36 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 insurancePolicy: "",
               }))
             : [];
+
+        // Extract files and document metadata from the documents array
+        const files: File[] = [];
+        const documentMetadata: {
+          type: string;
+          title: string;
+          description?: string;
+          expiryDate: string;
+        }[] = [];
+
+        if (data.documents && data.documents.length > 0) {
+          data.documents.forEach((doc: any) => {
+            if (doc.file) {
+              files.push(doc.file);
+              documentMetadata.push({
+                type: doc.category,
+                title: doc.name,
+                description: doc.description || "",
+                expiryDate:
+                  doc.expiryDate ||
+                  new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                    .toISOString()
+                    .split("T")[0], // Default to 1 year from now
+              });
+            }
+          });
+        }
+
+        console.log("  📁 Files to upload:", files.length);
+        console.log("  📋 Document metadata:", documentMetadata);
 
         // Build base contract data
         const baseContractData = {
@@ -382,26 +412,18 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 legalDocumentReference: `GUARANTEE-${data.contractNumber}-${endorserId}`,
               };
             }) || [],
-          // Documents are handled separately via the document upload API
           terms: data.terms || {},
         };
 
-        // Build the submit data with proper type safety
-        const submitData: CreateContractDto = {
+        // Build the submit data with files and document metadata
+        const submitData: any = {
           ...baseContractData,
-          // Only add sessionKey if documents were uploaded
-          ...(sessionKey ? { sessionKey } : {}),
-          // Add guarantee amount if specified
-          // ...(data.guaranteeForContract ? { guaranteeForContract: data.guaranteeForContract } : {}),
+          // Add files and document metadata for the new multipart/form-data approach
+          files: files.length > 0 ? files : undefined,
+          documents: documentMetadata.length > 0 ? documentMetadata : undefined,
         };
 
-        if (sessionKey) {
-          console.log("  ✅ Using backend-generated session key:", sessionKey);
-        } else {
-          console.log(
-            "  📝 No documents uploaded, creating contract without session key"
-          );
-        }
+        console.log("  📤 Submitting contract with", files.length, "documents");
 
         // Add loan details if it's a loan contract
         if (data.type === ContractType.LOAN && data.loanDetails) {
@@ -462,7 +484,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
       }
     },
-    [onSubmit, sessionKey]
+    [onSubmit]
   );
 
   const renderStepContent = () => {
@@ -474,6 +496,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             onCustomerSelect={(customer) => {
               setValue("customerId", customer?.id || "", {
                 shouldValidate: true,
+              });
+            }}
+            onCustomerDataChange={(customerData) => {
+              setValue("selectedCustomerData", customerData, {
+                shouldValidate: false, // Optional field
               });
             }}
             preSelectedCustomerId={preSelectedCustomerId}
@@ -789,7 +816,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     />
                     <Typography variant="h6">=</Typography>
                     <Chip
-                      label={`Total: ${(Number(euriborRate) + Number(marginRate)).toFixed(2)}%`}
+                      label={`Total: ${(
+                        Number(euriborRate) + Number(marginRate)
+                      ).toFixed(2)}%`}
                       color="success"
                       sx={{ fontWeight: 700 }}
                     />
@@ -1501,11 +1530,10 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 }}
                 error={errors.documents?.message}
                 customerId={watchedData.customerId || undefined}
+                customerData={watchedData.selectedCustomerData || undefined} // Pass full customer data including documents
                 endorserId={watchedData.selectedEndorsers?.[0]} // Use first endorser if available
                 vehicleIds={watchedData.selectedVehicles || []} // Pass selected vehicles
                 vehicleData={watchedData.selectedVehicleData || []} // Pass full vehicle data including documents
-                sessionKey={sessionKey}
-                onSessionKeyChange={handleSessionKeyChange} // Backend will generate session key on first upload
               />
             </Box>
 

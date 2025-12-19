@@ -1,0 +1,2 @@
+export { ExpiringDocumentsPage } from './ExpiringDocumentsPage';
+

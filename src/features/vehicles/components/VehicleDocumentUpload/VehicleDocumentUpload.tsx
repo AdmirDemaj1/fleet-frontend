@@ -39,12 +39,7 @@ import {
 } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 import { useDropzone } from "react-dropzone";
-import { VehicleDocumentType, VehicleDocument } from "../../types/vehicleType";
-import {
-  useUploadDocumentMutation,
-  useRemovePendingDocumentMutation,
-  UploadVehicleDocumentRequestData,
-} from "../../api/vehicleDocumentApi";
+import { VehicleDocumentType } from "../../types/vehicleType";
 import { useNotification } from "../../../../shared/hooks/useNotification";
 
 export interface VehicleDocumentFile {
@@ -55,6 +50,7 @@ export interface VehicleDocumentFile {
   file: File;
   category: VehicleDocumentType;
   description?: string;
+  expiryDate?: string; // YYYY-MM-DD format
   isRequired: boolean;
   status: "pending" | "uploaded" | "verified" | "rejected";
   uploadedAt?: Date;
@@ -130,16 +126,12 @@ interface VehicleDocumentUploadProps {
   documents: VehicleDocumentFile[];
   onDocumentsChange: (documents: VehicleDocumentFile[]) => void;
   error?: string;
-  sessionKey: string | null;
-  onSessionKeyChange: (sessionKey: string) => void;
 }
 
 export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
   documents,
   onDocumentsChange,
   error,
-  sessionKey,
-  onSessionKeyChange,
 }) => {
   const [isTypeDialogOpen, setIsTypeDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -155,31 +147,22 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
   const [documentToDelete, setDocumentToDelete] =
     useState<VehicleDocumentFile | null>(null);
 
-  // API mutations
-  const [uploadDocument] = useUploadDocumentMutation();
-  const [removePendingDocument] = useRemovePendingDocumentMutation();
-
   // Notification system
   const { showSuccess, showError } = useNotification();
 
-  // Effect to set expiry date when dialog opens and category changes
+  // Effect to set expiry date when dialog opens - required for ALL documents
   useEffect(() => {
-    if (isTypeDialogOpen && selectedCategory) {
-      const selectedDoc = REQUIRED_VEHICLE_DOCUMENTS.find(
-        (doc) => doc.category === selectedCategory
+    if (isTypeDialogOpen && selectedCategory && !documentExpiryDate) {
+      const defaultExpiryDate = new Date();
+      defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
+      const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
+      setDocumentExpiryDate(formattedDate);
+      console.log(
+        "🗓️ Auto-set expiry date when dialog opened:",
+        formattedDate,
+        "for category:",
+        selectedCategory
       );
-      if (selectedDoc?.requiresExpiryDate && !documentExpiryDate) {
-        const defaultExpiryDate = new Date();
-        defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
-        const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
-        setDocumentExpiryDate(formattedDate);
-        console.log(
-          "🗓️ Auto-set expiry date when dialog opened:",
-          formattedDate,
-          "for category:",
-          selectedCategory
-        );
-      }
     }
   }, [isTypeDialogOpen, selectedCategory, documentExpiryDate]);
 
@@ -201,31 +184,17 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
         setSelectedCategory(defaultCategory);
         setDocumentDescription("");
 
-        // Auto-set expiry date to 1 year from now for documents that require it
-        const requiresExpiry =
-          nextRequiredDoc?.requiresExpiryDate ||
-          REQUIRED_VEHICLE_DOCUMENTS.find(
-            (doc) => doc.category === defaultCategory
-          )?.requiresExpiryDate;
-
-        if (requiresExpiry) {
-          const defaultExpiryDate = new Date();
-          defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
-          const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
-          setDocumentExpiryDate(formattedDate);
-          console.log(
-            "🗓️ Auto-set expiry date on drop:",
-            formattedDate,
-            "for category:",
-            defaultCategory
-          );
-        } else {
-          setDocumentExpiryDate("");
-          console.log(
-            "📄 No expiry date needed for category:",
-            defaultCategory
-          );
-        }
+        // Auto-set expiry date to 1 year from now for ALL documents
+        const defaultExpiryDate = new Date();
+        defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
+        const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
+        setDocumentExpiryDate(formattedDate);
+        console.log(
+          "🗓️ Auto-set expiry date on drop:",
+          formattedDate,
+          "for category:",
+          defaultCategory
+        );
 
         setUploadError(""); // Clear any previous errors
         setIsTypeDialogOpen(true);
@@ -247,33 +216,16 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
     multiple: false, // Handle one file at a time
   });
 
-  const handleDeleteDocument = async (documentId: string) => {
+  const handleDeleteDocument = (documentId: string) => {
     try {
+      console.log("Removing document:", documentId);
       setDeletingDocumentId(documentId);
 
-      // Check if this is a backend document (has UUID format)
-      const isBackendDocument =
-        documentId.includes("-") && !documentId.includes("temp-");
-
-      if (isBackendDocument) {
-        // This is a backend document, call the API to remove it
-        await removePendingDocument({
-          documentId,
-          // TODO: RDouble check this
-          sessionKey: sessionKey || undefined,
-        }).unwrap();
-
-        console.log("Vehicle document deleted from backend:", documentId);
-        showSuccess("Document deleted successfully");
-      } else {
-        // This is a local/temporary document, just remove it locally
-        console.log("Removing local vehicle document:", documentId);
-        showSuccess("Document removed");
-      }
-
-      // Remove from local state
+      // Remove from local state (documents are stored locally until vehicle creation)
       const updatedDocuments = documents.filter((doc) => doc.id !== documentId);
       onDocumentsChange(updatedDocuments);
+
+      showSuccess("Document removed");
 
       // Clear any previous errors
       setUploadError("");
@@ -297,7 +249,7 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
     setDocumentToDelete(null);
   };
 
-  const handleConfirmDocumentUpload = async () => {
+  const handleConfirmDocumentUpload = () => {
     if (!pendingFile) return;
 
     // Check for duplicates by name
@@ -325,109 +277,55 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
       return;
     }
 
-    // Check if expiry date is required for this document type
-    const selectedDocType = REQUIRED_VEHICLE_DOCUMENTS.find(
-      (doc) => doc.category === selectedCategory
-    );
-    if (selectedDocType?.requiresExpiryDate && !documentExpiryDate) {
-      setUploadError(
-        `Expiry date is required for ${selectedDocType.name}. Please select an expiry date.`
-      );
+    // Check if expiry date is provided (required for ALL documents)
+    if (!documentExpiryDate) {
+      setUploadError("Expiry date is required for all documents. Please select an expiry date.");
+      return;
+    }
+
+    // Check if expiry date is not in the past
+    const today = new Date().toISOString().split("T")[0];
+    if (documentExpiryDate < today) {
+      setUploadError("Expiry date cannot be in the past. Please select a valid date.");
       return;
     }
 
     // Clear any previous errors
     setUploadError("");
 
-    try {
-      // Prepare upload data
-      const uploadData: UploadVehicleDocumentRequestData = {
-        type: selectedCategory,
-        title: pendingFile.name,
-        description: documentDescription,
-        expiryDate: documentExpiryDate || undefined,
-        metadata: {
-          originalFileName: pendingFile.name,
-          fileSize: pendingFile.size,
-          fileType: pendingFile.type,
-          uploadDate: new Date().toISOString(),
-          documentCategory: selectedCategory,
-          sessionKey: sessionKey,
-        },
-      };
+    // Store document locally (no API call - documents will be uploaded with vehicle creation)
+    const newDocument: VehicleDocumentFile = {
+      id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: pendingFile.name,
+      type: pendingFile.type,
+      size: pendingFile.size,
+      file: pendingFile,
+      category: selectedCategory,
+      description: documentDescription,
+      expiryDate: documentExpiryDate,
+      isRequired: REQUIRED_VEHICLE_DOCUMENTS.some(
+        (doc) => doc.category === selectedCategory
+      ),
+      status: "pending", // Will be uploaded with vehicle creation
+      uploadedAt: new Date(),
+    };
 
-      console.log("🚀 Attempting to upload vehicle document:");
-      console.log(
-        "📁 File:",
-        pendingFile.name,
-        "Size:",
-        pendingFile.size,
-        "Type:",
-        pendingFile.type
-      );
-      console.log("📋 Upload Data:", uploadData);
-      console.log("🔑 Session Key:", sessionKey);
+    console.log("📄 Document added locally (will be uploaded with vehicle):");
+    console.log("  📁 File:", pendingFile.name);
+    console.log("  📂 Category:", selectedCategory);
+    console.log("  📅 Expiry Date:", documentExpiryDate);
 
-      // Upload document to backend
-      const response = await uploadDocument({
-        file: pendingFile,
-        data: uploadData,
-        sessionKey: sessionKey || undefined,
-      }).unwrap();
+    const updatedDocuments = [...documents, newDocument];
+    onDocumentsChange(updatedDocuments);
 
-      // If this is the first upload and we get a session key back, store it
-      if (!sessionKey && response.sessionKey) {
-        console.log(
-          "🔑 Received session key from backend:",
-          response.sessionKey
-        );
-        onSessionKeyChange(response.sessionKey);
-      }
+    showSuccess(`Document "${pendingFile.name}" added successfully`);
 
-      // Create local document object with backend response
-      const newDocument: VehicleDocumentFile = {
-        id: response.id,
-        name: response.fileName || pendingFile.name,
-        type: pendingFile.type,
-        size: pendingFile.size,
-        file: pendingFile,
-        category: selectedCategory,
-        description: documentDescription,
-        isRequired: REQUIRED_VEHICLE_DOCUMENTS.some(
-          (doc) => doc.category === selectedCategory
-        ),
-        status: response.status as
-          | "pending"
-          | "uploaded"
-          | "verified"
-          | "rejected",
-        uploadedAt: new Date(response.createdAt),
-      };
-
-      const updatedDocuments = [...documents, newDocument];
-      onDocumentsChange(updatedDocuments);
-
-      console.log("🚀 Response:", response);
-
-      // Show success notification
-      if (response["requiresApproval"] === true) {
-        showSuccess("Action requires approval. Request has been submitted.");
-      } else {
-        showSuccess("Document uploaded successfully!");
-      }
-
-      // Reset and close dialog
-      setPendingFile(null);
-      setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
-      setDocumentDescription("");
-      setDocumentExpiryDate("");
-      setIsTypeDialogOpen(false);
-    } catch (error) {
-      console.error("Document upload failed:", error);
-      const errorMessage = "Failed to upload document. Please try again.";
-      setUploadError(errorMessage);
-      showError(errorMessage);
-    }
+    // Reset and close dialog
+    setPendingFile(null);
+    setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
+    setDocumentDescription("");
+    setDocumentExpiryDate("");
+    setIsTypeDialogOpen(false);
   };
 
   const handleCancelDocumentUpload = () => {
@@ -775,27 +673,19 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
                   const newCategory = e.target.value as VehicleDocumentType;
                   setSelectedCategory(newCategory);
 
-                  // Auto-set expiry date for documents that require it
-                  const selectedDoc = REQUIRED_VEHICLE_DOCUMENTS.find(
-                    (doc) => doc.category === newCategory
+                  // Auto-set expiry date for ALL documents (required for all)
+                  const defaultExpiryDate = new Date();
+                  defaultExpiryDate.setFullYear(
+                    defaultExpiryDate.getFullYear() + 1
                   );
-                  if (selectedDoc?.requiresExpiryDate) {
-                    // Always set default expiry date to 1 year from now when switching to a category that requires expiry
-                    const defaultExpiryDate = new Date();
-                    defaultExpiryDate.setFullYear(
-                      defaultExpiryDate.getFullYear() + 1
-                    );
-                    setDocumentExpiryDate(
-                      defaultExpiryDate.toISOString().split("T")[0]
-                    );
-                    console.log(
-                      "🗓️ Auto-set expiry date:",
-                      defaultExpiryDate.toISOString().split("T")[0]
-                    );
-                  } else {
-                    // Clear expiry date if not required
-                    setDocumentExpiryDate("");
-                  }
+                  const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
+                  setDocumentExpiryDate(formattedDate);
+                  console.log(
+                    "🗓️ Auto-set expiry date:",
+                    formattedDate,
+                    "for category:",
+                    newCategory
+                  );
                 }}
                 label="Document Category"
               >
@@ -831,26 +721,38 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
               rows={2}
             />
 
-            {/* Expiry Date Field */}
-            {REQUIRED_VEHICLE_DOCUMENTS.find(
-              (doc) => doc.category === selectedCategory
-            )?.requiresExpiryDate && (
-              <TextField
-                fullWidth
-                label="Expiry Date (Required)"
-                type="date"
-                value={documentExpiryDate}
-                onChange={(e) => setDocumentExpiryDate(e.target.value)}
-                required
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                inputProps={{
-                  min: new Date().toISOString().split("T")[0], // Today as minimum
-                }}
-                sx={{ mt: 2 }}
-              />
-            )}
+            {/* Expiry Date Field - Required for ALL documents */}
+            <TextField
+              fullWidth
+              label="Expiry Date (Required)"
+              type="date"
+              value={documentExpiryDate}
+              onChange={(e) => {
+                const selectedDate = e.target.value;
+                const today = new Date().toISOString().split("T")[0];
+                // Only allow dates that are today or in the future
+                if (selectedDate >= today) {
+                  setDocumentExpiryDate(selectedDate);
+                  setUploadError("");
+                } else {
+                  setUploadError("Expiry date cannot be in the past");
+                }
+              }}
+              required
+              error={documentExpiryDate !== "" && documentExpiryDate < new Date().toISOString().split("T")[0]}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              inputProps={{
+                min: new Date().toISOString().split("T")[0], // Today as minimum - browser validation
+              }}
+              sx={{ mt: 2 }}
+              helperText={
+                documentExpiryDate !== "" && documentExpiryDate < new Date().toISOString().split("T")[0]
+                  ? "Expiry date cannot be in the past"
+                  : "Please select the expiry date for this document (must be today or in the future)"
+              }
+            />
 
             {/* Error Display */}
             {uploadError && (
@@ -888,13 +790,11 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
             disabled={
               !pendingFile ||
               !!uploadError ||
-              (REQUIRED_VEHICLE_DOCUMENTS.find(
-                (doc) => doc.category === selectedCategory
-              )?.requiresExpiryDate &&
-                !documentExpiryDate)
+              !documentExpiryDate || // Expiry date is required for ALL documents
+              documentExpiryDate < new Date().toISOString().split("T")[0] // Cannot be in the past
             }
           >
-            Upload Document
+            Add Document
           </Button>
         </DialogActions>
       </Dialog>

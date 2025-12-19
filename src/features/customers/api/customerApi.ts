@@ -110,9 +110,15 @@ export const customerApi = {
       
       console.log(`Using endpoint: ${endpoint} (isAdministrator: ${isAdministrator})`);
       
-      const response = await api.post<Customer>(endpoint, data);
+      const response = await api.post<any>(endpoint, data);
       console.log("API create response:", response.data);
-      return response.data;
+      
+      // Handle wrapped response - API returns { data: Customer, message: string, ... }
+      // Extract the actual customer from the response
+      const customer = response.data?.data || response.data;
+      console.log("Extracted customer:", customer);
+      
+      return customer;
     } catch (error) {
       console.error("API create error:", error);
       throw error;

@@ -7,8 +7,15 @@ import { vehicleApi } from "../api/vehicleApi";
 import { STEP_CONFIG } from "../utils/vehicleFormValidation";
 import { useNotification } from "../../../shared/hooks/useNotification";
 
+// Type for the new submission data format
+interface VehicleSubmissionData {
+  vehicleData: Partial<Vehicle>;
+  files?: File[];
+  documents?: { type: string; title: string; description?: string; expiryDate: string }[];
+}
+
 export const CreateVehiclePage: React.FC = () => {
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess } = useNotification();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,42 +29,46 @@ export const CreateVehiclePage: React.FC = () => {
     setError(null); // Clear errors when navigating between steps
   };
 
-  const handleCreateVehicle = async (
-    vehicleData: Partial<Vehicle> & { sessionKey?: string | null }
-  ) => {
+  const handleCreateVehicle = async (submissionData: VehicleSubmissionData | Partial<Vehicle>) => {
     try {
       setLoading(true);
       setError(null);
       setSuccess(null);
 
-      console.log("Creating vehicle with data:", vehicleData);
+      console.log("Creating vehicle with data:", submissionData);
 
-      // Use the appropriate API method based on whether we have a session key
       let response;
-      if (vehicleData.sessionKey) {
-        console.log(
-          "🔗 Creating vehicle with documents using session key:",
-          vehicleData.sessionKey
-        );
-        response = await vehicleApi.createVehicleWithDocuments(
-          vehicleData as Partial<Vehicle> & { sessionKey: string }
-        );
+      
+      // Check if this is the new format with files
+      if ('vehicleData' in submissionData && (submissionData.files?.length || submissionData.documents?.length)) {
+        console.log("🚗 Creating vehicle with documents using multipart/form-data");
+        console.log("📁 Files:", submissionData.files?.length || 0);
+        console.log("📋 Documents:", submissionData.documents?.length || 0);
+        
+        response = await vehicleApi.createVehicleWithDocuments({
+          vehicleData: submissionData.vehicleData,
+          files: submissionData.files,
+          documents: submissionData.documents,
+        });
       } else {
+        // Legacy format or no documents
         console.log("📝 Creating vehicle without documents");
-        const { sessionKey, ...vehicleDataWithoutSession } = vehicleData;
-        response = await vehicleApi.createVehicle(vehicleDataWithoutSession);
+        const vehicleData = 'vehicleData' in submissionData ? submissionData.vehicleData : submissionData;
+        response = await vehicleApi.createVehicle(vehicleData);
       }
 
-      console.log("responseeeeeeeeeeee", response)
+      console.log("Vehicle creation response:", response);
 
       // Check if response indicates approval is required
       if (response.requiresApproval) {
         showSuccess("Action requires approval. Request has been submitted.");
       } else {
+        const vehicleData = 'vehicleData' in submissionData ? submissionData.vehicleData : submissionData;
         setSuccess(`Vehicle ${vehicleData.licensePlate} created successfully!`);
       }
 
-      const newVehicle = response as Vehicle;
+      // Extract vehicle from response (handle both old and new response formats)
+      const newVehicle = response.data?.vehicle || response.vehicle || response;
 
       // Redirect to the vehicle details page after a short delay
       setTimeout(() => {

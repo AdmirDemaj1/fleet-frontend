@@ -11,7 +11,7 @@ export const EditVehiclePage: React.FC = () => {
   const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  
+
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,8 +39,8 @@ export const EditVehiclePage: React.FC = () => {
         console.error("Error fetching vehicle:", err);
         setError(
           err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Failed to load vehicle data. Please try again."
+            err.response?.data?.error ||
+            "Failed to load vehicle data. Please try again."
         );
         showError("Failed to load vehicle data");
       } finally {
@@ -57,7 +57,9 @@ export const EditVehiclePage: React.FC = () => {
   };
 
   const handleUpdateVehicle = async (
-    updatedVehicleData: Partial<Vehicle> & { sessionKey?: string | null }
+    updatedVehicleData:
+      | Partial<Vehicle>
+      | { vehicleData: Partial<Vehicle>; files?: File[]; documents?: any[] }
   ) => {
     if (!id) {
       setError("Vehicle ID is required");
@@ -71,11 +73,13 @@ export const EditVehiclePage: React.FC = () => {
 
       console.log("Updating vehicle with data:", updatedVehicleData);
 
-      // Remove sessionKey from the update data if present
-      // Document updates should be handled separately
-      const { sessionKey, ...vehicleDataWithoutSession } = updatedVehicleData;
+      // Extract vehicle data from the submission (handle both old and new format)
+      const vehicleDataToUpdate =
+        "vehicleData" in updatedVehicleData
+          ? updatedVehicleData.vehicleData
+          : updatedVehicleData;
 
-      const response = await vehicleApi.updateVehicle(id, vehicleDataWithoutSession);
+      const response = await vehicleApi.updateVehicle(id, vehicleDataToUpdate);
 
       console.log("Update response:", response);
 
@@ -87,9 +91,13 @@ export const EditVehiclePage: React.FC = () => {
           navigate(`/vehicles/${id}`);
         }, 1500);
       } else {
-        setSuccess(`Vehicle ${updatedVehicleData.licensePlate || vehicleData?.licensePlate} updated successfully!`);
+        setSuccess(
+          `Vehicle ${
+            vehicleDataToUpdate.licensePlate || vehicleData?.licensePlate
+          } updated successfully!`
+        );
         showSuccess("Vehicle updated successfully");
-        
+
         // Redirect to the vehicle details page after a short delay
         setTimeout(() => {
           navigate(`/vehicles/${id}`);
@@ -97,7 +105,8 @@ export const EditVehiclePage: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Error updating vehicle:", err);
-      const errorMessage = err.response?.data?.message ||
+      const errorMessage =
+        err.response?.data?.message ||
         err.response?.data?.error ||
         "Failed to update vehicle. Please check your input and try again.";
       setError(errorMessage);
@@ -160,7 +169,8 @@ export const EditVehiclePage: React.FC = () => {
           <Typography variant="h4">Edit Vehicle</Typography>
           {vehicleData && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {vehicleData.make} {vehicleData.model} ({vehicleData.year}) - {vehicleData.licensePlate}
+              {vehicleData.make} {vehicleData.model} ({vehicleData.year}) -{" "}
+              {vehicleData.licensePlate}
             </Typography>
           )}
         </Box>
@@ -205,4 +215,3 @@ export const EditVehiclePage: React.FC = () => {
 };
 
 export default EditVehiclePage;
-
