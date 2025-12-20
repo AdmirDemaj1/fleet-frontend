@@ -14,6 +14,7 @@ import {
   Typography,
   TablePagination,
   Avatar,
+  Badge,
 } from "@mui/material";
 import {
   Check as CheckIcon,
@@ -22,6 +23,7 @@ import {
   Delete as DeleteIcon,
   AccessTime as PendingIcon,
   PlayArrow as ExecuteIcon,
+  Comment as CommentIcon,
 } from "@mui/icons-material";
 import type { ApprovalRequest } from "../types/approval.types";
 import { ApprovalStatus } from "../types/approval.types";
@@ -45,6 +47,8 @@ interface ApprovalRequestTableProps {
   onLimitChange: (limit: number) => void;
   // Loading states
   executingRequestId?: string | null;
+  // Refresh callback for comments
+  onRefresh?: () => void;
 }
 
 export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
@@ -61,6 +65,7 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
   onPageChange,
   onLimitChange,
   executingRequestId,
+  onRefresh,
 }) => {
   const [actionModals, setActionModals] = useState({
     approve: { open: false, request: null as ApprovalRequest | null },
@@ -261,6 +266,17 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
                             variant="outlined"
                           />
                         )}
+                        {request.unresolvedCommentsCount !== undefined && request.unresolvedCommentsCount > 0 && (
+                          <Tooltip title={`${request.unresolvedCommentsCount} unresolved comment(s)`}>
+                            <Badge 
+                              badgeContent={request.unresolvedCommentsCount} 
+                              color="error"
+                              sx={{ ml: 1 }}
+                            >
+                              <CommentIcon fontSize="small" color="action" />
+                            </Badge>
+                          </Tooltip>
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -381,6 +397,8 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
         onExecuteConfirm={() => handleActionConfirm("execute")}
         onExecuteCancel={() => handleActionCancel("execute")}
         onViewClose={() => handleActionCancel("view")}
+        currentUser={currentUser}
+        onRefresh={onRefresh}
       />
     </>
   );

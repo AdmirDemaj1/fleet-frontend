@@ -7,6 +7,10 @@ import {
   PaginatedApprovalResponseDto,
   ApprovalDecisionDto,
   ApprovalActionResponse,
+  ApprovalComment,
+  CreateCommentDto,
+  ResolveCommentDto,
+  UpdateRequestDataDto,
 } from '../types/approval.types';
 
 export const approvalApi = createApi({
@@ -79,6 +83,50 @@ export const approvalApi = createApi({
         'ApprovalRequest'
       ],
     }),
+
+    // ============= COMMENT ENDPOINTS =============
+
+    // Get comments for an approval request
+    getComments: builder.query<ApprovalComment[], string>({
+      query: (approvalRequestId) => `/approvals/${approvalRequestId}/comments`,
+      providesTags: (_result, _error, id) => [{ type: 'ApprovalRequest', id }],
+    }),
+
+    // Add a comment to an approval request (Admin only)
+    addComment: builder.mutation<ApprovalComment, { approvalRequestId: string; data: CreateCommentDto }>({
+      query: ({ approvalRequestId, data }) => ({
+        url: `/approvals/${approvalRequestId}/comments`,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { approvalRequestId }) => [
+        { type: 'ApprovalRequest', id: approvalRequestId },
+        'ApprovalRequest'
+      ],
+    }),
+
+    // Resolve a comment (Requestor only)
+    resolveComment: builder.mutation<ApprovalComment, { commentId: string; data: ResolveCommentDto }>({
+      query: ({ commentId, data }) => ({
+        url: `/approvals/comments/${commentId}/resolve`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['ApprovalRequest'],
+    }),
+
+    // Update request data (Requestor only)
+    updateRequestData: builder.mutation<ApprovalRequest, { approvalRequestId: string; data: UpdateRequestDataDto }>({
+      query: ({ approvalRequestId, data }) => ({
+        url: `/approvals/${approvalRequestId}/request-data`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { approvalRequestId }) => [
+        { type: 'ApprovalRequest', id: approvalRequestId },
+        'ApprovalRequest'
+      ],
+    }),
   }),
 });
 
@@ -87,4 +135,9 @@ export const {
   useGetApprovalRequestByIdQuery,
   useProcessApprovalRequestMutation,
   useCancelRequestMutation,
+  // Comment hooks
+  useGetCommentsQuery,
+  useAddCommentMutation,
+  useResolveCommentMutation,
+  useUpdateRequestDataMutation,
 } = approvalApi;

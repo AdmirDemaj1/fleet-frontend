@@ -9,6 +9,42 @@ export enum ApprovalStatus {
   CANNOT_BE_EXECUTED = 'cannot_be_executed'
 }
 
+// User info for comments
+export interface UserInfo {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+// Approval Comment interface
+export interface ApprovalComment {
+  id: string;
+  content: string;
+  author: UserInfo;
+  isResolved: boolean;
+  resolvedAt: string | null;
+  resolvedBy: UserInfo | null;
+  resolutionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// DTOs for comment operations
+export interface CreateCommentDto {
+  content: string;
+}
+
+export interface ResolveCommentDto {
+  resolutionNote?: string;
+}
+
+export interface UpdateRequestDataDto {
+  requestData: Record<string, any>;
+  updateReason?: string;
+}
+
 export interface ApprovalRequest {
   id: string;
   requestorId: string;
@@ -31,20 +67,8 @@ export interface ApprovalRequest {
   rejectionReason?: string;
   expiresAt?: string;
   // Detailed user objects
-  requestor?: {
-    id: string;
-    username: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-  };
-  approver?: {
-    id: string;
-    username: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-  };
+  requestor?: UserInfo;
+  approver?: UserInfo;
   // Execution tracking
   executedBy?: string;
   executedByName?: string;
@@ -53,6 +77,9 @@ export interface ApprovalRequest {
   cannotExecuteReason?: string;
   createdAt: string;
   updatedAt: string;
+  // Comments
+  comments?: ApprovalComment[];
+  unresolvedCommentsCount?: number;
 }
 
 export interface ApprovalRequestFilters {

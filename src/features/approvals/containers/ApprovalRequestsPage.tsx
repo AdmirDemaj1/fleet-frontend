@@ -152,6 +152,7 @@ export const ApprovalRequestsPage: React.FC = () => {
           limit={pagination.limit}
           onPageChange={handlePageChange}
           onLimitChange={handleLimitChange}
+          onRefresh={refetch}
         />
       )}
 
