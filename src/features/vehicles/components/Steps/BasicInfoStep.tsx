@@ -76,10 +76,9 @@ export const BasicInfoStep: React.FC = () => {
               <TextField
                 {...field}
                 label="License Plate"
-                required
                 fullWidth
                 error={!!errors.licensePlate}
-                helperText={errors.licensePlate?.message as string || 'Enter the vehicle\'s license plate number'}
+                helperText={errors.licensePlate?.message as string || 'Optional - can be added later when used in a contract'}
                 value={field.value || ''}
                 inputProps={{ 
                   maxLength: 15,

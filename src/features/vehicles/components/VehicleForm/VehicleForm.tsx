@@ -217,9 +217,15 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         console.log("  📁 Files to upload:", files.length);
         console.log("  📋 Document metadata:", documentMetadata);
 
+        // Clean up vehicle data - remove empty/null licensePlate
+        const cleanedData = { ...data };
+        if (!cleanedData.licensePlate || cleanedData.licensePlate.trim() === '') {
+          delete cleanedData.licensePlate;
+        }
+
         // Submit vehicle data with files and document metadata
         const vehicleDataWithDocuments = {
-          vehicleData: data,
+          vehicleData: cleanedData,
           files: files.length > 0 ? files : undefined,
           documents: documentMetadata.length > 0 ? documentMetadata : undefined,
         };

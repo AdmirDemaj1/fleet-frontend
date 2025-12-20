@@ -333,25 +333,42 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
 
         // Build collaterals array from vehicle selection if marked as collateral
+        console.log("🔍 Building collaterals - vehicleAsCollateral:", data.vehicleAsCollateral);
+        console.log("🔍 Selected vehicle data:", data.selectedVehicleData);
+        
         const collaterals =
           data.vehicleAsCollateral &&
           data.selectedVehicleData &&
           data.selectedVehicleData.length > 0
-            ? data.selectedVehicleData.map((vehicle) => ({
-                type: "vehicle" as const,
-                description: `Vehicle collateral: ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
-                value: vehicle.marketValue || vehicle.currentValuation || 0,
-                active: true,
-                make: vehicle.make,
-                model: vehicle.model,
-                year: vehicle.year,
-                licensePlate: vehicle.licensePlate,
-                vinNumber: vehicle.vinNumber,
-                color: vehicle.color || "",
-                engineNumber: "",
-                registrationCertificate: "",
-                insurancePolicy: "",
-              }))
+            ? data.selectedVehicleData.map((vehicle) => {
+                console.log("🚗 Vehicle for collateral:", {
+                  id: vehicle.id,
+                  licensePlate: vehicle.licensePlate,
+                  make: vehicle.make,
+                  model: vehicle.model,
+                });
+                
+                // Ensure license plate is not empty - this is required for collaterals
+                if (!vehicle.licensePlate) {
+                  console.error("❌ Vehicle missing license plate for collateral:", vehicle.id);
+                }
+                
+                return {
+                  type: "vehicle" as const,
+                  description: `Vehicle collateral: ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+                  value: vehicle.marketValue || vehicle.currentValuation || 0,
+                  active: true,
+                  make: vehicle.make,
+                  model: vehicle.model,
+                  year: vehicle.year,
+                  licensePlate: vehicle.licensePlate || "", // Ensure it's at least an empty string
+                  vinNumber: vehicle.vinNumber,
+                  color: vehicle.color || "",
+                  engineNumber: "",
+                  registrationCertificate: "",
+                  insurancePolicy: "",
+                };
+              })
             : [];
 
         // Extract files and document metadata from the documents array

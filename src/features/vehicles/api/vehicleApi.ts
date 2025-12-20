@@ -99,7 +99,12 @@ export const vehicleApi = {
 
   // Create a new vehicle
   createVehicle: async (vehicleData: Partial<Vehicle>): Promise<Vehicle> => {
-    const response = await api.post<Vehicle>('/vehicles', vehicleData);
+    // Remove licensePlate if it's empty/null to allow creating vehicles without it
+    const cleanedData = { ...vehicleData };
+    if (!cleanedData.licensePlate || cleanedData.licensePlate.trim() === '') {
+      delete cleanedData.licensePlate;
+    }
+    const response = await api.post<Vehicle>('/vehicles', cleanedData);
     return response.data;
   },
 
@@ -154,7 +159,12 @@ export const vehicleApi = {
 
   // Update a vehicle
   updateVehicle: async (id: string, vehicleData: Partial<Vehicle>): Promise<Vehicle> => {
-    const response = await api.put<Vehicle>(`/vehicles/${id}`, vehicleData);
+    // Only include licensePlate if it has a valid value
+    const cleanedData = { ...vehicleData };
+    if (cleanedData.licensePlate !== undefined && (!cleanedData.licensePlate || cleanedData.licensePlate.trim() === '')) {
+      delete cleanedData.licensePlate;
+    }
+    const response = await api.put<Vehicle>(`/vehicles/${id}`, cleanedData);
     return response.data;
   },
 

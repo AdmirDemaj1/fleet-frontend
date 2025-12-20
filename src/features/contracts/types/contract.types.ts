@@ -305,7 +305,7 @@ export interface VehicleSummary {
   make: string;
   model: string;
   year: number;
-  licensePlate: string;
+  licensePlate?: string; // Optional - can be added later when used in contract
   vinNumber: string;
   status: string;
   // Additional vehicle properties

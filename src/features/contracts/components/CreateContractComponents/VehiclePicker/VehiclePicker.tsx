@@ -28,13 +28,18 @@ import {
   Add,
   CheckCircle,
   Refresh,
-  Security
+  Security,
+  Warning
 } from '@mui/icons-material';
 import { useGetAvailableVehiclesQuery } from '../../../api/contractApi';
 import { VehiclePickerProps, VehicleSummary } from '../../../types/contract.types';
 import { vehicleApi } from '../../../../vehicles/api/vehicleApi';
+import { useUploadDocumentMutation } from '../../../../vehicles/api/vehicleDocumentApi';
+import { VehicleDocumentType } from '../../../../vehicles/types/vehicleType';
 import { VehicleCreationModal, BrandLogo } from '../../../../../shared/components';
 import { Vehicle } from '../../../../vehicles/types/vehicleType';
+import { VehicleCompletionModal, REQUIRED_VEHICLE_DOCUMENT_TYPES, VehicleDocumentUpload } from './VehicleCompletionModal';
+import { useNotification } from '../../../../../shared/hooks/useNotification';
 
 // Simple debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -69,6 +74,9 @@ interface VehiclePickerState {
   hasInteracted: boolean;
   isCreateModalOpen: boolean;
   isCreatingVehicle: boolean;
+  isCompletionModalOpen: boolean;
+  pendingVehicle: EnhancedVehicleSummary | null;
+  isCompletingVehicle: boolean;
 }
 
 export const VehiclePicker: React.FC<VehiclePickerProps> = ({
@@ -80,6 +88,8 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
   error
 }) => {
   const theme = useTheme();
+  const { showSuccess, showError } = useNotification();
+  const [uploadDocument] = useUploadDocumentMutation();
   
   const [state, setState] = useState<VehiclePickerState>({
     searchTerm: '',
@@ -87,7 +97,10 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
     isOpen: false,
     hasInteracted: false,
     isCreateModalOpen: false,
-    isCreatingVehicle: false
+    isCreatingVehicle: false,
+    isCompletionModalOpen: false,
+    pendingVehicle: null,
+    isCompletingVehicle: false
   });
 
   // Debounced search term to improve performance
@@ -155,6 +168,39 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
     [allVehicles, state.selectedVehicle]
   );
 
+  // Check if a vehicle is complete (has license plate and required documents)
+  const isVehicleComplete = useCallback((vehicle: EnhancedVehicleSummary): boolean => {
+    // Check license plate
+    if (!vehicle.licensePlate) return false;
+    
+    // Check required documents
+    const existingDocTypes = (vehicle as any).documents?.map((d: any) => d.type) || [];
+    const hasAllDocs = REQUIRED_VEHICLE_DOCUMENT_TYPES.every(type => 
+      existingDocTypes.includes(type)
+    );
+    
+    return hasAllDocs;
+  }, []);
+
+  // Get what's missing from a vehicle
+  const getVehicleMissingItems = useCallback((vehicle: EnhancedVehicleSummary): string[] => {
+    const missing: string[] = [];
+    
+    if (!vehicle.licensePlate) {
+      missing.push('License Plate');
+    }
+    
+    const existingDocTypes = (vehicle as any).documents?.map((d: any) => d.type) || [];
+    REQUIRED_VEHICLE_DOCUMENT_TYPES.forEach(type => {
+      if (!existingDocTypes.includes(type)) {
+        const label = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        missing.push(label);
+      }
+    });
+    
+    return missing;
+  }, []);
+
   // Update selected vehicle when IDs change
   useEffect(() => {
     const vehicleId = selectedVehicleIds[0]; // Only first vehicle since we allow only one
@@ -168,27 +214,46 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
     }
   }, [selectedVehicleIds, allVehicles, state.selectedVehicle?.id]);
 
-  // Handle vehicle selection - immediately select
+  // Handle vehicle selection - check if complete first
   const handleVehicleSelect = useCallback((vehicle: EnhancedVehicleSummary | null) => {
-    setState(prev => ({
-      ...prev,
-      selectedVehicle: vehicle,
-      hasInteracted: true
-    }));
-    
     if (vehicle) {
+      // Check if vehicle is complete
+      if (!isVehicleComplete(vehicle)) {
+        // Vehicle is incomplete - show completion modal
+        setState(prev => ({
+          ...prev,
+          pendingVehicle: vehicle,
+          isCompletionModalOpen: true,
+          hasInteracted: true
+        }));
+        return;
+      }
+      
+      // Vehicle is complete - proceed with selection
+      setState(prev => ({
+        ...prev,
+        selectedVehicle: vehicle,
+        hasInteracted: true
+      }));
+      
       onVehicleSelect([vehicle.id]); // Single vehicle array
       // Also pass the full vehicle data including documents
       if (onVehicleDataChange) {
         onVehicleDataChange([vehicle]);
       }
     } else {
+      // Clearing selection
+      setState(prev => ({
+        ...prev,
+        selectedVehicle: null,
+        hasInteracted: true
+      }));
       onVehicleSelect([]); // Empty array
       if (onVehicleDataChange) {
         onVehicleDataChange([]);
       }
     }
-  }, [onVehicleSelect, onVehicleDataChange]);
+  }, [onVehicleSelect, onVehicleDataChange, isVehicleComplete]);
 
   // Handle input change
   const handleInputChange = useCallback((_event: any, newInputValue: string) => {
@@ -210,7 +275,8 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
 
   // Get vehicle display name
   const getVehicleDisplayName = useCallback((vehicle: EnhancedVehicleSummary) => {
-    return `${vehicle.year} ${vehicle.make} ${vehicle.model} - ${vehicle.licensePlate}`;
+    const plateInfo = vehicle.licensePlate || 'No Plate';
+    return `${vehicle.year} ${vehicle.make} ${vehicle.model} - ${plateInfo}`;
   }, []);
 
   // Handle refresh
@@ -271,6 +337,117 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
       setState(prev => ({ ...prev, isCreatingVehicle: false }));
     }
   }, [onVehicleSelect, onVehicleDataChange, refetch]);
+
+  // Handle closing completion modal
+  const handleCloseCompletionModal = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      isCompletionModalOpen: false,
+      pendingVehicle: null,
+      isCompletingVehicle: false
+    }));
+  }, []);
+
+  // Handle vehicle completion (adding license plate and/or documents)
+  const handleVehicleCompletion = useCallback(async (data: {
+    licensePlate?: string;
+    documents?: VehicleDocumentUpload[];
+  }) => {
+    const vehicle = state.pendingVehicle;
+    if (!vehicle) return;
+
+    setState(prev => ({ ...prev, isCompletingVehicle: true }));
+
+    try {
+      let updatedVehicle: EnhancedVehicleSummary = { ...vehicle };
+
+      // Update license plate if provided
+      if (data.licensePlate) {
+        console.log('🔧 Updating vehicle license plate:', data.licensePlate);
+        await vehicleApi.updateVehicle(vehicle.id, {
+          licensePlate: data.licensePlate
+        });
+        // Explicitly set the license plate from the provided data to ensure it's updated
+        updatedVehicle = {
+          ...updatedVehicle,
+          licensePlate: data.licensePlate // Use the provided value directly
+        };
+        console.log('✅ Vehicle updated with license plate:', updatedVehicle.licensePlate);
+      }
+
+      // Upload documents if provided
+      if (data.documents && data.documents.length > 0) {
+        const uploadPromises = data.documents.map(doc => 
+          uploadDocument({
+            file: doc.file,
+            data: {
+              type: doc.type as VehicleDocumentType,
+              title: doc.title,
+              expiryDate: doc.expiryDate, // Use the expiry date provided by user
+              vehicleId: vehicle.id,
+            }
+          }).unwrap()
+        );
+        
+        await Promise.all(uploadPromises);
+        
+        // Add documents to the vehicle object
+        const newDocs = data.documents.map(doc => ({
+          id: `new-${Date.now()}-${doc.type}`,
+          type: doc.type,
+          title: doc.title,
+          fileName: doc.file.name,
+          filePath: '',
+          status: 'completed',
+          createdAt: new Date().toISOString(),
+          downloadUrl: '',
+          previewUrl: ''
+        }));
+        
+        updatedVehicle = {
+          ...updatedVehicle,
+          documents: [...(updatedVehicle.documents || []), ...newDocs]
+        } as EnhancedVehicleSummary;
+      }
+
+      console.log('🚗 Final updated vehicle data:', {
+        id: updatedVehicle.id,
+        licensePlate: updatedVehicle.licensePlate,
+        make: updatedVehicle.make,
+        model: updatedVehicle.model,
+        year: updatedVehicle.year,
+        vinNumber: updatedVehicle.vinNumber,
+        documentsCount: updatedVehicle.documents?.length || 0
+      });
+
+      // Now select the completed vehicle
+      setState(prev => ({
+        ...prev,
+        selectedVehicle: updatedVehicle,
+        pendingVehicle: null,
+        isCompletionModalOpen: false,
+        isCompletingVehicle: false
+      }));
+
+      onVehicleSelect([updatedVehicle.id]);
+      if (onVehicleDataChange) {
+        // Pass the updated vehicle data with the new license plate
+        onVehicleDataChange([updatedVehicle]);
+        console.log('📤 Passed updated vehicle data to parent with licensePlate:', updatedVehicle.licensePlate);
+      }
+
+      showSuccess('Vehicle information updated successfully!');
+      
+      // Refresh the vehicle list
+      refetch();
+
+    } catch (err) {
+      console.error('Failed to complete vehicle:', err);
+      showError('Failed to update vehicle information');
+      setState(prev => ({ ...prev, isCompletingVehicle: false }));
+      throw err;
+    }
+  }, [state.pendingVehicle, onVehicleSelect, onVehicleDataChange, uploadDocument, refetch, showSuccess, showError]);
 
   // Error handling
   if (apiError) {
@@ -391,6 +568,8 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
           const isSelected = option.id === state.selectedVehicle?.id;
+          const isComplete = isVehicleComplete(option);
+          const missingItems = !isComplete ? getVehicleMissingItems(option) : [];
           
           return (
             <MenuItem
@@ -420,7 +599,7 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
               />
               
               <Box sx={{ flex: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>
                     {option.year} {option.make} {option.model}
                   </Typography>
@@ -431,7 +610,19 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
                     variant="outlined"
                     sx={{ fontSize: '0.7rem', height: 20 }}
                   />
-                  {option.isVerified && (
+                  {!isComplete && (
+                    <Tooltip title={`Missing: ${missingItems.join(', ')}`}>
+                      <Chip
+                        icon={<Warning sx={{ fontSize: 14 }} />}
+                        label="Incomplete"
+                        size="small"
+                        color="warning"
+                        variant="filled"
+                        sx={{ fontSize: '0.7rem', height: 20 }}
+                      />
+                    </Tooltip>
+                  )}
+                  {option.isVerified && isComplete && (
                     <Tooltip title="Verified vehicle">
                       <CheckCircle 
                         sx={{ 
@@ -444,7 +635,7 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
                 </Box>
                 
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                  🏷️ {option.licensePlate} • 🔢 {option.vinNumber}
+                  🏷️ {option.licensePlate || <em style={{ color: theme.palette.warning.main }}>No plate</em>} • 🔢 {option.vinNumber}
                 </Typography>
                 
                 {(option.mileage || option.fuelType || option.color) && (
@@ -652,6 +843,15 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         onClose={handleCloseCreateModal}
         onSubmit={handleCreateVehicle}
         isCreating={state.isCreatingVehicle}
+      />
+
+      {/* Vehicle Completion Modal - for adding missing info */}
+      <VehicleCompletionModal
+        open={state.isCompletionModalOpen}
+        onClose={handleCloseCompletionModal}
+        vehicle={state.pendingVehicle}
+        onComplete={handleVehicleCompletion}
+        isLoading={state.isCompletingVehicle}
       />
     </Box>
   );
