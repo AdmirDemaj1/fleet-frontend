@@ -38,6 +38,7 @@ export enum CustomerType {
     nuisNipt?: string; // Optional in list response
     shareholders?: string[]; // Array of shareholder names
     administratorIds?: string[]; // Selected administrator customer IDs
+    administrators?: Administrator[]; // Full administrator objects
   }
 
  
@@ -234,9 +235,9 @@ export enum CustomerType {
     address: string;
     phone: string;
     email: string;
-    secondaryPhone?: string;
-    secondaryEmail?: string;
-    additionalNotes?: string;
-    createdAt: Date;
-    updatedAt: Date;
+    secondaryPhone?: string | null;
+    secondaryEmail?: string | null;
+    additionalNotes?: string | null;
+    createdAt: string | Date;
+    updatedAt: string | Date;
   }

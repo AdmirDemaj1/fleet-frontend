@@ -35,7 +35,8 @@ import {
   Security as SecurityIcon,
   Assignment as ApprovalsIcon,
   SupervisorAccount as AdministratorIcon,
-  EventBusy as ExpiringDocumentsIcon
+  EventBusy as ExpiringDocumentsIcon,
+  Assessment as ReportsIcon
 } from '@mui/icons-material';
 
 interface MenuItem {
@@ -89,6 +90,12 @@ const menuItems: MenuItem[] = [
     text: 'Payments', 
     icon: <PaymentIcon />, 
     path: '/payments' 
+  },
+  { 
+    id: 'reports',
+    text: 'Reports', 
+    icon: <ReportsIcon />, 
+    path: '/reports' 
   },
   { 
     id: 'approvals',

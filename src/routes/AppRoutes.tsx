@@ -40,6 +40,7 @@ import {
   RbacTestingPanel,
 } from "../features/auth";
 import { ExpiringDocumentsPage } from "../features/documents";
+import { ReportsPage } from "../features/reports";
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -112,6 +113,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="approvals" element={<ApprovalRequestsPage />} />
 
         <Route path="documents/expiring" element={<ExpiringDocumentsPage />} />
+
+        <Route path="reports" element={<ReportsPage />} />
 
         <Route path="rbac-testing" element={<RbacTestingPanel />} />
 

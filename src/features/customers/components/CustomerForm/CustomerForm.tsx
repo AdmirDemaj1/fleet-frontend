@@ -30,17 +30,44 @@ interface CustomerFormData {
   individualDetails?: CreateIndividualCustomerDto;
   businessDetails?: CreateBusinessCustomerDto;
   administratorDetails?: CreateAdministratorCustomerDto;
+  administratorDocuments?: Array<{
+    type: string;
+    file: File;
+    expiryDate: string;
+    title: string;
+  }>;
 }
 import {
   STEP_FIELDS,
   REQUIRED_FIELDS,
   STEP_CONFIG,
 } from "../../utils/customerFormValidation";
+
+// Administrator-specific step configuration
+const ADMINISTRATOR_STEP_CONFIG = [
+  {
+    label: 'Customer Type',
+    description: 'Select administrator customer type',
+  },
+  {
+    label: 'Administrator Details',
+    description: 'Enter administrator information',
+  },
+  {
+    label: 'Documents',
+    description: 'Upload required documents',
+  },
+  {
+    label: 'Review',
+    description: 'Review and confirm',
+  },
+] as const;
 import {
   CustomerTypeStep,
   IndividualDetailsStep,
   BusinessDetailsStep,
   AdministratorDetailsStep,
+  AdministratorDocumentsStep,
 } from "./Steps";
 
 interface CustomerFormProps {
@@ -99,22 +126,22 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               additionalNotes: "",
             }
           : undefined,
-       businessDetails:
-         customerType === CustomerType.BUSINESS
-           ? {
-               type: CustomerType.BUSINESS,
-               legalName: "",
-               nuisNipt: "",
-               shareholders: [],
-               administratorIds: [],
-               address: "",
-               phone: "",
-               email: "",
-               secondaryPhone: "",
-               secondaryEmail: "",
-               additionalNotes: "",
-             }
-           : undefined,
+      businessDetails:
+        customerType === CustomerType.BUSINESS
+          ? {
+              type: CustomerType.BUSINESS,
+              legalName: "",
+              nuisNipt: "",
+              shareholders: [],
+              administratorIds: [],
+              address: "",
+              phone: "",
+              email: "",
+              secondaryPhone: "",
+              secondaryEmail: "",
+              additionalNotes: "",
+            }
+          : undefined,
       administratorDetails:
         customerType === CustomerType.ADMINISTRATOR
           ? {
@@ -134,6 +161,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               additionalNotes: "",
             }
           : undefined,
+      administratorDocuments:
+        customerType === CustomerType.ADMINISTRATOR ? [] : undefined,
       ...initialData,
     },
     mode: "onChange",
@@ -180,19 +209,19 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       setValue("individualDetails", undefined);
       setValue("administratorDetails", undefined);
       if (!currentFormData.businessDetails) {
-         setValue("businessDetails", {
-           type: CustomerType.BUSINESS,
-           legalName: "",
-           nuisNipt: "",
-           shareholders: [],
-           administratorIds: [],
-           address: "",
-           phone: "",
-           email: "",
-           secondaryPhone: "",
-           secondaryEmail: "",
-           additionalNotes: "",
-         });
+        setValue("businessDetails", {
+          type: CustomerType.BUSINESS,
+          legalName: "",
+          nuisNipt: "",
+          shareholders: [],
+          administratorIds: [],
+          address: "",
+          phone: "",
+          email: "",
+          secondaryPhone: "",
+          secondaryEmail: "",
+          additionalNotes: "",
+        });
       }
     } else if (customerType === CustomerType.ADMINISTRATOR) {
       setValue("individualDetails", undefined);
@@ -215,6 +244,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           additionalNotes: "",
         });
       }
+      if (!currentFormData.administratorDocuments) {
+        setValue("administratorDocuments", []);
+      }
     }
   }, [customerType, setValue, getValues]);
 
@@ -231,7 +263,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             ? STEP_FIELDS.BUSINESS_DETAILS
             : STEP_FIELDS.ADMINISTRATOR_DETAILS;
         case 2:
-          return []; // Review step
+          // Documents step for administrators, Review step for others
+          return customerType === CustomerType.ADMINISTRATOR ? [] : [];
+        case 3:
+          return []; // Review step (only for administrators)
         default:
           return [];
       }
@@ -252,18 +287,39 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             ? REQUIRED_FIELDS.BUSINESS_DETAILS
             : REQUIRED_FIELDS.ADMINISTRATOR_DETAILS;
         case 2:
-          return []; // Review step
+          // Documents step for administrators - check if required documents are uploaded
+          if (customerType === CustomerType.ADMINISTRATOR) {
+            const documents = getValues("administratorDocuments") || [];
+            const uploadedTypes = documents.map((doc: any) => doc?.type);
+            const hasRequired = ["business_administrator_id_card"].every(
+              (type) => uploadedTypes.includes(type)
+            );
+            return hasRequired ? [] : ["administratorDocuments"];
+          }
+          return [];
+        case 3:
+          return []; // Review step (only for administrators)
         default:
           return [];
       }
     },
-    [customerType]
+    [customerType, getValues]
   );
 
   // Check if current step is valid
   const isCurrentStepValid = useCallback(() => {
     const stepFields = getStepFields(activeStep);
     const requiredFields = getRequiredFields(activeStep);
+
+    // Special validation for documents step (step 2 for administrators)
+    if (activeStep === 2 && customerType === CustomerType.ADMINISTRATOR) {
+      const documents = getValues("administratorDocuments") || [];
+      const uploadedTypes = documents.map((doc: any) => doc?.type);
+      const hasRequiredDocuments = ["business_administrator_id_card"].every(
+        (type) => uploadedTypes.includes(type)
+      );
+      return hasRequiredDocuments;
+    }
 
     // Check if all required fields are filled and have no errors
     const hasRequiredValues = requiredFields.every((field: string) => {
@@ -282,7 +338,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     });
 
     return hasRequiredValues && hasNoErrors;
-  }, [activeStep, errors, getStepFields, getRequiredFields, getValues]);
+  }, [
+    activeStep,
+    customerType,
+    errors,
+    getStepFields,
+    getRequiredFields,
+    getValues,
+  ]);
 
   // Validate current step before navigation
   const validateCurrentStep = useCallback(async (): Promise<boolean> => {
@@ -330,7 +393,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             ),
             administratorName: data.administratorDetails.administratorName,
             administratorId: data.administratorDetails.administratorId,
-            administratorPosition: data.administratorDetails.administratorPosition,
+            administratorPosition:
+              data.administratorDetails.administratorPosition,
             address: data.administratorDetails.address,
             phone: normalizePhoneNumber(data.administratorDetails.phone),
             email: data.administratorDetails.email,
@@ -341,6 +405,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               data.administratorDetails.secondaryEmail || undefined,
             additionalNotes:
               data.administratorDetails.additionalNotes || undefined,
+            // Include documents for upload after creation
+            administratorDocuments: data.administratorDocuments || [],
           };
         } else {
           // For individual and business, keep the wrapper structure
@@ -420,23 +486,23 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 ...initialData.individualDetails,
               }
             : undefined,
-         businessDetails:
-           customerType === CustomerType.BUSINESS
-             ? {
-                 type: CustomerType.BUSINESS,
-                 legalName: "",
-                 nuisNipt: "",
-                 shareholders: [],
-                 administratorIds: [],
-                 address: "",
-                 phone: "",
-                 email: "",
-                 secondaryPhone: "",
-                 secondaryEmail: "",
-                 additionalNotes: "",
-                 ...initialData.businessDetails,
-               }
-             : undefined,
+        businessDetails:
+          customerType === CustomerType.BUSINESS
+            ? {
+                type: CustomerType.BUSINESS,
+                legalName: "",
+                nuisNipt: "",
+                shareholders: [],
+                administratorIds: [],
+                address: "",
+                phone: "",
+                email: "",
+                secondaryPhone: "",
+                secondaryEmail: "",
+                additionalNotes: "",
+                ...initialData.businessDetails,
+              }
+            : undefined,
         administratorDetails:
           customerType === CustomerType.ADMINISTRATOR
             ? {
@@ -461,6 +527,11 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     }
   }, [initialData, reset, customerType]);
 
+  // Get total steps based on customer type
+  const getTotalSteps = useCallback(() => {
+    return customerType === CustomerType.ADMINISTRATOR ? 4 : 3;
+  }, [customerType]);
+
   // Step content renderer
   const renderStepContent = useCallback(() => {
     switch (activeStep) {
@@ -480,6 +551,11 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           <AdministratorDetailsStep />
         );
       case 2:
+        // Documents step for administrators, Review step for others
+        if (customerType === CustomerType.ADMINISTRATOR) {
+          return <AdministratorDocumentsStep />;
+        }
+        // Review step for non-administrators
         return (
           <Box sx={{ py: 4, textAlign: "center" }}>
             <Typography variant="h5" gutterBottom fontWeight={600}>
@@ -552,8 +628,79 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                   </>
                 )}
 
-              {customerType === CustomerType.ADMINISTRATOR &&
-                getValues("administratorDetails") && (
+              {(customerType === CustomerType.INDIVIDUAL || customerType === CustomerType.BUSINESS) && (
+                <>
+                  {customerType === CustomerType.INDIVIDUAL &&
+                    getValues("individualDetails") && (
+                      <>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Name:</strong>{" "}
+                          {getValues("individualDetails.firstName")}{" "}
+                          {getValues("individualDetails.lastName")}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Email:</strong>{" "}
+                          {getValues("individualDetails.email")}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Phone:</strong>{" "}
+                          {getValues("individualDetails.phone")}
+                        </Typography>
+                      </>
+                    )}
+
+                  {customerType === CustomerType.BUSINESS &&
+                    getValues("businessDetails") && (
+                      <>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Business:</strong>{" "}
+                          {getValues("businessDetails.legalName")}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>NUIS/NIPT:</strong>{" "}
+                          {getValues("businessDetails.nuisNipt")}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Email:</strong>{" "}
+                          {getValues("businessDetails.email")}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Phone:</strong>{" "}
+                          {getValues("businessDetails.phone")}
+                        </Typography>
+                      </>
+                    )}
+                </>
+              )}
+            </Box>
+          </Box>
+        );
+      case 3:
+        // Review step for administrators only
+        if (customerType === CustomerType.ADMINISTRATOR) {
+          return (
+            <Box sx={{ py: 4, textAlign: "center" }}>
+              <Typography variant="h5" gutterBottom fontWeight={600}>
+                Review & Confirm
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                Please review your information and click save to create the
+                administrator
+              </Typography>
+
+              <Box
+                sx={{
+                  p: 3,
+                  bgcolor: (theme) => theme.palette.grey[50],
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: "divider",
+                  maxWidth: 600,
+                  mx: "auto",
+                  textAlign: "left",
+                }}
+              >
+                {getValues("administratorDetails") && (
                   <>
                     <Typography variant="body2" sx={{ mb: 1 }}>
                       <strong>Company:</strong>{" "}
@@ -571,15 +718,25 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                       <strong>Email:</strong>{" "}
                       {getValues("administratorDetails.email")}
                     </Typography>
-                    <Typography variant="body2">
+                    <Typography variant="body2" sx={{ mb: 1 }}>
                       <strong>Phone:</strong>{" "}
                       {getValues("administratorDetails.phone")}
                     </Typography>
+                    {getValues("administratorDocuments") && 
+                     Array.isArray(getValues("administratorDocuments")) &&
+                     getValues("administratorDocuments")!.length > 0 && (
+                      <Typography variant="body2" sx={{ mt: 2 }}>
+                        <strong>Documents:</strong>{" "}
+                        {getValues("administratorDocuments")!.length} uploaded
+                      </Typography>
+                    )}
                   </>
                 )}
+              </Box>
             </Box>
-          </Box>
-        );
+          );
+        }
+        return null;
       default:
         return null;
     }
@@ -634,10 +791,15 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           {/* Stepper */}
           <Box mb={4}>
             <Stepper activeStep={activeStep} alternativeLabel>
-              {STEP_CONFIG.map((stepConfig: any, index: number) => (
+              {(customerType === CustomerType.ADMINISTRATOR
+                ? ADMINISTRATOR_STEP_CONFIG
+                : STEP_CONFIG
+              ).map((stepConfig: any, index: number) => (
                 <Step key={stepConfig.label}>
                   <StepLabel
-                    error={activeStep === index && currentStepErrors.length > 0}
+                    error={
+                      activeStep === index && currentStepErrors.length > 0
+                    }
                   >
                     {stepConfig.label}
                   </StepLabel>
@@ -696,10 +858,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
               {/* Step indicator */}
               <Typography variant="body2" color="text.secondary">
-                Step {activeStep + 1} of {STEP_CONFIG.length}
+                Step {activeStep + 1} of {getTotalSteps()}
               </Typography>
 
-              {activeStep < STEP_CONFIG.length - 1 ? (
+              {activeStep < getTotalSteps() - 1 ? (
                 <Button
                   type="button"
                   variant="contained"

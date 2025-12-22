@@ -282,4 +282,42 @@ export const customerApi = {
     const response = await api.get<Administrator[]>('/administrators');
     return response.data;
   },
+
+  // Upload administrator document
+  uploadAdministratorDocument: async (
+    administratorId: string,
+    file: File,
+    documentType: string,
+    expiryDate: string,
+    title?: string
+  ): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', documentType);
+    formData.append('title', title || file.name);
+    formData.append('expiryDate', expiryDate);
+    formData.append('administratorId', administratorId);
+    
+    console.log('📄 Uploading administrator document:', {
+      administratorId,
+      documentType,
+      fileName: file.name,
+      expiryDate,
+    });
+    
+    // Log FormData contents for debugging
+    console.log('📄 FormData entries:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value instanceof File ? `${value.name} (${value.size} bytes)` : value);
+    }
+    
+    const response = await api.post(`/documents/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    console.log('✅ Document uploaded successfully:', response.data);
+    return response.data;
+  },
 };
