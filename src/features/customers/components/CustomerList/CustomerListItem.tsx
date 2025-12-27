@@ -20,7 +20,6 @@ import {
   Phone as PhoneIcon,
   BusinessCenter,
   Person,
-  Security,
   FileDownload,
   Receipt,
   DirectionsCar,
@@ -29,6 +28,7 @@ import {
   Dashboard,
   Delete,
   SupervisorAccount,
+  Edit,
 } from "@mui/icons-material";
 import { Customer, CustomerType } from "../../types/customer.types";
 import dayjs from "dayjs";
@@ -297,6 +297,20 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <Dashboard fontSize="small" sx={{ mr: 1.5 }} />
           Dashboard
         </MenuItem>
+        
+        {/* Edit option - only for individual and business customers */}
+        {!isAdministrator && (
+          <MenuItem
+            onClick={() => {
+              navigate(`/${getBasePath()}/${customer.id}/edit`);
+              handleMenuClose();
+            }}
+            dense
+          >
+            <Edit fontSize="small" sx={{ mr: 1.5 }} />
+            {isIndividual ? "Edit Individual Customer" : "Edit Business Customer"}
+          </MenuItem>
+        )}
 
         <Divider />
 

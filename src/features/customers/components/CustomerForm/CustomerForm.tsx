@@ -46,20 +46,20 @@ import {
 // Administrator-specific step configuration
 const ADMINISTRATOR_STEP_CONFIG = [
   {
-    label: 'Customer Type',
-    description: 'Select administrator customer type',
+    label: "Customer Type",
+    description: "Select administrator customer type",
   },
   {
-    label: 'Administrator Details',
-    description: 'Enter administrator information',
+    label: "Administrator Details",
+    description: "Enter administrator information",
   },
   {
-    label: 'Documents',
-    description: 'Upload required documents',
+    label: "Documents",
+    description: "Upload required documents",
   },
   {
-    label: 'Review',
-    description: 'Review and confirm',
+    label: "Review",
+    description: "Review and confirm",
   },
 ] as const;
 import {
@@ -71,13 +71,23 @@ import {
 } from "./Steps";
 
 interface CustomerFormProps {
-  initialData?: Partial<CreateCustomerDto>;
+  initialData?: Partial<CreateCustomerDto> & {
+    administratorDocuments?: Array<{
+      type: string;
+      file?: File;
+      expiryDate: string;
+      title: string;
+      documentId?: string;
+      fileName?: string;
+    }>;
+  };
   onSubmit: (data: CreateCustomerDto) => Promise<void>;
   loading: boolean;
   activeStep: number;
   onStepChange: (step: number) => void;
   steps: string[];
   isEdit?: boolean;
+  administratorId?: string; // Administrator ID for edit mode
 }
 
 // Helper function to normalize phone numbers (remove spaces and formatting)
@@ -96,6 +106,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   activeStep,
   onStepChange,
   isEdit = false,
+  administratorId,
 }) => {
   const [customerType, setCustomerType] = React.useState<CustomerType>(
     initialData?.individualDetails
@@ -523,6 +534,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 ...initialData.administratorDetails,
               }
             : undefined,
+        administratorDocuments:
+          customerType === CustomerType.ADMINISTRATOR
+            ? initialData?.administratorDocuments || []
+            : undefined,
       });
     }
   }, [initialData, reset, customerType]);
@@ -553,7 +568,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       case 2:
         // Documents step for administrators, Review step for others
         if (customerType === CustomerType.ADMINISTRATOR) {
-          return <AdministratorDocumentsStep />;
+          return <AdministratorDocumentsStep administratorId={administratorId} />;
         }
         // Review step for non-administrators
         return (
@@ -628,7 +643,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                   </>
                 )}
 
-              {(customerType === CustomerType.INDIVIDUAL || customerType === CustomerType.BUSINESS) && (
+              {(customerType === CustomerType.INDIVIDUAL ||
+                customerType === CustomerType.BUSINESS) && (
                 <>
                   {customerType === CustomerType.INDIVIDUAL &&
                     getValues("individualDetails") && (
@@ -722,14 +738,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                       <strong>Phone:</strong>{" "}
                       {getValues("administratorDetails.phone")}
                     </Typography>
-                    {getValues("administratorDocuments") && 
-                     Array.isArray(getValues("administratorDocuments")) &&
-                     getValues("administratorDocuments")!.length > 0 && (
-                      <Typography variant="body2" sx={{ mt: 2 }}>
-                        <strong>Documents:</strong>{" "}
-                        {getValues("administratorDocuments")!.length} uploaded
-                      </Typography>
-                    )}
+                    {getValues("administratorDocuments") &&
+                      Array.isArray(getValues("administratorDocuments")) &&
+                      getValues("administratorDocuments")!.length > 0 && (
+                        <Typography variant="body2" sx={{ mt: 2 }}>
+                          <strong>Documents:</strong>{" "}
+                          {getValues("administratorDocuments")!.length} uploaded
+                        </Typography>
+                      )}
                   </>
                 )}
               </Box>
@@ -797,9 +813,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               ).map((stepConfig: any, index: number) => (
                 <Step key={stepConfig.label}>
                   <StepLabel
-                    error={
-                      activeStep === index && currentStepErrors.length > 0
-                    }
+                    error={activeStep === index && currentStepErrors.length > 0}
                   >
                     {stepConfig.label}
                   </StepLabel>

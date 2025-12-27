@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
 import { RootState } from "../../../app/store";
 import { customerApi } from "../api/customerApi";
 import { CustomerType } from "../types/customer.types";
@@ -11,9 +12,13 @@ import {
 
 export const useCustomer = (id: string, customerType?: CustomerType) => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const { selectedCustomer, loading, error } = useSelector(
     (state: RootState) => state.customers
   );
+
+  // Check if we're viewing an administrator based on the URL path
+  const isAdministratorRoute = location.pathname.includes('/administrators/');
 
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -22,11 +27,14 @@ export const useCustomer = (id: string, customerType?: CustomerType) => {
         return;
       }
 
-      console.log("useCustomer: Fetching customer with ID:", id);
+      console.log("useCustomer: Fetching customer with ID:", id, "isAdministratorRoute:", isAdministratorRoute);
       dispatch(setLoading(true));
 
       try {
-        const customer = await customerApi.getById(id);
+        // Use administrators endpoint if we're on an administrator route
+        const customer = isAdministratorRoute 
+          ? await customerApi.getAdministratorById(id)
+          : await customerApi.getById(id);
         console.log("useCustomer: Customer fetched successfully:", customer);
         dispatch(setSelectedCustomer(customer));
         dispatch(setLoading(false));
@@ -40,7 +48,7 @@ export const useCustomer = (id: string, customerType?: CustomerType) => {
     };
 
     fetchCustomer();
-  }, [id, customerType, dispatch]);
+  }, [id, customerType, location.pathname, dispatch]);
 
   return {
     customer: selectedCustomer,

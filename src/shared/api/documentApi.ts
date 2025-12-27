@@ -1,14 +1,16 @@
-import { api } from '../utils/api';
-import { Document, DocumentPreviewResponse } from '../types/document.types';
+import { api } from "../utils/api";
+import { Document, DocumentPreviewResponse } from "../types/document.types";
 
 export const documentApi = {
   // Get documents by customer ID
   getCustomerDocuments: async (customerId: string): Promise<Document[]> => {
     try {
-      const response = await api.get<Document[]>(`/documents/customer/${customerId}`);
+      const response = await api.get<Document[]>(
+        `/documents/customer/${customerId}`
+      );
       return response.data;
     } catch (error) {
-      console.error('Error fetching customer documents:', error);
+      console.error("Error fetching customer documents:", error);
       throw error;
     }
   },
@@ -16,10 +18,12 @@ export const documentApi = {
   // Get documents by contract ID
   getContractDocuments: async (contractId: string): Promise<Document[]> => {
     try {
-      const response = await api.get<Document[]>(`/documents/contract/${contractId}`);
+      const response = await api.get<Document[]>(
+        `/documents/contract/${contractId}`
+      );
       return response.data;
     } catch (error) {
-      console.error('Error fetching contract documents:', error);
+      console.error("Error fetching contract documents:", error);
       throw error;
     }
   },
@@ -27,21 +31,27 @@ export const documentApi = {
   // Get documents by vehicle ID
   getVehicleDocuments: async (vehicleId: string): Promise<Document[]> => {
     try {
-      const response = await api.get<Document[]>(`/documents/vehicle/${vehicleId}`);
+      const response = await api.get<Document[]>(
+        `/documents/vehicle/${vehicleId}`
+      );
       return response.data;
     } catch (error) {
-      console.error('Error fetching vehicle documents:', error);
+      console.error("Error fetching vehicle documents:", error);
       throw error;
     }
   },
 
   // Get document preview
-  getDocumentPreview: async (documentId: string): Promise<DocumentPreviewResponse> => {
+  getDocumentPreview: async (
+    documentId: string
+  ): Promise<DocumentPreviewResponse> => {
     try {
-      const response = await api.get<DocumentPreviewResponse>(`/documents/${documentId}/preview`);
+      const response = await api.get<DocumentPreviewResponse>(
+        `/documents/${documentId}/preview`
+      );
       return response.data;
     } catch (error) {
-      console.error('Error fetching document preview:', error);
+      console.error("Error fetching document preview:", error);
       throw error;
     }
   },
@@ -50,12 +60,42 @@ export const documentApi = {
   downloadDocument: async (documentId: string): Promise<Blob> => {
     try {
       const response = await api.get(`/documents/${documentId}/download`, {
-        responseType: 'blob'
+        responseType: "blob",
       });
       return response.data;
     } catch (error) {
-      console.error('Error downloading document:', error);
+      console.error("Error downloading document:", error);
       throw error;
     }
-  }
+  },
+
+  // Get documents by administrator ID
+  getAdministratorDocuments: async (
+    administratorId: string
+  ): Promise<Document[]> => {
+    try {
+      const response = await api.get<Document[]>(
+        `/documents/administrator/${administratorId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching administrator documents:", error);
+      throw error;
+    }
+  },
+
+  // Delete administrator document
+  deleteAdministratorDocument: async (
+    administratorId: string,
+    documentId: string
+  ): Promise<void> => {
+    try {
+      await api.delete(
+        `/documents/administrator/${administratorId}/documents/${documentId}`
+      );
+    } catch (error) {
+      console.error("Error deleting administrator document:", error);
+      throw error;
+    }
+  },
 };

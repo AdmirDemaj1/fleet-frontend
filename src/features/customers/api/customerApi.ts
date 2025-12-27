@@ -93,6 +93,14 @@ export const customerApi = {
     return response.data;
   },
 
+  // Get administrator by ID
+  getAdministratorById: async (id: string): Promise<CustomerDetailed> => {
+    const response = await api.get<CustomerDetailed>(
+      `/administrators/${id}`
+    );
+    return response.data;
+  },
+
   create: async (data: CreateCustomerDto | any): Promise<Customer> => {
     console.log("API create called with data:", data);
     try {
@@ -128,6 +136,15 @@ export const customerApi = {
   update: async (id: string, data: UpdateCustomerDto): Promise<Customer> => {
     const response = await api.put<Customer>(
       `${API_ENDPOINTS.CUSTOMERS}/${id}`,
+      data
+    );
+    return response.data;
+  },
+
+  // Update administrator
+  updateAdministrator: async (id: string, data: any): Promise<Customer> => {
+    const response = await api.put<Customer>(
+      `/administrators/${id}`,
       data
     );
     return response.data;
@@ -280,6 +297,20 @@ export const customerApi = {
 
   getAdministrators: async (): Promise<Administrator[]> => {
     const response = await api.get<Administrator[]>('/administrators');
+    return response.data;
+  },
+
+  // Get business customers that use an administrator
+  getAdministratorBusinessCustomers: async (administratorId: string): Promise<{
+    administratorId: string;
+    businessCustomerIds: string[];
+    count: number;
+  }> => {
+    const response = await api.get<{
+      administratorId: string;
+      businessCustomerIds: string[];
+      count: number;
+    }>(`/administrators/${administratorId}/business-customers`);
     return response.data;
   },
 

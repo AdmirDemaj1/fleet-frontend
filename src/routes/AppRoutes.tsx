@@ -6,7 +6,7 @@ import { CustomersPage } from "../features/customers/containers/CustomersPage";
 import { CreateCustomerPage } from "../features/customers/containers/CreateCustomerPage";
 import { VehiclesPage } from "../features/vehicles/containers/VehiclesPage";
 import AuditPage from "../features/logs/containers/AuditPage";
-import { EditCustomerPage } from "../features/customers/containers/Account/EditCustomerPage";
+import { EditCustomerPage } from "../features/customers/containers/EditCustomerPage";
 import CustomerAccountPage from "../features/customers/containers/CustomerAccountPage";
 import CustomerSummaryPage from "../features/customers/containers/Account/CustomerSummaryPage";
 import CustomerContractsPage from "../features/customers/containers/Account/CustomerContractsPage";
@@ -41,6 +41,9 @@ import {
 } from "../features/auth";
 import { ExpiringDocumentsPage } from "../features/documents";
 import { ReportsPage } from "../features/reports";
+import { EditAdministratorPage } from "../features/customers/containers/EditAdministratorPage";
+import AdministratorAccountPage from "../features/customers/containers/AdministratorAccountPage";
+import AdministratorSummaryPage from "../features/customers/containers/Account/AdministratorSummaryPage";
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -70,6 +73,14 @@ export const AppRoutes: React.FC = () => {
             <Route path="vehicles" element={<CustomerVehiclesPage />} />
             <Route path="logs" element={<CustomerLogsPage />} />
             <Route path="edit" element={<EditCustomerPage />} />
+          </Route>
+        </Route>
+
+        <Route path="administrators">
+          <Route path=":id" element={<AdministratorAccountPage />}>
+            <Route index element={<Navigate to="summary" replace />} />
+            <Route path="summary" element={<AdministratorSummaryPage />} />
+            <Route path="edit" element={<EditAdministratorPage />} />
           </Route>
         </Route>
 

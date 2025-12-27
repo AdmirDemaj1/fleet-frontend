@@ -13,23 +13,22 @@ import {
 import {
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
-import { CustomerAccountMenuProps } from '../../types/customerMenu.types';
-import { useCustomerMenu } from '../../hooks/useCustomerMenu';
+import { useAdministratorMenu } from '../../hooks/useAdministratorMenu';
 
-const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
+const AdministratorAccountMenu: React.FC = () => {
   const {
     id,
-    customerName,
+    administratorName,
     currentTab,
     isSmallScreen,
     theme,
     handleTabChange,
     handleBackClick,
     menuItems
-  } = useCustomerMenu();
+  } = useAdministratorMenu();
 
   if (!id) {
-    // Fallback UI for missing customer ID
+    // Fallback UI for missing administrator ID
     return (
       <AppBar 
         position="static" 
@@ -45,7 +44,7 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" color="error" sx={{ ml: 2 }}>
-            {customerName} not found
+            Administrator not found
           </Typography>
         </Toolbar>
       </AppBar>
@@ -79,19 +78,19 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
             position: 'absolute',
             left: { xs: 8, sm: 16 },
           }}
-          aria-label="Back to customers"
+          aria-label="Back to administrators"
         >
           <ArrowBackIcon />
         </IconButton>
 
-        {/* Customer Name */}
+        {/* Administrator Name */}
         <Box sx={{ 
           position: 'absolute',
           left: { xs: 48, sm: 64 },
           display: { xs: 'none', sm: 'block' }
         }}>
           <Typography variant="h6" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-            {customerName || 'Customer'}
+            {administratorName || 'Administrator'}
           </Typography>
         </Box>
 
@@ -110,14 +109,14 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
             scrollButtons="auto"
             allowScrollButtonsMobile
             centered={!isSmallScreen}
-            aria-label="Customer account navigation"
+            aria-label="Administrator account navigation"
             sx={{
               width: '100%',
               '& .MuiTabs-flexContainer': {
                 justifyContent: 'center',
               },
               '& .MuiTabs-indicator': {
-                backgroundColor: theme.palette.primary.main,
+                backgroundColor: theme.palette.warning.main,
                 height: 3,
                 borderRadius: '3px 3px 0 0',
               },
@@ -135,15 +134,15 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
                 color: theme.palette.text.secondary,
                 transition: 'all 0.2s ease-in-out',
                 '&.Mui-selected': {
-                  color: theme.palette.primary.main,
+                  color: theme.palette.warning.main,
                   fontWeight: 600,
                 },
                 '&:hover:not(.Mui-selected)': {
-                  color: theme.palette.primary.main,
-                  backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                  color: theme.palette.warning.main,
+                  backgroundColor: alpha(theme.palette.warning.main, 0.05),
                 },
                 '&:focus-visible': {
-                  outline: `2px solid ${theme.palette.primary.main}`,
+                  outline: `2px solid ${theme.palette.warning.main}`,
                   outlineOffset: 2,
                 },
               },
@@ -183,7 +182,7 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
                   </Box>
                 }
                 component={Link}
-                to={`/customers/${id}/${item.path}`}
+                to={`/administrators/${id}/${item.path}`}
                 sx={{
                   py: isSmallScreen ? 1 : 1.5,
                 }}
@@ -197,4 +196,5 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
   );
 };
 
-export default CustomerAccountMenu;
+export default AdministratorAccountMenu;
+

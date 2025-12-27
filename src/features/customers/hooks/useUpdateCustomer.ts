@@ -13,13 +13,13 @@ export const useUpdateCustomer = () => {
   const dispatch = useDispatch();
   const { showSuccess, showError } = useNotification();
 
-  const updateCustomer = async (id: string, data: UpdateCustomerDto, customerType?: CustomerType) => {
+  const updateCustomer = async (id: string, data: UpdateCustomerDto) => {
     setLoading(true);
     setError(null);
     
     try {
-      const customer = await customerApi.update(id, data, customerType);
-      const detailed = await customerApi.getById(id, customerType);
+      const customer = await customerApi.update(id, data);
+      const detailed = await customerApi.getById(id);
       dispatch(setSelectedCustomer(detailed));
       showSuccess('Customer updated successfully');
       navigate(`/customers/${id}`);

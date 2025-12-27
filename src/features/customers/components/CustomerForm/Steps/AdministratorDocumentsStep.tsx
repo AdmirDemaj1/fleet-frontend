@@ -18,7 +18,8 @@ import {
   CheckCircle as CheckIcon,
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
-import { Controller, useFormContext } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
+import { documentApi } from '../../../../../shared/api/documentApi';
 
 export enum AdministratorDocumentType {
   ID_CARD = 'business_administrator_id_card',
@@ -27,9 +28,11 @@ export enum AdministratorDocumentType {
 
 interface AdministratorDocument {
   type: AdministratorDocumentType;
-  file: File;
+  file?: File; // Optional for existing documents
   expiryDate: string;
   title: string;
+  documentId?: string; // ID of existing document
+  fileName?: string; // Name of existing document file
 }
 
 const DOCUMENT_LABELS: Record<AdministratorDocumentType, string> = {
@@ -40,10 +43,17 @@ const DOCUMENT_LABELS: Record<AdministratorDocumentType, string> = {
 const REQUIRED_DOCUMENTS = [AdministratorDocumentType.ID_CARD];
 const OPTIONAL_DOCUMENTS = [AdministratorDocumentType.QKB];
 
-export const AdministratorDocumentsStep: React.FC = () => {
+interface AdministratorDocumentsStepProps {
+  administratorId?: string;
+}
+
+export const AdministratorDocumentsStep: React.FC<AdministratorDocumentsStepProps> = ({
+  administratorId,
+}) => {
   const theme = useTheme();
-  const { control, watch, setValue } = useFormContext();
+  const { watch, setValue } = useFormContext();
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
 
   const documents = watch('administratorDocuments') || [];
 
@@ -109,6 +119,53 @@ export const AdministratorDocumentsStep: React.FC = () => {
       );
     },
     [documents, setValue]
+  );
+
+  const handleReplaceDocument = useCallback(
+    async (docType: AdministratorDocumentType, file: File) => {
+      const existingDocs = documents || [];
+      const existingDoc = existingDocs.find(
+        (doc: AdministratorDocument) => doc.type === docType
+      );
+
+      // If there's an existing document with a documentId, delete it first
+      if (existingDoc?.documentId && administratorId) {
+        try {
+          setDeletingDocumentId(existingDoc.documentId);
+          await documentApi.deleteAdministratorDocument(
+            administratorId,
+            existingDoc.documentId
+          );
+          console.log(`✅ Deleted existing document ${existingDoc.documentId} before replacement`);
+        } catch (error) {
+          console.error('Failed to delete existing document:', error);
+          setUploadErrors((prev) => ({
+            ...prev,
+            [docType]: 'Failed to delete existing document. Please try again.',
+          }));
+          setDeletingDocumentId(null);
+          return;
+        } finally {
+          setDeletingDocumentId(null);
+        }
+      }
+
+      // Replace existing document with new file
+      setValue(
+        'administratorDocuments',
+        existingDocs.map((doc: AdministratorDocument) =>
+          doc.type === docType
+            ? { ...doc, file, title: file.name, documentId: undefined }
+            : doc
+        )
+      );
+      setUploadErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[docType];
+        return newErrors;
+      });
+    },
+    [documents, setValue, administratorId]
   );
 
   const onDrop = useCallback(
@@ -237,7 +294,19 @@ export const AdministratorDocumentsStep: React.FC = () => {
               {isUploaded ? (
                 <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {document.file.name} ({formatFileSize(document.file.size)})
+                    {document.file 
+                      ? `${document.file.name} (${formatFileSize(document.file.size)})`
+                      : document.fileName || document.title || 'Existing document'
+                    }
+                    {document.documentId && (
+                      <Chip 
+                        label="Existing" 
+                        size="small" 
+                        color="info" 
+                        variant="outlined" 
+                        sx={{ ml: 1 }}
+                      />
+                    )}
                   </Typography>
                   <TextField
                     type="date"
@@ -249,13 +318,38 @@ export const AdministratorDocumentsStep: React.FC = () => {
                     fullWidth
                     sx={{ mt: 1 }}
                   />
+                  {!document.file && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<UploadIcon />}
+                      disabled={deletingDocumentId === document.documentId}
+                      onClick={() => {
+                        const input = window.document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'application/pdf,image/*';
+                        input.onchange = async (e: any) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleReplaceDocument(docType, file);
+                          }
+                        };
+                        input.click();
+                      }}
+                      sx={{ mt: 1 }}
+                    >
+                      {deletingDocumentId === document.documentId
+                        ? 'Deleting...'
+                        : 'Replace Document'}
+                    </Button>
+                  )}
                 </Box>
               ) : (
                 <Button
                   variant="outlined"
                   startIcon={<UploadIcon />}
                   onClick={() => {
-                    const input = document.createElement('input');
+                    const input = window.document.createElement('input');
                     input.type = 'file';
                     input.accept = 'application/pdf,image/*';
                     input.onchange = (e: any) => {
@@ -342,7 +436,19 @@ export const AdministratorDocumentsStep: React.FC = () => {
               {isUploaded ? (
                 <Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {document.file.name} ({formatFileSize(document.file.size)})
+                    {document.file 
+                      ? `${document.file.name} (${formatFileSize(document.file.size)})`
+                      : document.fileName || document.title || 'Existing document'
+                    }
+                    {document.documentId && (
+                      <Chip 
+                        label="Existing" 
+                        size="small" 
+                        color="info" 
+                        variant="outlined" 
+                        sx={{ ml: 1 }}
+                      />
+                    )}
                   </Typography>
                   <TextField
                     type="date"
@@ -354,13 +460,38 @@ export const AdministratorDocumentsStep: React.FC = () => {
                     fullWidth
                     sx={{ mt: 1 }}
                   />
+                  {!document.file && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<UploadIcon />}
+                      disabled={deletingDocumentId === document.documentId}
+                      onClick={() => {
+                        const input = window.document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'application/pdf,image/*';
+                        input.onchange = async (e: any) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleReplaceDocument(docType, file);
+                          }
+                        };
+                        input.click();
+                      }}
+                      sx={{ mt: 1 }}
+                    >
+                      {deletingDocumentId === document.documentId
+                        ? 'Deleting...'
+                        : 'Replace Document'}
+                    </Button>
+                  )}
                 </Box>
               ) : (
                 <Button
                   variant="outlined"
                   startIcon={<UploadIcon />}
                   onClick={() => {
-                    const input = document.createElement('input');
+                    const input = window.document.createElement('input');
                     input.type = 'file';
                     input.accept = 'application/pdf,image/*';
                     input.onchange = (e: any) => {

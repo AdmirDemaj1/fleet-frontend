@@ -35,6 +35,8 @@ export const CustomersPage: React.FC = () => {
   const [hasCollaterals, setHasCollaterals] = useState<boolean | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
+  const [administratorDeleteDialogOpen, setAdministratorDeleteDialogOpen] = useState(false);
+  const [administratorToDelete, setAdministratorToDelete] = useState<string | null>(null);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -109,6 +111,19 @@ export const CustomersPage: React.FC = () => {
     setPage(0);
   };
 
+  const handleAdministratorDelete = (id: string) => {
+    setAdministratorToDelete(id);
+    setAdministratorDeleteDialogOpen(true);
+  };
+
+  const confirmAdministratorDelete = async () => {
+    if (administratorToDelete) {
+      await deleteCustomer(administratorToDelete, CustomerType.ADMINISTRATOR);
+      setAdministratorDeleteDialogOpen(false);
+      setAdministratorToDelete(null);
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -156,6 +171,7 @@ export const CustomersPage: React.FC = () => {
         <AdministratorsTable
           administrators={administrators}
           loading={loadingAdministrators}
+          onDelete={handleAdministratorDelete}
         />
       </Box>
 
@@ -165,6 +181,14 @@ export const CustomersPage: React.FC = () => {
         message="Are you sure you want to delete this customer? This action cannot be undone."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={administratorDeleteDialogOpen}
+        title="Delete Administrator"
+        message="Are you sure you want to delete this administrator? This action cannot be undone."
+        onConfirm={confirmAdministratorDelete}
+        onCancel={() => setAdministratorDeleteDialogOpen(false)}
       />
     </Box>
   );

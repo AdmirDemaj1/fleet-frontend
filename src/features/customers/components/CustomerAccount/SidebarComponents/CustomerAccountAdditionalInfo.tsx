@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -10,6 +10,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Button,
 } from "@mui/material";
 import {
   LocalShipping,
@@ -21,8 +22,12 @@ import {
   Person,
   Email,
   Phone,
+  Description,
+  Edit,
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 import { CustomerType, Administrator } from "../../../types/customer.types";
+import { documentApi } from "../../../../../shared/api/documentApi";
 
 interface CustomerAccountAdditionalInfoProps {
   customerData: any;
@@ -33,6 +38,54 @@ interface CustomerAccountAdditionalInfoProps {
 const CustomerAccountAdditionalInfo: React.FC<
   CustomerAccountAdditionalInfoProps
 > = ({ customerData, contracts, collateral }) => {
+  const navigate = useNavigate();
+  const [administratorDocuments, setAdministratorDocuments] = useState<Record<string, any[]>>({});
+  const [loadingDocuments, setLoadingDocuments] = useState<Record<string, boolean>>({});
+
+  // Check if current customer is an administrator
+  const isAdministrator = customerData?.type === CustomerType.ADMINISTRATOR || 
+    (customerData?.administratorName && customerData?.companyName && !customerData?.type);
+
+  // Fetch documents for administrator when viewing directly
+  useEffect(() => {
+    if (isAdministrator && customerData?.id) {
+      const fetchDocuments = async () => {
+        try {
+          setLoadingDocuments(prev => ({ ...prev, [customerData.id]: true }));
+          const documents = await documentApi.getAdministratorDocuments(customerData.id);
+          setAdministratorDocuments(prev => ({ ...prev, [customerData.id]: documents }));
+        } catch (error) {
+          console.error('Failed to fetch administrator documents:', error);
+        } finally {
+          setLoadingDocuments(prev => ({ ...prev, [customerData.id]: false }));
+        }
+      };
+      fetchDocuments();
+    }
+  }, [isAdministrator, customerData?.id]);
+
+  // Fetch documents for administrators when viewing business customer
+  useEffect(() => {
+    if (customerData?.type === CustomerType.BUSINESS && customerData?.administrators) {
+      customerData.administrators.forEach((admin: Administrator) => {
+        if (admin.id && !administratorDocuments[admin.id] && !loadingDocuments[admin.id]) {
+          const fetchDocuments = async () => {
+            try {
+              setLoadingDocuments(prev => ({ ...prev, [admin.id!]: true }));
+              const documents = await documentApi.getAdministratorDocuments(admin.id!);
+              setAdministratorDocuments(prev => ({ ...prev, [admin.id!]: documents }));
+            } catch (error) {
+              console.error(`Failed to fetch documents for administrator ${admin.id}:`, error);
+            } finally {
+              setLoadingDocuments(prev => ({ ...prev, [admin.id!]: false }));
+            }
+          };
+          fetchDocuments();
+        }
+      });
+    }
+  }, [customerData?.type, customerData?.administrators]);
+
   return (
     <Box sx={{ p: 3, pb: 2 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
@@ -457,6 +510,58 @@ const CustomerAccountAdditionalInfo: React.FC<
                             </Typography>
                           </Box>
                         )}
+
+                        {/* Documents Section */}
+                        {administratorDocuments[administrator.id!] && 
+                         administratorDocuments[administrator.id!].length > 0 && (
+                          <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${alpha('#000', 0.1)}` }}>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                fontWeight: 600,
+                                display: "block",
+                                mb: 1,
+                              }}
+                            >
+                              Documents ({administratorDocuments[administrator.id!].length})
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              {administratorDocuments[administrator.id!].map((doc: any) => (
+                                <Box
+                                  key={doc.id}
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    py: 0.5,
+                                  }}
+                                >
+                                  <Description sx={{ fontSize: 14, color: "text.secondary" }} />
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ fontSize: "0.75rem" }}
+                                  >
+                                    {doc.title || doc.fileName || doc.type}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+
+                        {/* Edit Button */}
+                        <Box sx={{ mt: 2 }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<Edit />}
+                            onClick={() => navigate(`/administrators/${administrator.id}/edit`)}
+                            sx={{ textTransform: 'none' }}
+                          >
+                            Edit Administrator
+                          </Button>
+                        </Box>
                       </Box>
                     </AccordionDetails>
                   </Accordion>
@@ -464,6 +569,77 @@ const CustomerAccountAdditionalInfo: React.FC<
               )}
             </Box>
           </>
+        )}
+
+        {/* Documents Section for Direct Administrator View */}
+        {isAdministrator && customerData?.id && (
+          <Box sx={{ mt: 3 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+              <Description
+                sx={{
+                  color: "primary.main",
+                  fontSize: 20,
+                }}
+              />
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 700,
+                  color: "text.primary",
+                  fontSize: "0.95rem",
+                }}
+              >
+                Documents
+              </Typography>
+            </Box>
+
+            {loadingDocuments[customerData.id] ? (
+              <Typography variant="body2" color="text.secondary">
+                Loading documents...
+              </Typography>
+            ) : administratorDocuments[customerData.id]?.length > 0 ? (
+              <List dense disablePadding>
+                {administratorDocuments[customerData.id].map((doc: any) => (
+                  <ListItem
+                    key={doc.id}
+                    disablePadding
+                    sx={{
+                      py: 1,
+                      px: 0,
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
+                      <Description sx={{ fontSize: 18, color: "text.secondary" }} />
+                      <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                        {doc.title || doc.fileName || doc.type}
+                      </Typography>
+                      <Chip
+                        label={doc.type === 'business_administrator_id_card' ? 'ID Card' : 'QKB'}
+                        size="small"
+                        sx={{ height: 20 }}
+                      />
+                    </Box>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No documents uploaded
+              </Typography>
+            )}
+
+            <Box sx={{ mt: 2 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<Edit />}
+                onClick={() => navigate(`/administrators/${customerData.id}/edit`)}
+                sx={{ textTransform: 'none' }}
+              >
+                Edit Administrator
+              </Button>
+            </Box>
+          </Box>
         )}
     </Box>
   );
