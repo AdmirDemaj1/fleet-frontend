@@ -113,18 +113,12 @@ export const CurrentRatesWidget: React.FC<CurrentRatesWidgetProps> = ({
     }
   };
 
-  // Count missing today's rates
-  const getMissingTodayRatesCount = (): number => {
-    let missingCount = 0;
-    Object.values(EuriborTenor).forEach((tenor) => {
-      const tenorKey = tenor as string;
-      const rateData = rates[tenorKey] || rates[tenor];
-
-      if (!rateData || !isRateFromToday(rateData.rateDate)) {
-        missingCount++;
-      }
-    });
-    return missingCount;
+  // Check if today's 12M rate is missing
+  const is12MRateMissing = (): boolean => {
+    const tenor = EuriborTenor.TWELVE_MONTHS;
+    const tenorKey = tenor as string;
+    const rateData = rates[tenorKey] || rates[tenor];
+    return !rateData || !isRateFromToday(rateData.rateDate);
   };
 
   // Render rate card
@@ -265,28 +259,13 @@ export const CurrentRatesWidget: React.FC<CurrentRatesWidgetProps> = ({
           title={
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <TrendingUp color="primary" />
-              <Typography variant="h6">Current Euribor Rates</Typography>
-              {!loading && getMissingTodayRatesCount() > 0 && (
+              <Typography variant="h6">Current 12-Month Euribor Rate</Typography>
+              {!loading && is12MRateMissing() && (
                 <Tooltip
-                  title={`${getMissingTodayRatesCount()} rates need updating for today`}
+                  title="Rate needs updating for today"
                   arrow
                 >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      bgcolor: "error.main",
-                      color: "white",
-                      borderRadius: "50%",
-                      width: 20,
-                      height: 20,
-                      justifyContent: "center",
-                      fontSize: "0.75rem",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {getMissingTodayRatesCount()}
-                  </Box>
+                  <Warning sx={{ color: "error.main" }} />
                 </Tooltip>
               )}
             </Box>
@@ -319,7 +298,7 @@ export const CurrentRatesWidget: React.FC<CurrentRatesWidgetProps> = ({
           </Alert>
         ) : (
           <>
-            {!loading && getMissingTodayRatesCount() > 0 && (
+            {!loading && is12MRateMissing() && (
               <Alert
                 severity="warning"
                 sx={{ mb: 2 }}
@@ -329,23 +308,21 @@ export const CurrentRatesWidget: React.FC<CurrentRatesWidgetProps> = ({
                     size="small"
                     onClick={() => window.open("/euribor-rates", "_blank")}
                   >
-                    Update Rates
+                    Update Rate
                   </Button>
                 }
               >
                 <Typography variant="body2">
                   <strong>
-                    {getMissingTodayRatesCount()} rates missing for today
+                    12-month rate missing for today
                   </strong>{" "}
-                  - Some rates are outdated or not set for{" "}
+                  - The rate is outdated or not set for{" "}
                   {dayjs().format("MMM DD, YYYY")}
                 </Typography>
               </Alert>
             )}
             <Grid container spacing={compact ? 1.5 : 2}>
-              {Object.values(EuriborTenor).map((tenor) =>
-                renderRateCard(tenor, null)
-              )}
+              {renderRateCard(EuriborTenor.TWELVE_MONTHS, null)}
             </Grid>
           </>
         )}

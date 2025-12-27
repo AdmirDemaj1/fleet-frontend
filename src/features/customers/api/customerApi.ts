@@ -9,6 +9,7 @@ import {
   ContractSummary,
   CollateralSummary,
   PaginatedResponse,
+  Administrator,
 } from "../types/customer.types";
 import { CustomerLog } from "../types/customerLogs.types";
 
@@ -92,12 +93,40 @@ export const customerApi = {
     return response.data;
   },
 
-  create: async (data: CreateCustomerDto): Promise<Customer> => {
+  // Get administrator by ID
+  getAdministratorById: async (id: string): Promise<CustomerDetailed> => {
+    const response = await api.get<CustomerDetailed>(
+      `/administrators/${id}`
+    );
+    return response.data;
+  },
+
+  create: async (data: CreateCustomerDto | any): Promise<Customer> => {
     console.log("API create called with data:", data);
     try {
-      const response = await api.post<Customer>(API_ENDPOINTS.CUSTOMERS, data);
+      // Check if this is an administrator by checking for administrator-specific fields
+      // (since type property is not sent for administrators)
+      const isAdministrator = !!(
+        data.companyName && 
+        data.administratorName && 
+        data.administratorId && 
+        data.administratorPosition &&
+        !data.individualDetails &&
+        !data.businessDetails
+      );
+      const endpoint = isAdministrator ? API_ENDPOINTS.ADMINISTRATORS : API_ENDPOINTS.CUSTOMERS;
+      
+      console.log(`Using endpoint: ${endpoint} (isAdministrator: ${isAdministrator})`);
+      
+      const response = await api.post<any>(endpoint, data);
       console.log("API create response:", response.data);
-      return response.data;
+      
+      // Handle wrapped response - API returns { data: Customer, message: string, ... }
+      // Extract the actual customer from the response
+      const customer = response.data?.data || response.data;
+      console.log("Extracted customer:", customer);
+      
+      return customer;
     } catch (error) {
       console.error("API create error:", error);
       throw error;
@@ -107,6 +136,15 @@ export const customerApi = {
   update: async (id: string, data: UpdateCustomerDto): Promise<Customer> => {
     const response = await api.put<Customer>(
       `${API_ENDPOINTS.CUSTOMERS}/${id}`,
+      data
+    );
+    return response.data;
+  },
+
+  // Update administrator
+  updateAdministrator: async (id: string, data: any): Promise<Customer> => {
+    const response = await api.put<Customer>(
+      `/administrators/${id}`,
       data
     );
     return response.data;
@@ -254,6 +292,63 @@ export const customerApi = {
       ? `/customers/${id}/payments?${queryString}`
       : `/customers/${id}/payments`;
     const response = await api.get<any[]>(url);
+    return response.data;
+  },
+
+  getAdministrators: async (): Promise<Administrator[]> => {
+    const response = await api.get<Administrator[]>('/administrators');
+    return response.data;
+  },
+
+  // Get business customers that use an administrator
+  getAdministratorBusinessCustomers: async (administratorId: string): Promise<{
+    administratorId: string;
+    businessCustomerIds: string[];
+    count: number;
+  }> => {
+    const response = await api.get<{
+      administratorId: string;
+      businessCustomerIds: string[];
+      count: number;
+    }>(`/administrators/${administratorId}/business-customers`);
+    return response.data;
+  },
+
+  // Upload administrator document
+  uploadAdministratorDocument: async (
+    administratorId: string,
+    file: File,
+    documentType: string,
+    expiryDate: string,
+    title?: string
+  ): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', documentType);
+    formData.append('title', title || file.name);
+    formData.append('expiryDate', expiryDate);
+    formData.append('administratorId', administratorId);
+    
+    console.log('📄 Uploading administrator document:', {
+      administratorId,
+      documentType,
+      fileName: file.name,
+      expiryDate,
+    });
+    
+    // Log FormData contents for debugging
+    console.log('📄 FormData entries:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value instanceof File ? `${value.name} (${value.size} bytes)` : value);
+    }
+    
+    const response = await api.post(`/documents/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    console.log('✅ Document uploaded successfully:', response.data);
     return response.data;
   },
 };

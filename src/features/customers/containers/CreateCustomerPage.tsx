@@ -26,8 +26,15 @@ export const CreateCustomerPage: React.FC = () => {
   };
 
   const handleDownloadDocument = () => {
+    console.log('🔘 Download button clicked');
+    console.log('📋 Customer object:', customer);
+    console.log('🆔 Customer ID:', customer?.id);
+    
     if (customer?.id) {
+      console.log('✅ Customer ID found, calling downloadRegistrationDocument');
       downloadRegistrationDocument(customer.id);
+    } else {
+      console.error('❌ No customer ID available for download');
     }
   };
 

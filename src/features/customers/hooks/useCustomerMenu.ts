@@ -12,7 +12,7 @@ export const useCustomerMenu = () => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Fetch customer data
+  // Fetch customer data (only for customers, not administrators)
   const { customer } = useCustomer(id || '');
 
   // Get customer display name
@@ -27,7 +27,7 @@ export const useCustomerMenu = () => {
     [location.pathname]
   );
 
-  // Handle tab change
+  // Handle tab change - use customers base path
   const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
     const selectedItem = MENU_ITEMS[newValue];
     if (selectedItem && id) {
@@ -40,7 +40,7 @@ export const useCustomerMenu = () => {
     }
   }, [id, navigate, location.pathname]);
 
-  // Handle back button click
+  // Handle back button click - navigate to customers list
   const handleBackClick = useCallback(() => {
     navigate('/customers');
   }, [navigate]);

@@ -1,3 +1,3 @@
 export { DocumentUpload } from './DocumentUpload';
-export type { ContractDocument } from './DocumentUpload';
-export { DocumentCategory } from './DocumentUpload';
+export { DocumentCategory } from './documentUpload.types';
+export type { ContractDocument } from './documentUpload.types';

@@ -16,6 +16,21 @@ export enum PaymentType {
   ADVANCE = 'advance'
 }
 
+export interface RecalculationHistoryEntry {
+  recalculatedAt: string | Date;
+  startingAmount: number;
+  calculatedAmount: number;
+  causedByPaymentId: string;
+  overpaymentAmount: number;
+  causedByPaymentNumber: number;
+  startingInterestAmount: number;
+  startingPrincipalAmount: number;
+  calculatedInterestAmount: number;
+  startingRemainingBalance: number;
+  calculatedPrincipalAmount: number;
+  calculatedRemainingBalance: number;
+}
+
 export interface Payment {
   id: string;
   contractId: string;
@@ -33,6 +48,7 @@ export interface Payment {
   creditedAmount?: number | string;
   principalAmount?: number | string;
   interestAmount?: number | string;
+  recalculationHistory?: RecalculationHistoryEntry[];
 }
 
 export interface PaymentWithCreditResponse extends Payment {

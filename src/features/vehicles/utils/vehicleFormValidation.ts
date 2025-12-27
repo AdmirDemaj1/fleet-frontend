@@ -9,14 +9,24 @@ export const createVehicleValidationSchema = () => {
   const currentYear = new Date().getFullYear();
   
   return yup.object({
-    // Basic Info - Required fields with enhanced validation
+    // Basic Info - License plate is now optional (can be added later when used in contract)
     licensePlate: yup
       .string()
-      .required('License plate is required')
-      .min(3, 'License plate must be at least 3 characters')
-      .max(15, 'License plate cannot exceed 15 characters')
-      .matches(/^[A-Z0-9\-\s]+$/i, 'License plate can only contain letters, numbers, hyphens, and spaces')
-      .transform(value => value?.toUpperCase()),
+      .nullable()
+      .notRequired()
+      .transform(value => value === '' ? null : value?.toUpperCase())
+      .test('license-plate-format', 'License plate must be at least 3 characters', function(value) {
+        if (!value) return true; // Allow empty/null
+        return value.length >= 3;
+      })
+      .test('license-plate-max', 'License plate cannot exceed 15 characters', function(value) {
+        if (!value) return true;
+        return value.length <= 15;
+      })
+      .test('license-plate-pattern', 'License plate can only contain letters, numbers, hyphens, and spaces', function(value) {
+        if (!value) return true;
+        return /^[A-Z0-9\-\s]+$/i.test(value);
+      }),
     
     vin: yup
       .string()
@@ -210,9 +220,10 @@ export const STEP_FIELDS = {
 
 /**
  * Required fields for each step
+ * Note: licensePlate is now optional - can be added later when used in a contract
  */
 export const REQUIRED_FIELDS = {
-  BASIC_INFO: ['licensePlate', 'vin', 'make', 'model', 'year', 'status'] as const,
+  BASIC_INFO: ['vin', 'make', 'model', 'year', 'status'] as const,
   DETAILS: [] as const,
   DOCUMENTATION: [] as const,
   DOCUMENTS: [] as const, // Documents are handled separately

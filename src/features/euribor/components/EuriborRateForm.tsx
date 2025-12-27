@@ -54,7 +54,7 @@ export const EuriborRateForm: React.FC<EuriborRateFormProps> = ({
   const methods = useForm<CreateEuriborRateDto>({
     defaultValues: {
       rateDate: dayjs().format('YYYY-MM-DD'),
-      tenor: EuriborTenor.THREE_MONTHS,
+      tenor: EuriborTenor.TWELVE_MONTHS,
       rateValue: 0,
       rateSource: EuriborRateSource.MANUAL,
       createdBy: localStorage.getItem('userEmail') || 'admin@company.com',
@@ -151,16 +151,16 @@ export const EuriborRateForm: React.FC<EuriborRateFormProps> = ({
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <FormProvider {...methods}>
         <Card elevation={2}>
-          <CardHeader
+            <CardHeader
             title={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <TrendingUp color="primary" />
                 <Typography variant="h6">
-                  {isEdit ? 'Edit Euribor Rate' : 'Create New Euribor Rate'}
+                  {isEdit ? 'Edit 12M Euribor Rate' : 'Create New 12M Euribor Rate'}
                 </Typography>
               </Box>
             }
-            subheader="Set daily Euribor interest rates for different tenors"
+            subheader="Set daily 12-month Euribor interest rate"
           />
 
           <CardContent>
@@ -195,25 +195,18 @@ export const EuriborRateForm: React.FC<EuriborRateFormProps> = ({
                   />
                 </Grid>
 
-                {/* Tenor */}
+                {/* Tenor - Hidden field (always 12M) */}
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth error={!!errors.tenor} required>
-                    <InputLabel>Tenor</InputLabel>
-                    <Select
-                      value={watchedData.tenor}
-                      onChange={(e) => setValue('tenor', e.target.value as EuriborTenor, { shouldValidate: true })}
-                      label="Tenor"
-                    >
-                      {Object.values(EuriborTenor).map((tenor) => (
-                        <MenuItem key={tenor} value={tenor}>
-                          {getTenorDisplayName(tenor)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    <FormHelperText>
-                      {errors.tenor?.message || 'Time period for the interest rate'}
-                    </FormHelperText>
-                  </FormControl>
+                  <TextField
+                    fullWidth
+                    label="Tenor"
+                    value="12 Months"
+                    disabled
+                    helperText="This system uses 12-month Euribor rate only"
+                    InputProps={{
+                      readOnly: true
+                    }}
+                  />
                 </Grid>
 
                 {/* Rate Value */}

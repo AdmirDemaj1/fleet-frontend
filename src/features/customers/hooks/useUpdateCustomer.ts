@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { customerApi } from '../api/customerApi';
-import { UpdateCustomerDto } from '../types/customer.types';
+import { UpdateCustomerDto, CustomerType } from '../types/customer.types';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import { setSelectedCustomer } from '../slices/customerSlice';
 

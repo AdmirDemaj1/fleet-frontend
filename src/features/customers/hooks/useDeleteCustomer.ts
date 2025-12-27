@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { customerApi } from '../api/customerApi';
+import { CustomerType } from '../types/customer.types';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import { useCustomers } from './useCustomers';
 
@@ -9,7 +10,7 @@ export const useDeleteCustomer = () => {
   const { showSuccess, showError } = useNotification();
   const { refetch } = useCustomers();
 
-  const deleteCustomer = async (id: string) => {
+  const deleteCustomer = async (id: string, customerType?: CustomerType) => {
     setLoading(true);
     setError(null);
     

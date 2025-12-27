@@ -39,10 +39,10 @@ import {
   Refresh,
   AttachMoney
 } from '@mui/icons-material';
-import { useGetEndorsersQuery } from '../../../api/contractApi';
-import { EndorserPickerProps, EndorserSummary } from '../../../types/contract.types';
+import { useGetCustomersQuery } from '../../../api/contractApi';
+import { EndorserPickerProps, CustomerSummary } from '../../../types/contract.types';
 import { CustomerCreationModal } from '../../../../../shared/components';
-import { CreateCustomerDto, CreateEndorserDto, CustomerType } from '../../../../customers/types/customer.types';
+import { CreateCustomerDto } from '../../../../customers/types/customer.types';
 import { endorserApi } from '../../../../customers/api/endorserApi';
 
 // Simple debounce hook
@@ -62,11 +62,12 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue;
 };
 
-// Enhanced EndorserSummary for available endorsers only
-interface EnhancedEndorserSummary extends EndorserSummary {
+// Enhanced CustomerSummary for endorser selection
+interface EnhancedEndorserSummary extends CustomerSummary {
   isVerified?: boolean;
   status?: string;
   guaranteedAmount?: number;
+  remainingGuaranteeCapacity?: number;
   // Maximum amount this endorser can guarantee
 }
 
@@ -101,35 +102,39 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
   // Debounced search term to improve performance
   const debouncedSearchTerm = useDebounce(state.searchTerm, 300);
 
-  // Fetch ALL endorsers from /endorsers endpoint
+  // Fetch ALL customers from /customers endpoint (not just endorsers)
   const {
-    data: endorsersResponse = [],
+    data: customersResponse = [],
     isLoading,
     error: apiError,
     refetch
-  } = useGetEndorsersQuery({
+  } = useGetCustomersQuery({
     search: debouncedSearchTerm,
     limit: 50
   });
 
-  console.log('📋 Endorsers Response:', endorsersResponse);
+  console.log('📋 Customers Response (for endorser selection):', customersResponse);
 
-  // Process endorsers - all available ones
+  // Process customers as potential endorsers - all available customers
   const allEndorsers = useMemo(() => 
-    endorsersResponse.map(endorser => {
-      // Generate a default guarantee amount based on endorser (can be customized later)
-      const defaultGuaranteeAmount = 100000; // $100,000 default capacity per endorser
+    customersResponse.map(customer => {
+      // Generate a default guarantee amount based on customer (can be customized later)
+      const defaultGuaranteeAmount = 100000; // $100,000 default capacity per customer
       
       return {
-        ...endorser,
-        isVerified: (endorser as any).isVerified ?? true,
-        status: (endorser as any).status || 'active',
+        id: customer.id,
+        name: customer.name,
+        type: customer.type,
+        email: customer.email,
+        phone: customer.phone,
+        isVerified: true,
+        status: 'active',
         // Backend doesn't currently send guaranteedAmount, using default until implemented
-        guaranteedAmount: (endorser as any).guaranteedAmount,
-        remainingGuaranteeCapacity: (endorser as any).remainingGuaranteeCapacity
+        guaranteedAmount: defaultGuaranteeAmount,
+        remainingGuaranteeCapacity: defaultGuaranteeAmount
       };
     }) as EnhancedEndorserSummary[],
-    [endorsersResponse]
+    [customersResponse]
   );
 
   // Get available endorsers (excluding selected one)
@@ -190,7 +195,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
 
   // Get endorser display name
   const getEndorserDisplayName = useCallback((endorser: EnhancedEndorserSummary) => {
-    return `${endorser.firstName} ${endorser.lastName}`;
+    return endorser.name;
   }, []);
 
   // Handle refresh
@@ -219,66 +224,19 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
       console.log('📋 Received customer data for endorser creation:', JSON.stringify(customerData, null, 2));
       setState(prev => ({ ...prev, isCreatingEndorser: true }));
       
-      // Transform customer data to endorser data
-      let endorserData: CreateEndorserDto;
-      
-      // Handle direct endorser details (if the form was configured for endorsers)
-      if (customerData.endorserDetails) {
-        endorserData = customerData.endorserDetails;
-      }
-      // Handle individual customer data (transform to endorser)
-      else if (customerData.individualDetails) {
-        const individual = customerData.individualDetails;
-        endorserData = {
-          type: CustomerType.ENDORSER,
-          firstName: individual.firstName,
-          lastName: individual.lastName,
-          idNumber: individual.idNumber,
-          dateOfBirth: individual.dateOfBirth,
-          address: individual.address,
-          phone: individual.phone,
-          email: individual.email,
-          secondaryPhone: individual.secondaryPhone,
-          secondaryEmail: individual.secondaryEmail,
-          additionalNotes: individual.additionalNotes,
-          relationshipToCustomer: 'Endorser',
-          active: true
-        };
-      }
-      // Handle business customer data (transform to endorser)
-      else if (customerData.businessDetails) {
-        const business = customerData.businessDetails;
-        endorserData = {
-          type: CustomerType.ENDORSER,
-          firstName: business.legalName,
-          lastName: '',
-          idNumber: business.nuisNipt,
-          dateOfBirth: '', // Business entities don't have birth dates
-          address: business.address,
-          phone: business.phone,
-          email: business.email,
-          secondaryPhone: business.secondaryPhone,
-          secondaryEmail: business.secondaryEmail,
-          additionalNotes: business.additionalNotes,
-          relationshipToCustomer: 'Business Endorser',
-          active: true
-        };
-      }
-      else {
-        throw new Error('No valid customer data provided. Please ensure individual, business, or endorser details are included.');
-      }
-      
-      const newEndorser = await endorserApi.createEndorser(endorserData);
+      // Just pass the customer data directly to create the endorser
+      // The backend will handle it as a regular customer
+      const newEndorser = await endorserApi.createEndorser(customerData);
       
       // Transform the created endorser to match our enhanced endorser type
       const enhancedEndorser: EnhancedEndorserSummary = {
         id: newEndorser.id || '',
-        firstName: newEndorser.firstName || '',
-        lastName: newEndorser.lastName || '',
-        idNumber: newEndorser.idNumber || '',
+        name: newEndorser.firstName && newEndorser.lastName 
+          ? `${newEndorser.firstName} ${newEndorser.lastName}`.trim()
+          : (newEndorser as any).legalName || 'Unknown',
+        type: newEndorser.type || 'individual',
         email: newEndorser.email || '',
         phone: newEndorser.phone || '',
-        relationshipToCustomer: newEndorser.relationshipToCustomer || 'Endorser',
         guaranteedAmount: newEndorser.guaranteedAmount || 100000, // Default capacity for new endorsers
         remainingGuaranteeCapacity: newEndorser.remainingGuaranteeCapacity || 100000, // Default capacity for new endorsers
         isVerified: true,
@@ -347,10 +305,10 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
             Select Endorser
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Choose one endorser to guarantee this contract
+            Choose any customer to act as an endorser for this contract
           </Typography>
         </Box>
-        <Tooltip title="Create a new endorser">
+        <Tooltip title="Create a new customer">
           <Button
             variant="outlined"
             startIcon={<PersonAdd />}
@@ -362,7 +320,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
               fontWeight: 500
             }}
           >
-            Create Endorser
+            Create Customer
           </Button>
         </Tooltip>
       </Box>
@@ -389,12 +347,12 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Select Endorser"
-            placeholder="Search endorsers..."
+            label="Select Customer as Endorser"
+            placeholder="Search customers..."
             error={!!error}
             helperText={
               error || 
-              `${availableEndorsers.length} endorsers found${state.selectedEndorser ? ' (1 selected)' : ''}`
+              `${availableEndorsers.length} customers found${state.selectedEndorser ? ' (1 selected)' : ''}`
             }
             InputProps={{
               ...params.InputProps,
@@ -462,11 +420,11 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
               <Box sx={{ flex: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    {option.firstName} {option.lastName}
+                    {option.name}
                   </Typography>
-                  {option.relationshipToCustomer && (
+                  {option.type && (
                     <Chip
-                      label={option.relationshipToCustomer}
+                      label={option.type}
                       size="small"
                       color="secondary"
                       variant="outlined"
@@ -474,7 +432,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                     />
                   )}
                   {option.isVerified && (
-                    <Tooltip title="Verified endorser">
+                    <Tooltip title="Verified customer">
                       <CheckCircle 
                         sx={{ 
                           fontSize: 16, 
@@ -484,10 +442,6 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                     </Tooltip>
                   )}
                 </Box>
-                
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                  🆔 {option.idNumber}
-                </Typography>
                 
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                   {option.email && (
@@ -531,17 +485,17 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
           <Box sx={{ textAlign: 'center', py: 3 }}>
             <Person sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
             <Typography variant="body2" color="text.secondary">
-              {state.searchTerm ? 'No endorsers found' : (state.selectedEndorser ? 'Selected endorser is not shown in list' : 'Start typing to search endorsers')}
+              {state.searchTerm ? 'No customers found' : (state.selectedEndorser ? 'Selected customer is not shown in list' : 'Start typing to search customers')}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {state.selectedEndorser ? 'Clear selection to see all endorsers' : 'All available endorsers are shown'}
+              {state.selectedEndorser ? 'Clear selection to see all customers' : 'All available customers are shown'}
             </Typography>
           </Box>
         }
         loadingText={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2, justifyContent: 'center' }}>
             <CircularProgress size={16} />
-            <Typography variant="body2">Loading endorsers...</Typography>
+            <Typography variant="body2">Loading customers...</Typography>
           </Box>
         }
       />
@@ -573,7 +527,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                 </Avatar>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                    {state.selectedEndorser.firstName} {state.selectedEndorser.lastName}
+                    {state.selectedEndorser.name}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
                     <Chip
@@ -582,9 +536,9 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                       color="secondary"
                       sx={{ fontSize: '0.7rem' }}
                     />
-                    {state.selectedEndorser.relationshipToCustomer && (
+                    {state.selectedEndorser.type && (
                       <Chip
-                        label={state.selectedEndorser.relationshipToCustomer}
+                        label={state.selectedEndorser.type}
                         size="small"
                         color="secondary"
                         variant="outlined"
@@ -612,9 +566,6 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
               </Box>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  🆔 ID Number: <strong>{state.selectedEndorser.idNumber}</strong>
-                </Typography>
                 {state.selectedEndorser.email && (
                   <Typography variant="body2" color="text.secondary">
                     📧 Email: <strong>{state.selectedEndorser.email}</strong>
@@ -668,11 +619,25 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                       helperText={
                         guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)
                           ? `Exceeds max capacity of $${(state.selectedEndorser.remainingGuaranteeCapacity || 0).toLocaleString()}`
+                          : guaranteeForContract > totalContractAmount
+                          ? `⚠️ Warning: Exceeds contract amount of $${totalContractAmount.toLocaleString()}`
                           : "Amount this endorser will guarantee"
                       }
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           backgroundColor: 'background.paper',
+                          ...(guaranteeForContract > totalContractAmount && guaranteeForContract <= (state.selectedEndorser.remainingGuaranteeCapacity || 0) && {
+                            borderColor: theme.palette.warning.main,
+                            '&:hover': {
+                              borderColor: theme.palette.warning.dark,
+                            }
+                          })
+                        },
+                        '& .MuiFormHelperText-root': {
+                          ...(guaranteeForContract > totalContractAmount && guaranteeForContract <= (state.selectedEndorser.remainingGuaranteeCapacity || 0) && {
+                            color: theme.palette.warning.main,
+                            fontWeight: 600,
+                          })
                         }
                       }}
                     />
@@ -735,10 +700,14 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                       p: 2,
                       backgroundColor: guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)
                         ? alpha(theme.palette.error.main, 0.05)
+                        : guaranteeForContract > totalContractAmount
+                        ? alpha(theme.palette.warning.main, 0.05)
                         : alpha(theme.palette.info.main, 0.05),
                       border: `1px solid ${
                         guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)
                           ? alpha(theme.palette.error.main, 0.2)
+                          : guaranteeForContract > totalContractAmount
+                          ? alpha(theme.palette.warning.main, 0.2)
                           : alpha(theme.palette.info.main, 0.2)
                       }`,
                       borderRadius: 1
@@ -747,7 +716,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                     {totalContractAmount > 0 && (
                       <Typography 
                         variant="body2" 
-                        color="info.main" 
+                        color={guaranteeForContract > totalContractAmount ? "warning.main" : "info.main"}
                         sx={{ fontWeight: 600, mb: 1 }}
                       >
                         📊 Contract Coverage: {((guaranteeForContract / totalContractAmount) * 100).toFixed(1)}% of ${totalContractAmount.toLocaleString()}
@@ -769,6 +738,12 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                           : 0
                       }% of ${(state.selectedEndorser.guaranteedAmount || 0).toLocaleString()} max capacity
                     </Typography>
+                    
+                    {guaranteeForContract > totalContractAmount && (
+                      <Typography variant="caption" color="warning.main" display="block" sx={{ mt: 1 }}>
+                        ⚠️ Warning: Guarantee amount (${guaranteeForContract.toLocaleString()}) exceeds the total contract amount (${totalContractAmount.toLocaleString()})!
+                      </Typography>
+                    )}
                     
                     {guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0) && (
                       <Typography variant="caption" color="error.main" display="block" sx={{ mt: 1 }}>
@@ -799,21 +774,21 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
         >
           <Person sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-            No endorser selected
+            No customer selected
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Search and select an endorser to guarantee this contract
+            Search and select a customer to act as an endorser for this contract
           </Typography>
         </Paper>
       )}
 
-      {/* Endorser Creation Modal */}
+      {/* Customer Creation Modal */}
       <CustomerCreationModal
         open={state.isCreateModalOpen}
         onClose={handleCloseCreateModal}
         onSubmit={handleCreateEndorser}
         isCreating={state.isCreatingEndorser}
-        title="Create New Endorser"
+        title="Create New Customer"
       />
     </Box>
   );

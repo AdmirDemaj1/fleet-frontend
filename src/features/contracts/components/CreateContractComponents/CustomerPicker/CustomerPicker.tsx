@@ -33,10 +33,11 @@ import {
 } from '@mui/icons-material';
 
 import { useGetCustomersQuery } from '../../../api/contractApi';
-import { CustomerPickerProps, CustomerSummary } from '../../../types/contract.types';
+import { CustomerPickerProps, CustomerSummary, CustomerDocument } from '../../../types/contract.types';
 import { customerApi } from '../../../../customers/api/customerApi';
 import { CreateCustomerDto } from '../../../../customers/types/customer.types';
 import { CustomerCreationModal } from '../../../../../shared/components';
+import { documentApi as customerDocumentApi } from '../../../../customers/api/documentApi';
 
 // Simple debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -76,6 +77,7 @@ interface CustomerPickerState {
 export const CustomerPicker: React.FC<CustomerPickerProps> = ({
   selectedCustomerId,
   onCustomerSelect,
+  onCustomerDataChange,
   preSelectedCustomerId,
   disabled = false,
   error,
@@ -170,14 +172,49 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
   }, [selectedCustomerId, customers, state.selectedCustomer?.id]);
 
   // Enhanced handlers with better state management
-  const handleCustomerChange = useCallback((_event: any, newValue: EnhancedCustomerSummary | null) => {
+  const handleCustomerChange = useCallback(async (_event: any, newValue: EnhancedCustomerSummary | null) => {
     setState(prev => ({ 
       ...prev, 
       selectedCustomer: newValue,
       hasInteracted: true 
     }));
     onCustomerSelect(newValue);
-  }, [onCustomerSelect]);
+    
+    // Fetch customer documents if customer is selected and callback is provided
+    if (newValue && onCustomerDataChange) {
+      try {
+        console.log('📄 Fetching documents for customer:', newValue.id);
+        const documents = await customerDocumentApi.getCustomerDocuments(newValue.id);
+        console.log('📄 Customer documents fetched:', documents);
+        
+        // Map the documents to CustomerDocument format
+        const mappedDocuments: CustomerDocument[] = documents.map(doc => ({
+          id: doc.id,
+          type: doc.type,
+          title: doc.title,
+          fileName: doc.fileName,
+          status: doc.status as 'completed' | 'pending' | 'rejected',
+          downloadCount: (doc as any).downloadCount,
+          createdAt: doc.createdAt,
+          expiryDate: (doc as any).expiryDate,
+        }));
+        
+        // Create customer data with documents
+        const customerWithDocuments: CustomerSummary = {
+          ...newValue,
+          documents: mappedDocuments,
+        };
+        
+        onCustomerDataChange(customerWithDocuments);
+      } catch (err) {
+        console.error('Failed to fetch customer documents:', err);
+        // Still pass the customer data without documents
+        onCustomerDataChange(newValue);
+      }
+    } else if (onCustomerDataChange) {
+      onCustomerDataChange(null);
+    }
+  }, [onCustomerSelect, onCustomerDataChange]);
 
   const handleInputChange = useCallback((_event: any, newInputValue: string) => {
     setState(prev => ({ 

@@ -2,7 +2,7 @@ import React from 'react';
 import { Box } from '@mui/material';
 import { useParams, Outlet } from 'react-router-dom';
 
-const VehicleAccountPage: React.FC = () => {
+export const VehicleAccountPage: React.FC = () => {
   const { id } = useParams();
 
   if (!id) {

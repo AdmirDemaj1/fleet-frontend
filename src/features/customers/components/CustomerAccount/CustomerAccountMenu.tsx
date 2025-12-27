@@ -71,6 +71,30 @@ const CustomerAccountMenu: React.FC<CustomerAccountMenuProps> = () => {
           px: { xs: 0.5, sm: 1.5 },
         }}
       >
+        {/* Back Button */}
+        <IconButton 
+          color="primary" 
+          onClick={handleBackClick}
+          sx={{ 
+            position: 'absolute',
+            left: { xs: 8, sm: 16 },
+          }}
+          aria-label="Back to customers"
+        >
+          <ArrowBackIcon />
+        </IconButton>
+
+        {/* Customer Name */}
+        <Box sx={{ 
+          position: 'absolute',
+          left: { xs: 48, sm: 64 },
+          display: { xs: 'none', sm: 'block' }
+        }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+            {customerName || 'Customer'}
+          </Typography>
+        </Box>
+
         {/* Navigation Tabs - Full Width Centered */}
         <Box sx={{ 
           display: 'flex', 

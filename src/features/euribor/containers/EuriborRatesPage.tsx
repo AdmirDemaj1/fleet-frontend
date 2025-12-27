@@ -49,8 +49,6 @@ import {
   PaginatedEuriborResponse
 } from '../types/euribor.types';
 import { 
-  getTenorDisplayName, 
-  getTenorColor, 
   formatRateAsPercentage,
   getRateSourceDisplayName 
 } from '../utils/euriborUtils';
@@ -73,10 +71,11 @@ const EuriborRatesPage: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRate, setSelectedRate] = useState<EuriborRate | null>(null);
 
-  // Filter states
+  // Filter states - Always filter for 12-month tenor
   const [filters, setFilters] = useState<EuriborRateFilters>({
     limit: 10,
-    offset: 0
+    offset: 0,
+    tenor: EuriborTenor.TWELVE_MONTHS
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -179,7 +178,7 @@ const EuriborRatesPage: React.FC = () => {
   }, [selectedRate, fetchRates]);
 
   const handleDeleteRate = useCallback(async (rate: EuriborRate) => {
-    if (!window.confirm(`Are you sure you want to delete the ${rate.tenor.toUpperCase()} rate for ${dayjs(rate.rateDate).format('MMM DD, YYYY')}?`)) {
+    if (!window.confirm(`Are you sure you want to delete the 12-month Euribor rate for ${dayjs(rate.rateDate).format('MMM DD, YYYY')}?`)) {
       return;
     }
     
@@ -223,10 +222,10 @@ const EuriborRatesPage: React.FC = () => {
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TrendingUp color="primary" />
-          Euribor Rates Management
+          12-Month Euribor Rates Management
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Manage daily Euribor interest rates for different tenors
+          Manage daily 12-month Euribor interest rates used for contract calculations
         </Typography>
       </Box>
 
@@ -273,24 +272,7 @@ const EuriborRatesPage: React.FC = () => {
           {/* Filters */}
           {filtersOpen && (
             <Grid container spacing={2} sx={{ mt: 2 }}>
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Tenor</InputLabel>
-                  <Select
-                    value={filters.tenor || ''}
-                    onChange={(e) => setFilters(prev => ({ ...prev, tenor: e.target.value as EuriborTenor || undefined }))}
-                    label="Tenor"
-                  >
-                    <MenuItem value="">All</MenuItem>
-                      {Object.values(EuriborTenor).map((tenor) => (
-                        <MenuItem key={tenor} value={tenor}>
-                          {getTenorDisplayName(tenor)}
-                        </MenuItem>
-                      ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={4}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Source</InputLabel>
                   <Select
@@ -307,12 +289,12 @@ const EuriborRatesPage: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={8}>
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => setFilters({ limit: pagination.limit, offset: 0 })}
+                    onClick={() => setFilters({ limit: pagination.limit, offset: 0, tenor: EuriborTenor.TWELVE_MONTHS })}
                   >
                     Clear Filters
                   </Button>
@@ -344,8 +326,7 @@ const EuriborRatesPage: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell><strong>Date</strong></TableCell>
-                <TableCell><strong>Tenor</strong></TableCell>
-                <TableCell><strong>Rate</strong></TableCell>
+                <TableCell><strong>Rate (12M)</strong></TableCell>
                 <TableCell><strong>Source</strong></TableCell>
                 <TableCell><strong>Status</strong></TableCell>
                 <TableCell><strong>Created By</strong></TableCell>
@@ -356,15 +337,15 @@ const EuriborRatesPage: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <Typography>Loading rates...</Typography>
                   </TableCell>
                 </TableRow>
               ) : rates.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">
-                      No Euribor rates found. Create your first rate!
+                      No 12-month Euribor rates found. Create your first rate!
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -377,15 +358,7 @@ const EuriborRatesPage: React.FC = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        label={getTenorDisplayName(rate.tenor)} 
-                        size="small" 
-                        color={getTenorColor(rate.tenor) as any}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: 'primary.main' }}>
                         {formatRateAsPercentage(rate.rateValue)}
                       </Typography>
                     </TableCell>

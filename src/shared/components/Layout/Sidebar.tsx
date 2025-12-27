@@ -33,7 +33,10 @@ import {
   Payment as PaymentIcon,
   TrendingUp as EuriborIcon,
   Security as SecurityIcon,
-  Assignment as ApprovalsIcon
+  Assignment as ApprovalsIcon,
+  SupervisorAccount as AdministratorIcon,
+  EventBusy as ExpiringDocumentsIcon,
+  Assessment as ReportsIcon
 } from '@mui/icons-material';
 
 interface MenuItem {
@@ -89,6 +92,12 @@ const menuItems: MenuItem[] = [
     path: '/payments' 
   },
   { 
+    id: 'reports',
+    text: 'Reports', 
+    icon: <ReportsIcon />, 
+    path: '/reports' 
+  },
+  { 
     id: 'approvals',
     text: 'Approval Requests', 
     icon: <ApprovalsIcon />, 
@@ -111,6 +120,12 @@ const menuItems: MenuItem[] = [
     text: 'Audit Logs',
     icon: <AnalyticsIcon />,
     path: '/logs'
+  },
+  { 
+    id: 'expiring-documents',
+    text: 'Expiring Documents', 
+    icon: <ExpiringDocumentsIcon />, 
+    path: '/documents/expiring' 
   },
   { 
     id: 'rbac-testing',

@@ -11,8 +11,12 @@ import {
   Alert,
   Chip,
   Divider,
+  Badge,
 } from '@mui/material';
+import { Comment as CommentIcon, Warning as WarningIcon } from '@mui/icons-material';
 import { ApprovalRequest } from '../types/approval.types';
+import { ApprovalComments } from './ApprovalComments';
+import { useGetCommentsQuery } from '../api/approvalApi';
 import dayjs from 'dayjs';
 
 interface ApprovalActionModalsProps {
@@ -39,6 +43,12 @@ interface ApprovalActionModalsProps {
   // View Modal
   viewModal: { open: boolean; request: ApprovalRequest | null };
   onViewClose: () => void;
+  
+  // Current user for comments
+  currentUser?: { id: string; role: string };
+  
+  // Refresh callback
+  onRefresh?: () => void;
 }
 
 export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
@@ -56,11 +66,25 @@ export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
   onExecuteCancel,
   viewModal,
   onViewClose,
+  currentUser,
+  onRefresh,
 }) => {
   const [approveReason, setApproveReason] = useState('');
   const [rejectReason, setRejectReason] = useState('');
 
+  // Fetch comments for the approve modal request to check for unresolved comments
+  const approveRequestId = approveModal.request?.id;
+  const { data: approveComments } = useGetCommentsQuery(approveRequestId || '', {
+    skip: !approveRequestId || !approveModal.open,
+  });
+
+  // Calculate unresolved comments count
+  const unresolvedCommentsCount = approveComments?.filter(c => !c.isResolved).length || 0;
+  const hasUnresolvedComments = unresolvedCommentsCount > 0;
+
   const handleApprove = () => {
+    // Don't allow approval if there are unresolved comments
+    if (hasUnresolvedComments) return;
     onApproveConfirm({ reason: approveReason });
     setApproveReason('');
   };
@@ -201,9 +225,28 @@ export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
         <DialogContent>
           {renderRequestDetails(approveModal.request)}
           <Divider sx={{ my: 2 }} />
-          <Alert severity="success" sx={{ mb: 2 }}>
-            You are about to approve this request. This action cannot be undone.
-          </Alert>
+          
+          {/* Warning if there are unresolved comments */}
+          {hasUnresolvedComments ? (
+            <Alert 
+              severity="warning" 
+              sx={{ mb: 2 }}
+              icon={<WarningIcon />}
+            >
+              <Typography variant="body2" fontWeight={600}>
+                Cannot approve this request
+              </Typography>
+              <Typography variant="body2">
+                There {unresolvedCommentsCount === 1 ? 'is' : 'are'} {unresolvedCommentsCount} unresolved comment{unresolvedCommentsCount === 1 ? '' : 's'}. 
+                All comments must be resolved by the requestor before this request can be approved.
+              </Typography>
+            </Alert>
+          ) : (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              You are about to approve this request. This action cannot be undone.
+            </Alert>
+          )}
+          
           <TextField
             fullWidth
             multiline
@@ -212,6 +255,7 @@ export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
             value={approveReason}
             onChange={(e) => setApproveReason(e.target.value)}
             placeholder="Add a reason for approval..."
+            disabled={hasUnresolvedComments}
           />
         </DialogContent>
         <DialogActions>
@@ -220,6 +264,7 @@ export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
             onClick={handleApprove}
             variant="contained"
             color="success"
+            disabled={hasUnresolvedComments}
           >
             Approve
           </Button>
@@ -341,7 +386,16 @@ export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Request Details</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Request Details</span>
+            {viewModal.request?.unresolvedCommentsCount !== undefined && viewModal.request.unresolvedCommentsCount > 0 && (
+              <Badge badgeContent={viewModal.request.unresolvedCommentsCount} color="error">
+                <CommentIcon color="action" />
+              </Badge>
+            )}
+          </Box>
+        </DialogTitle>
         
         <DialogContent>
           {viewModal.request && (
@@ -577,6 +631,14 @@ export const ApprovalActionModals: React.FC<ApprovalActionModalsProps> = ({
                   </Box>
                 </>
               )}
+
+              {/* Comments Section */}
+              <Divider sx={{ my: 2 }} />
+              <ApprovalComments
+                request={viewModal.request}
+                currentUser={currentUser}
+                onRefresh={onRefresh}
+              />
             </Box>
           )}
         </DialogContent>

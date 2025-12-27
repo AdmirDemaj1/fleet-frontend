@@ -39,56 +39,24 @@ import {
 } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 import { useDropzone } from "react-dropzone";
-import {
-  useUploadDocumentMutation,
-  useReplacePendingDocumentMutation,
-  ContractDocumentType,
-  UploadRequestData,
-  useRemovePendingDocumentMutation,
-} from "../../../api/contractDocumentApi";
 import { useNotification } from "../../../../../shared/hooks/useNotification";
-import { VehicleSummary } from "../../../types/contract.types";
+import { VehicleSummary, CustomerSummary } from "../../../types/contract.types";
 import { getApiUrl } from "../../../../../shared/utils/env";
+import { DocumentCategory, ContractDocument } from "./documentUpload.types";
 
-export interface ContractDocument {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-  file: File;
-  category: DocumentCategory;
-  description?: string;
-  isRequired: boolean;
-  status: "pending" | "uploaded" | "verified" | "rejected";
-  uploadedAt?: Date;
-  verifiedAt?: Date;
-  verifiedBy?: string;
-  rejectionReason?: string;
-}
-
-export enum DocumentCategory {
-  ID_CARD = "id_card",
-  INSURANCE = "insurance",
-  TPL = "tpl", // Third Party Liability
-  CASCO = "casco",
-  DRIVING_PERMIT = "driving_permit", // Leje qarkullimi
-  CUSTOMER_REGISTRATION = "customer_registration",
-  ENDORSER_ID = "endorser_id",
-  CONTRACT_AGREEMENT = "contract_agreement",
-  BUSINESS_REGISTRATION = "business_registration",
-  TAX_CERTIFICATE = "tax_certificate",
-}
+// Re-export types for consumers
+export { DocumentCategory } from "./documentUpload.types";
+export type { ContractDocument } from "./documentUpload.types";
 
 interface DocumentUploadProps {
   documents: ContractDocument[];
   onDocumentsChange: (documents: ContractDocument[]) => void;
   error?: string;
-  customerId?: string; // Made optional since API no longer requires it
+  customerId?: string;
+  customerData?: CustomerSummary; // Full customer data including documents
   endorserId?: string;
   vehicleIds: string[];
   vehicleData?: VehicleSummary[]; // Full vehicle data including documents
-  sessionKey: string | null;
-  onSessionKeyChange: (sessionKey: string) => void;
 }
 
 const REQUIRED_DOCUMENTS = [
@@ -115,15 +83,6 @@ const REQUIRED_DOCUMENTS = [
     category: DocumentCategory.CUSTOMER_REGISTRATION,
     name: "Customer Registration",
     description: "Customer registration documents",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: false,
-  },
-  {
-    category: DocumentCategory.ENDORSER_ID,
-    name: "Endorser ID",
-    description: "Endorser identification documents",
     isRequired: true,
     acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -158,8 +117,17 @@ const REQUIRED_DOCUMENTS = [
   },
 ];
 
-// Vehicle-related documents that are now provided automatically via vehicle picker
-const VEHICLE_DOCUMENTS = [
+// Optional documents that can be uploaded manually if needed
+const OPTIONAL_DOCUMENTS = [
+  {
+    category: DocumentCategory.ENDORSER_ID,
+    name: "Endorser ID",
+    description: "Endorser identification documents (optional)",
+    isRequired: false,
+    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    requiresExpiryDate: false,
+  },
   {
     category: DocumentCategory.INSURANCE,
     name: "Insurance Certificate",
@@ -189,19 +157,18 @@ const VEHICLE_DOCUMENTS = [
   },
 ];
 
-// Combined array for dropdown selection (required + optional vehicle documents)
-const ALL_DOCUMENTS = [...REQUIRED_DOCUMENTS, ...VEHICLE_DOCUMENTS];
+// Combined array for dropdown selection (required + optional documents)
+const ALL_DOCUMENTS = [...REQUIRED_DOCUMENTS, ...OPTIONAL_DOCUMENTS];
 
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   documents,
   onDocumentsChange,
   error,
   customerId,
+  customerData,
   endorserId,
   vehicleIds,
   vehicleData = [],
-  sessionKey,
-  onSessionKeyChange,
 }) => {
   const [isTypeDialogOpen, setIsTypeDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -218,32 +185,22 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     useState<ContractDocument | null>(null);
   const [previewDocument, setPreviewDocument] = useState<any | null>(null); // For vehicle document preview
 
-  const [uploadDocument, { isLoading: isUploading }] =
-    useUploadDocumentMutation();
-  const [replacePendingDocument] = useReplacePendingDocumentMutation();
-  const [removePendingDocument] = useRemovePendingDocumentMutation();
-
   // Notification system
   const { showSuccess, showError } = useNotification();
 
-  // Effect to set expiry date when dialog opens and category changes
+  // Effect to set expiry date when dialog opens - required for ALL documents
   useEffect(() => {
-    if (isTypeDialogOpen && selectedCategory) {
-      const selectedDoc = ALL_DOCUMENTS.find(
-        (doc) => doc.category === selectedCategory
+    if (isTypeDialogOpen && selectedCategory && !documentExpiryDate) {
+      const defaultExpiryDate = new Date();
+      defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
+      const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
+      setDocumentExpiryDate(formattedDate);
+      console.log(
+        "🗓️ Auto-set expiry date when dialog opened:",
+        formattedDate,
+        "for category:",
+        selectedCategory
       );
-      if (selectedDoc?.requiresExpiryDate && !documentExpiryDate) {
-        const defaultExpiryDate = new Date();
-        defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
-        const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
-        setDocumentExpiryDate(formattedDate);
-        console.log(
-          "🗓️ Auto-set expiry date when dialog opened:",
-          formattedDate,
-          "for category:",
-          selectedCategory
-        );
-      }
     }
   }, [isTypeDialogOpen, selectedCategory, documentExpiryDate]);
 
@@ -273,31 +230,17 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         setSelectedCategory(defaultCategory);
         setDocumentDescription("");
 
-        // Auto-set expiry date to 1 year from now for documents that require it
-        const requiresExpiry =
-          nextRequiredDoc?.requiresExpiryDate ||
-          ALL_DOCUMENTS.find(
-            (doc) => doc.category === defaultCategory
-          )?.requiresExpiryDate;
-
-        if (requiresExpiry) {
-          const defaultExpiryDate = new Date();
-          defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
-          const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
-          setDocumentExpiryDate(formattedDate);
-          console.log(
-            "🗓️ Auto-set expiry date on drop:",
-            formattedDate,
-            "for category:",
-            defaultCategory
-          );
-        } else {
-          setDocumentExpiryDate("");
-          console.log(
-            "📄 No expiry date needed for category:",
-            defaultCategory
-          );
-        }
+        // Auto-set expiry date to 1 year from now for ALL documents
+        const defaultExpiryDate = new Date();
+        defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
+        const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
+        setDocumentExpiryDate(formattedDate);
+        console.log(
+          "🗓️ Auto-set expiry date on drop:",
+          formattedDate,
+          "for category:",
+          defaultCategory
+        );
 
         setUploadError(""); // Clear any previous errors
         setIsTypeDialogOpen(true);
@@ -321,31 +264,14 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
   const handleDeleteDocument = async (documentId: string) => {
     try {
-      console.log("documentId", documentId);
+      console.log("Removing document:", documentId);
       setDeletingDocumentId(documentId);
 
-      // Check if this is a backend document (has UUID format)
-      const isBackendDocument =
-        documentId.includes("-") && !documentId.includes("temp-");
-
-      if (isBackendDocument) {
-        // This is a backend document, call the API to remove it
-        await removePendingDocument({
-          documentId,
-          sessionKey: sessionKey || "", // Provide empty string if sessionKey is null
-        }).unwrap();
-
-        console.log("Document deleted from backend:", documentId);
-        showSuccess("Document deleted successfully");
-      } else {
-        // This is a local/temporary document, just remove it locally
-        console.log("Removing local document:", documentId);
-        showSuccess("Document removed");
-      }
-
-      // Remove from local state
+      // Remove from local state (documents are stored locally until contract creation)
       const updatedDocuments = documents.filter((doc) => doc.id !== documentId);
       onDocumentsChange(updatedDocuments);
+
+      showSuccess("Document removed");
 
       // Clear any previous errors
       setUploadError("");
@@ -412,138 +338,55 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       return;
     }
 
-    // Check if expiry date is required for this document type
-    const selectedDocType = ALL_DOCUMENTS.find(
-      (doc) => doc.category === selectedCategory
-    );
-    if (selectedDocType?.requiresExpiryDate && !documentExpiryDate) {
-      setUploadError(
-        `Expiry date is required for ${selectedDocType.name}. Please select an expiry date.`
-      );
+    // Expiry date is required for ALL documents
+    if (!documentExpiryDate) {
+      setUploadError("Expiry date is required. Please select an expiry date.");
+      return;
+    }
+
+    // Check if expiry date is not in the past
+    const today = new Date().toISOString().split("T")[0];
+    if (documentExpiryDate < today) {
+      setUploadError("Expiry date cannot be in the past. Please select a valid date.");
       return;
     }
 
     // Clear any previous errors
     setUploadError("");
 
-    try {
-      // Convert DocumentCategory to ContractDocumentType
-      const convertToContractDocumentType = (
-        category: DocumentCategory
-      ): ContractDocumentType => {
-        switch (category) {
-          case DocumentCategory.ID_CARD:
-            return ContractDocumentType.ID_CARD;
-          case DocumentCategory.INSURANCE:
-            return ContractDocumentType.INSURANCE;
-          case DocumentCategory.TPL:
-            return ContractDocumentType.TPL;
-          case DocumentCategory.CASCO:
-            return ContractDocumentType.CASCO;
-          case DocumentCategory.DRIVING_PERMIT:
-            return ContractDocumentType.DRIVING_PERMIT;
-          case DocumentCategory.CUSTOMER_REGISTRATION:
-            return ContractDocumentType.CUSTOMER_REGISTRATION;
-          case DocumentCategory.ENDORSER_ID:
-            return ContractDocumentType.ENDORSER_ID;
-          case DocumentCategory.CONTRACT_AGREEMENT:
-            return ContractDocumentType.CONTRACT_AGREEMENT;
-          case DocumentCategory.BUSINESS_REGISTRATION:
-            return ContractDocumentType.BUSINESS_REGISTRATION;
-          case DocumentCategory.TAX_CERTIFICATE:
-            return ContractDocumentType.TAX_CERTIFICATE;
-          default:
-            return ContractDocumentType.OTHER;
-        }
-      };
+    // Store document locally (no API call - documents will be uploaded with contract creation)
+    const newDocument: ContractDocument = {
+      id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: pendingFile.name,
+      type: pendingFile.type,
+      size: pendingFile.size,
+      file: pendingFile,
+      category: selectedCategory,
+      description: documentDescription,
+      expiryDate: documentExpiryDate,
+      isRequired: REQUIRED_DOCUMENTS.some(
+        (doc) => doc.category === selectedCategory
+      ),
+      status: "pending", // Will be uploaded with contract creation
+      uploadedAt: new Date(),
+    };
 
-      // Upload document to backend
-      const uploadData = {
-        type: convertToContractDocumentType(selectedCategory),
-        title: pendingFile.name,
-        description: documentDescription,
-        expiryDate: documentExpiryDate || undefined, // Add expiry date if needed
-        metadata: {
-          originalFileName: pendingFile.name,
-          fileSize: pendingFile.size,
-          fileType: pendingFile.type,
-          uploadDate: new Date().toISOString(),
-          vehicleIds: vehicleIds.length > 0 ? vehicleIds : undefined,
-          documentCategory: selectedCategory,
-          customerId: customerId, // Keep in metadata for reference
-          endorserId: endorserId, // Keep in metadata for reference
-        },
-      };
+    console.log("📄 Document added locally (will be uploaded with contract):");
+    console.log("  📁 File:", pendingFile.name);
+    console.log("  📂 Category:", selectedCategory);
+    console.log("  📅 Expiry Date:", documentExpiryDate);
 
-      console.log("🚀 Attempting to upload document:");
-      console.log(
-        "📁 File:",
-        pendingFile.name,
-        "Size:",
-        pendingFile.size,
-        "Type:",
-        pendingFile.type
-      );
-      console.log("📋 Upload Data:", uploadData);
-      console.log("🔑 Session Key:", sessionKey);
-      console.log("👤 Customer ID:", customerId);
-      console.log("🚗 Vehicle IDs:", vehicleIds);
-      console.log("🤝 Endorser ID:", endorserId);
+    const updatedDocuments = [...documents, newDocument];
+    onDocumentsChange(updatedDocuments);
 
-      const response = await uploadDocument({
-        file: pendingFile,
-        data: uploadData,
-        sessionKey: sessionKey || undefined, // Pass undefined if sessionKey is null for first upload
-      }).unwrap();
+    showSuccess(`Document "${pendingFile.name}" added successfully`);
 
-      // If this is the first upload and we get a session key back, store it
-      if (!sessionKey && response.sessionKey) {
-        console.log(
-          "🔑 Received session key from backend:",
-          response.sessionKey
-        );
-        console.log("🔄 Calling onSessionKeyChange callback...");
-        onSessionKeyChange(response.sessionKey);
-        console.log("✅ Session key callback completed");
-      } else if (sessionKey) {
-        console.log("🔑 Using existing session key:", sessionKey);
-      } else {
-        console.log("⚠️ No session key in response:", response);
-      }
-
-      // Create local document object with backend response
-      const newDocument: ContractDocument = {
-        id: response.id,
-        name: response.fileName || pendingFile.name,
-        type: pendingFile.type,
-        size: pendingFile.size,
-        file: pendingFile,
-        category: selectedCategory,
-        description: documentDescription,
-        isRequired: REQUIRED_DOCUMENTS.some(
-          (doc) => doc.category === selectedCategory
-        ),
-        status: response.status as
-          | "pending"
-          | "uploaded"
-          | "verified"
-          | "rejected",
-        uploadedAt: new Date(response.createdAt),
-      };
-
-      const updatedDocuments = [...documents, newDocument];
-      onDocumentsChange(updatedDocuments);
-
-      // Reset and close dialog
-      setPendingFile(null);
-      setSelectedCategory(DocumentCategory.ID_CARD);
-      setDocumentDescription("");
-      setDocumentExpiryDate("");
-      setIsTypeDialogOpen(false);
-    } catch (error) {
-      console.error("Document upload failed:", error);
-      setUploadError("Failed to upload document. Please try again.");
-    }
+    // Reset and close dialog
+    setPendingFile(null);
+    setSelectedCategory(DocumentCategory.ID_CARD);
+    setDocumentDescription("");
+    setDocumentExpiryDate("");
+    setIsTypeDialogOpen(false);
   };
 
   const handleCancelDocumentUpload = () => {
@@ -555,64 +398,23 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setIsTypeDialogOpen(false);
   };
 
-  const handleReplaceDocument = async (documentId: string, newFile: File) => {
-    try {
-      // If the document has a backend ID, replace it using the API
-      if (documentId.includes("-") && !documentId.includes("temp-")) {
-        const metadata = {
-          reason: "Document replaced by user",
-          replacedAt: new Date().toISOString(),
-          originalDocumentId: documentId,
-        };
-
-        const response = await replacePendingDocument({
-          documentId,
-          sessionKey: sessionKey || "", // Provide empty string if sessionKey is null
+  // Replace document locally (documents are stored locally until contract creation)
+  const handleReplaceDocument = (documentId: string, newFile: File) => {
+    const updatedDocuments = documents.map((doc) => {
+      if (doc.id === documentId) {
+        return {
+          ...doc,
+          name: newFile.name,
           file: newFile,
-          metadata,
-        }).unwrap();
-
-        // Update the local document with the new file info
-        const updatedDocuments = documents.map((doc) => {
-          if (doc.id === documentId) {
-            return {
-              ...doc,
-              name: response.fileName || newFile.name,
-              file: newFile,
-              size: newFile.size,
-              type: newFile.type,
-              status: response.status as
-                | "pending"
-                | "uploaded"
-                | "verified"
-                | "rejected",
-            };
-          }
-          return doc;
-        });
-
-        onDocumentsChange(updatedDocuments);
-      } else {
-        // For local documents, just update the file
-        const updatedDocuments = documents.map((doc) => {
-          if (doc.id === documentId) {
-            return {
-              ...doc,
-              name: newFile.name,
-              file: newFile,
-              size: newFile.size,
-              type: newFile.type,
-            };
-          }
-          return doc;
-        });
-
-        onDocumentsChange(updatedDocuments);
+          size: newFile.size,
+          type: newFile.type,
+        };
       }
-    } catch (error) {
-      console.error("Failed to replace document:", error);
-      setUploadError("Failed to replace document. Please try again.");
-    }
+      return doc;
+    });
+
+    onDocumentsChange(updatedDocuments);
+    showSuccess("Document replaced successfully");
   };
 
   const getFileIcon = (fileType: string) => {
@@ -680,6 +482,14 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setPreviewDocument(document);
   }, [buildFullUrl]);
 
+  // Handle customer document preview
+  const handlePreviewCustomerDocument = useCallback((document: any) => {
+    console.log('🔍 Opening customer document preview:', document);
+    // Open document preview in new tab using the document ID
+    const previewUrl = buildFullUrl(`/documents/${document.id}/preview`);
+    window.open(previewUrl, '_blank');
+  }, [buildFullUrl]);
+
   return (
     <Box>
       <Typography
@@ -697,16 +507,96 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         document category. Documents will be reviewed and verified by our team.
       </Typography>
 
-      {/* Information about vehicle documents */}
+      {/* Information about optional documents */}
       <Alert severity="info" sx={{ mb: 3 }}>
         <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-          📋 Vehicle Documents Automatically Included
+          📋 Document Requirements Updated
         </Typography>
         <Typography variant="body2">
-          Vehicle-related documents (Insurance, TPL, CASCO) are no longer required to be uploaded here.
-          These documents are automatically provided from the selected vehicle in the previous step.
+          • Customer documents (ID Card, Registration) are automatically provided from the selected customer.<br />
+          • Vehicle-related documents (Insurance, TPL, CASCO) are automatically provided from the selected vehicle.<br />
+          • Endorser documents are optional and not required for contract creation.
         </Typography>
       </Alert>
+
+      {/* Customer Documents Section */}
+      {customerData && customerData.documents && customerData.documents.length > 0 && (
+        <Card sx={{ mb: 3, border: '2px solid', borderColor: 'primary.main', bgcolor: 'primary.50' }}>
+          <CardContent>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: "flex", alignItems: "center", gap: 1, color: 'primary.main' }}
+            >
+              <CheckCircle />
+              Customer Documents (Already Available)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              The following documents are already associated with the selected customer:
+            </Typography>
+            
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                👤 {customerData.name} ({customerData.type})
+              </Typography>
+              <Grid container spacing={1}>
+                {customerData.documents.map((doc) => (
+                  <Grid item xs={12} sm={6} md={4} key={doc.id}>
+                    <Card 
+                      variant="outlined" 
+                      sx={{ 
+                        p: 1, 
+                        border: '1px solid', 
+                        borderColor: 'primary.main',
+                        bgcolor: 'primary.50',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1
+                      }}
+                    >
+                      <CheckCircle color="primary" fontSize="small" />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            fontWeight: 600,
+                            display: 'block',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {doc.type.replace(/_/g, ' ').toUpperCase()}
+                        </Typography>
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ 
+                            display: 'block',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {doc.title}
+                        </Typography>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handlePreviewCustomerDocument(doc)}
+                        sx={{ ml: 'auto' }}
+                      >
+                        <Visibility fontSize="small" />
+                      </IconButton>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Vehicle Documents Section */}
       {vehicleData && vehicleData.length > 0 && vehicleData.some(v => v.documents && v.documents.length > 0) && (
@@ -811,12 +701,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         </Alert>
       )}
 
-      {customerId && !endorserId && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          No endorser selected. You can still upload documents, but endorser
-          information will not be associated.
-        </Alert>
-      )}
 
       {/* Missing Required Documents Alert */}
       {missingRequired.length > 0 && (
@@ -1159,32 +1043,19 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                   const newCategory = e.target.value as DocumentCategory;
                   setSelectedCategory(newCategory);
 
-                  // Auto-set expiry date for documents that require it
-                  const selectedDoc = ALL_DOCUMENTS.find(
-                    (doc) => doc.category === newCategory
+                  // Auto-set expiry date for ALL documents (required for all)
+                  const defaultExpiryDate = new Date();
+                  defaultExpiryDate.setFullYear(
+                    defaultExpiryDate.getFullYear() + 1
                   );
-                  if (selectedDoc?.requiresExpiryDate) {
-                    // Always set default expiry date to 1 year from now when switching to a category that requires expiry
-                    const defaultExpiryDate = new Date();
-                    defaultExpiryDate.setFullYear(
-                      defaultExpiryDate.getFullYear() + 1
-                    );
-                    const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
-                    setDocumentExpiryDate(formattedDate);
-                    console.log(
-                      "🗓️ Auto-set expiry date:",
-                      formattedDate,
-                      "for category:",
-                      newCategory
-                    );
-                  } else {
-                    // Clear expiry date if not required
-                    setDocumentExpiryDate("");
-                    console.log(
-                      "📄 Cleared expiry date for category:",
-                      newCategory
-                    );
-                  }
+                  const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
+                  setDocumentExpiryDate(formattedDate);
+                  console.log(
+                    "🗓️ Auto-set expiry date:",
+                    formattedDate,
+                    "for category:",
+                    newCategory
+                  );
                 }}
                 label="Document Category"
               >
@@ -1227,25 +1098,38 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               rows={2}
             />
 
-            {/* Expiry Date Field */}
-            {ALL_DOCUMENTS.find((doc) => doc.category === selectedCategory)
-              ?.requiresExpiryDate && (
-              <TextField
-                fullWidth
-                label="Expiry Date (Required)"
-                type="date"
-                value={documentExpiryDate}
-                onChange={(e) => setDocumentExpiryDate(e.target.value)}
-                required
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                inputProps={{
-                  min: new Date().toISOString().split("T")[0], // Today as minimum
-                }}
-                sx={{ mt: 2 }}
-              />
-            )}
+            {/* Expiry Date Field - Required for ALL documents */}
+            <TextField
+              fullWidth
+              label="Expiry Date (Required)"
+              type="date"
+              value={documentExpiryDate}
+              onChange={(e) => {
+                const selectedDate = e.target.value;
+                const today = new Date().toISOString().split("T")[0];
+                // Only allow dates that are today or in the future
+                if (selectedDate >= today) {
+                  setDocumentExpiryDate(selectedDate);
+                  setUploadError("");
+                } else {
+                  setUploadError("Expiry date cannot be in the past");
+                }
+              }}
+              required
+              error={documentExpiryDate !== "" && documentExpiryDate < new Date().toISOString().split("T")[0]}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              inputProps={{
+                min: new Date().toISOString().split("T")[0], // Today as minimum - browser validation
+              }}
+              sx={{ mt: 2 }}
+              helperText={
+                documentExpiryDate !== "" && documentExpiryDate < new Date().toISOString().split("T")[0]
+                  ? "Expiry date cannot be in the past"
+                  : "Please select the expiry date for this document (must be today or in the future)"
+              }
+            />
 
             {/* Error Display */}
             {uploadError && (
@@ -1283,15 +1167,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             disabled={
               !pendingFile ||
               !!uploadError ||
-              isUploading ||
-              (ALL_DOCUMENTS.find(
-                (doc) => doc.category === selectedCategory
-              )?.requiresExpiryDate &&
-                !documentExpiryDate)
+              !documentExpiryDate || // Expiry date is required for ALL documents
+              documentExpiryDate < new Date().toISOString().split("T")[0] // Cannot be in the past
             }
-            startIcon={isUploading ? <CircularProgress size={20} /> : undefined}
           >
-            {isUploading ? "Uploading..." : "Upload Document"}
+            Add Document
           </Button>
         </DialogActions>
       </Dialog>

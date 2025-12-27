@@ -1,6 +1,7 @@
 export const API_ENDPOINTS = {
     CUSTOMERS: '/customers',
     ENDORSERS: '/endorsers',
+    ADMINISTRATORS: '/administrators',
     VEHICLES: '/vehicles',
     CONTRACTS: '/contracts',
     ASSETS: '/assets',
@@ -19,6 +20,9 @@ export const API_ENDPOINTS = {
       CREATE: '/customers/new',
       DETAILS: (id: string) => `/customers/${id}`,
       EDIT: (id: string) => `/customers/${id}/edit`,
+    },
+    ADMINISTRATORS: {
+      LIST: '/administrators',
     },
     ENDORSERS: {
       LIST: '/endorsers',

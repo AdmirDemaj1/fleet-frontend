@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
+import React, { useMemo, useCallback } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 import {
   Box,
   Button,
@@ -11,37 +11,93 @@ import {
   Divider,
   Alert,
   Fade,
-  CircularProgress
-} from '@mui/material';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+  CircularProgress,
+} from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
-import { CustomerType } from '../../types/customer.types';
-import { CreateCustomerDto, CreateIndividualCustomerDto, CreateBusinessCustomerDto, CreateEndorserDto } from '../../types/customer.types';
+import { CustomerType } from "../../types/customer.types";
+import {
+  CreateCustomerDto,
+  CreateIndividualCustomerDto,
+  CreateBusinessCustomerDto,
+  CreateAdministratorCustomerDto,
+} from "../../types/customer.types";
 
 // Form data type that includes customerType for validation
 interface CustomerFormData {
   customerType: CustomerType;
   individualDetails?: CreateIndividualCustomerDto;
   businessDetails?: CreateBusinessCustomerDto;
-  endorserDetails?: CreateEndorserDto;
+  administratorDetails?: CreateAdministratorCustomerDto;
+  administratorDocuments?: Array<{
+    type: string;
+    file: File;
+    expiryDate: string;
+    title: string;
+  }>;
 }
 import {
   STEP_FIELDS,
   REQUIRED_FIELDS,
-  STEP_CONFIG
-} from '../../utils/customerFormValidation';
-import { CustomerTypeStep, IndividualDetailsStep, BusinessDetailsStep, EndorserDetailsStep } from './Steps';
+  STEP_CONFIG,
+} from "../../utils/customerFormValidation";
+
+// Administrator-specific step configuration
+const ADMINISTRATOR_STEP_CONFIG = [
+  {
+    label: "Customer Type",
+    description: "Select administrator customer type",
+  },
+  {
+    label: "Administrator Details",
+    description: "Enter administrator information",
+  },
+  {
+    label: "Documents",
+    description: "Upload required documents",
+  },
+  {
+    label: "Review",
+    description: "Review and confirm",
+  },
+] as const;
+import {
+  CustomerTypeStep,
+  IndividualDetailsStep,
+  BusinessDetailsStep,
+  AdministratorDetailsStep,
+  AdministratorDocumentsStep,
+} from "./Steps";
 
 interface CustomerFormProps {
-  initialData?: Partial<CreateCustomerDto>;
+  initialData?: Partial<CreateCustomerDto> & {
+    administratorDocuments?: Array<{
+      type: string;
+      file?: File;
+      expiryDate: string;
+      title: string;
+      documentId?: string;
+      fileName?: string;
+    }>;
+  };
   onSubmit: (data: CreateCustomerDto) => Promise<void>;
   loading: boolean;
   activeStep: number;
   onStepChange: (step: number) => void;
   steps: string[];
   isEdit?: boolean;
+  administratorId?: string; // Administrator ID for edit mode
 }
+
+// Helper function to normalize phone numbers (remove spaces and formatting)
+const normalizePhoneNumber = (
+  phone: string | undefined
+): string | undefined => {
+  if (!phone) return undefined;
+  // Remove all spaces, dashes, parentheses, and keep only digits and + sign
+  return phone.replace(/[\s\-\(\)]/g, "");
+};
 
 export const CustomerForm: React.FC<CustomerFormProps> = ({
   initialData,
@@ -49,202 +105,258 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   loading,
   activeStep,
   onStepChange,
-  isEdit = false
+  isEdit = false,
+  administratorId,
 }) => {
   const [customerType, setCustomerType] = React.useState<CustomerType>(
-    initialData?.individualDetails ? CustomerType.INDIVIDUAL : 
-    initialData?.businessDetails ? CustomerType.BUSINESS :
-    initialData?.endorserDetails ? CustomerType.ENDORSER :
-    CustomerType.INDIVIDUAL
+    initialData?.individualDetails
+      ? CustomerType.INDIVIDUAL
+      : initialData?.businessDetails
+      ? CustomerType.BUSINESS
+      : initialData?.administratorDetails
+      ? CustomerType.ADMINISTRATOR
+      : CustomerType.INDIVIDUAL
   );
-  
+
   const methods = useForm<CustomerFormData>({
     defaultValues: {
       customerType: customerType,
-      individualDetails: customerType === CustomerType.INDIVIDUAL ? {
-        type: CustomerType.INDIVIDUAL,
-        firstName: '',
-        lastName: '',
-        idNumber: '',
-        dateOfBirth: '',
-        address: '',
-        phone: '',
-        email: '',
-        secondaryPhone: '',
-        secondaryEmail: '',
-        additionalNotes: ''
-      } : undefined,
-      businessDetails: customerType === CustomerType.BUSINESS ? {
-        type: CustomerType.BUSINESS,
-        legalName: '',
-        nuisNipt: '',
-        administratorName: '',
-        administratorId: '',
-        administratorPosition: '',
-        mainShareholders: '',
-        address: '',
-        phone: '',
-        email: '',
-        secondaryPhone: '',
-        secondaryEmail: '',
-        additionalNotes: ''
-      } : undefined,
-              endorserDetails: customerType === CustomerType.ENDORSER ? {
-          type: CustomerType.ENDORSER,
-          firstName: '',
-          lastName: '',
-          idNumber: '',
-          dateOfBirth: '',
-          address: '',
-          phone: '',
-          email: '',
-          secondaryPhone: '',
-          secondaryEmail: '',
-          additionalNotes: '',
-          guaranteedAmount: 0,
-          relationshipToCustomer: '',
-          financialInformation: undefined,
-          active: true,
-          notes: ''
-        } : undefined,
-      ...initialData
+      individualDetails:
+        customerType === CustomerType.INDIVIDUAL
+          ? {
+              type: CustomerType.INDIVIDUAL,
+              firstName: "",
+              lastName: "",
+              idNumber: "",
+              dateOfBirth: "",
+              address: "",
+              phone: "",
+              email: "",
+              secondaryPhone: "",
+              secondaryEmail: "",
+              additionalNotes: "",
+            }
+          : undefined,
+      businessDetails:
+        customerType === CustomerType.BUSINESS
+          ? {
+              type: CustomerType.BUSINESS,
+              legalName: "",
+              nuisNipt: "",
+              shareholders: [],
+              administratorIds: [],
+              address: "",
+              phone: "",
+              email: "",
+              secondaryPhone: "",
+              secondaryEmail: "",
+              additionalNotes: "",
+            }
+          : undefined,
+      administratorDetails:
+        customerType === CustomerType.ADMINISTRATOR
+          ? {
+              type: CustomerType.ADMINISTRATOR,
+              nuisNipt: "",
+              companyName: "",
+              companyEmail: "",
+              companyPhone: "",
+              administratorName: "",
+              administratorId: "",
+              administratorPosition: "",
+              address: "",
+              phone: "",
+              email: "",
+              secondaryPhone: "",
+              secondaryEmail: "",
+              additionalNotes: "",
+            }
+          : undefined,
+      administratorDocuments:
+        customerType === CustomerType.ADMINISTRATOR ? [] : undefined,
+      ...initialData,
     },
-    mode: 'onChange',
-    reValidateMode: 'onChange'
+    mode: "onChange",
+    reValidateMode: "onChange",
   });
 
-  const { 
-    handleSubmit, 
-    formState: { errors, isValid }, 
-    trigger, 
+  const {
+    handleSubmit,
+    formState: { errors, isValid },
+    trigger,
     getValues,
     reset,
-    setValue
+    setValue,
   } = methods;
 
   // Update form when customer type changes
   React.useEffect(() => {
     const currentFormData = getValues();
-    
+
     // Update the customerType field in the form
-    setValue('customerType', customerType);
-    
+    setValue("customerType", customerType);
+
     // Reset form sections when type changes
     if (customerType === CustomerType.INDIVIDUAL) {
-      setValue('businessDetails', undefined);
-      setValue('endorserDetails', undefined);
+      // TODO: Why setting these to undefined
+      setValue("businessDetails", undefined);
+      setValue("administratorDetails", undefined);
       if (!currentFormData.individualDetails) {
-        setValue('individualDetails', {
+        setValue("individualDetails", {
           type: CustomerType.INDIVIDUAL,
-          firstName: '',
-          lastName: '',
-          idNumber: '',
-          dateOfBirth: '',
-          address: '',
-          phone: '',
-          email: '',
-          secondaryPhone: '',
-          secondaryEmail: '',
-          additionalNotes: ''
+          firstName: "",
+          lastName: "",
+          idNumber: "",
+          dateOfBirth: "",
+          address: "",
+          phone: "",
+          email: "",
+          secondaryPhone: "",
+          secondaryEmail: "",
+          additionalNotes: "",
         });
       }
     } else if (customerType === CustomerType.BUSINESS) {
-      setValue('individualDetails', undefined);
-      setValue('endorserDetails', undefined);
+      setValue("individualDetails", undefined);
+      setValue("administratorDetails", undefined);
       if (!currentFormData.businessDetails) {
-        setValue('businessDetails', {
+        setValue("businessDetails", {
           type: CustomerType.BUSINESS,
-          legalName: '',
-          nuisNipt: '',
-          administratorName: '',
-          administratorId: '',
-          administratorPosition: '',
-          mainShareholders: '',
-          address: '',
-          phone: '',
-          email: '',
-          secondaryPhone: '',
-          secondaryEmail: '',
-          additionalNotes: ''
+          legalName: "",
+          nuisNipt: "",
+          shareholders: [],
+          administratorIds: [],
+          address: "",
+          phone: "",
+          email: "",
+          secondaryPhone: "",
+          secondaryEmail: "",
+          additionalNotes: "",
         });
       }
-    } else if (customerType === CustomerType.ENDORSER) {
-      setValue('individualDetails', undefined);
-      setValue('businessDetails', undefined);
-      if (!currentFormData.endorserDetails) {
-        setValue('endorserDetails', {
-          type: CustomerType.ENDORSER,
-          firstName: '',
-          lastName: '',
-          idNumber: '',
-          dateOfBirth: '',
-          address: '',
-          phone: '',
-          email: '',
-          secondaryPhone: '',
-          secondaryEmail: '',
-          additionalNotes: '',
-          guaranteedAmount: 0,
-          relationshipToCustomer: '',
-          financialInformation: undefined,
-          active: true,
-          notes: ''
+    } else if (customerType === CustomerType.ADMINISTRATOR) {
+      setValue("individualDetails", undefined);
+      setValue("businessDetails", undefined);
+      if (!currentFormData.administratorDetails) {
+        setValue("administratorDetails", {
+          type: CustomerType.ADMINISTRATOR,
+          nuisNipt: "",
+          companyName: "",
+          companyEmail: "",
+          companyPhone: "",
+          administratorName: "",
+          administratorId: "",
+          administratorPosition: "",
+          address: "",
+          phone: "",
+          email: "",
+          secondaryPhone: "",
+          secondaryEmail: "",
+          additionalNotes: "",
         });
+      }
+      if (!currentFormData.administratorDocuments) {
+        setValue("administratorDocuments", []);
       }
     }
   }, [customerType, setValue, getValues]);
 
   // Get step-specific validation fields
-  const getStepFields = useCallback((step: number): string[] => {
-    switch (step) {
-      case 0: return STEP_FIELDS.CUSTOMER_TYPE;
-      case 1: return customerType === CustomerType.INDIVIDUAL 
-        ? STEP_FIELDS.INDIVIDUAL_DETAILS 
-        : customerType === CustomerType.BUSINESS
-        ? STEP_FIELDS.BUSINESS_DETAILS
-        : STEP_FIELDS.ENDORSER_DETAILS;
-      case 2: return []; // Review step
-      default: return [];
-    }
-  }, [customerType]);
+  const getStepFields = useCallback(
+    (step: number): string[] => {
+      switch (step) {
+        case 0:
+          return STEP_FIELDS.CUSTOMER_TYPE;
+        case 1:
+          return customerType === CustomerType.INDIVIDUAL
+            ? STEP_FIELDS.INDIVIDUAL_DETAILS
+            : customerType === CustomerType.BUSINESS
+            ? STEP_FIELDS.BUSINESS_DETAILS
+            : STEP_FIELDS.ADMINISTRATOR_DETAILS;
+        case 2:
+          // Documents step for administrators, Review step for others
+          return customerType === CustomerType.ADMINISTRATOR ? [] : [];
+        case 3:
+          return []; // Review step (only for administrators)
+        default:
+          return [];
+      }
+    },
+    [customerType]
+  );
 
   // Get required fields for each step
-  const getRequiredFields = useCallback((step: number): string[] => {
-    switch (step) {
-      case 0: return REQUIRED_FIELDS.CUSTOMER_TYPE;
-      case 1: return customerType === CustomerType.INDIVIDUAL 
-        ? REQUIRED_FIELDS.INDIVIDUAL_DETAILS 
-        : customerType === CustomerType.BUSINESS
-        ? REQUIRED_FIELDS.BUSINESS_DETAILS
-        : REQUIRED_FIELDS.ENDORSER_DETAILS;
-      case 2: return []; // Review step
-      default: return [];
-    }
-  }, [customerType]);
+  const getRequiredFields = useCallback(
+    (step: number): string[] => {
+      switch (step) {
+        case 0:
+          return REQUIRED_FIELDS.CUSTOMER_TYPE;
+        case 1:
+          return customerType === CustomerType.INDIVIDUAL
+            ? REQUIRED_FIELDS.INDIVIDUAL_DETAILS
+            : customerType === CustomerType.BUSINESS
+            ? REQUIRED_FIELDS.BUSINESS_DETAILS
+            : REQUIRED_FIELDS.ADMINISTRATOR_DETAILS;
+        case 2:
+          // Documents step for administrators - check if required documents are uploaded
+          if (customerType === CustomerType.ADMINISTRATOR) {
+            const documents = getValues("administratorDocuments") || [];
+            const uploadedTypes = documents.map((doc: any) => doc?.type);
+            const hasRequired = ["business_administrator_id_card"].every(
+              (type) => uploadedTypes.includes(type)
+            );
+            return hasRequired ? [] : ["administratorDocuments"];
+          }
+          return [];
+        case 3:
+          return []; // Review step (only for administrators)
+        default:
+          return [];
+      }
+    },
+    [customerType, getValues]
+  );
 
   // Check if current step is valid
   const isCurrentStepValid = useCallback(() => {
     const stepFields = getStepFields(activeStep);
     const requiredFields = getRequiredFields(activeStep);
-    
+
+    // Special validation for documents step (step 2 for administrators)
+    if (activeStep === 2 && customerType === CustomerType.ADMINISTRATOR) {
+      const documents = getValues("administratorDocuments") || [];
+      const uploadedTypes = documents.map((doc: any) => doc?.type);
+      const hasRequiredDocuments = ["business_administrator_id_card"].every(
+        (type) => uploadedTypes.includes(type)
+      );
+      return hasRequiredDocuments;
+    }
+
     // Check if all required fields are filled and have no errors
     const hasRequiredValues = requiredFields.every((field: string) => {
       const value = getValues(field as any);
-      return value !== null && value !== undefined && value !== '';
+      return value !== null && value !== undefined && value !== "";
     });
-    
+
     // Check if any step fields have errors
     const hasNoErrors = stepFields.every((field: string) => {
-      const fieldPath = field.split('.');
+      const fieldPath = field.split(".");
       let error = errors;
       for (const key of fieldPath) {
         error = (error as any)?.[key];
       }
       return !error;
     });
-    
+
     return hasRequiredValues && hasNoErrors;
-  }, [activeStep, errors, getStepFields, getRequiredFields, getValues]);
+  }, [
+    activeStep,
+    customerType,
+    errors,
+    getStepFields,
+    getRequiredFields,
+    getValues,
+  ]);
 
   // Validate current step before navigation
   const validateCurrentStep = useCallback(async (): Promise<boolean> => {
@@ -266,215 +378,381 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   }, [activeStep, onStepChange]);
 
   // Final submission with full validation
-  const handleFinalSubmit = useCallback(async (data: CustomerFormData) => {
-    try {
-      // Trigger validation for all fields
-      const isFormValid = await trigger();
-      
-      if (!isFormValid) {
-        console.error('Form validation failed');
-        return;
+  const handleFinalSubmit = useCallback(
+    async (data: CustomerFormData) => {
+      try {
+        // Trigger validation for all fields
+        const isFormValid = await trigger();
+
+        if (!isFormValid) {
+          console.error("Form validation failed");
+          return;
+        }
+
+        // Transform form data to DTO (remove customerType and handle nulls)
+        let transformedData: any;
+
+        // For administrator, flatten the data to root level (no wrapper)
+        // Note: type property is excluded as per backend requirements
+        if (data.administratorDetails) {
+          transformedData = {
+            nuisNipt: data.administratorDetails.nuisNipt,
+            companyName: data.administratorDetails.companyName,
+            companyEmail: data.administratorDetails.companyEmail,
+            companyPhone: normalizePhoneNumber(
+              data.administratorDetails.companyPhone
+            ),
+            administratorName: data.administratorDetails.administratorName,
+            administratorId: data.administratorDetails.administratorId,
+            administratorPosition:
+              data.administratorDetails.administratorPosition,
+            address: data.administratorDetails.address,
+            phone: normalizePhoneNumber(data.administratorDetails.phone),
+            email: data.administratorDetails.email,
+            secondaryPhone: normalizePhoneNumber(
+              data.administratorDetails.secondaryPhone
+            ),
+            secondaryEmail:
+              data.administratorDetails.secondaryEmail || undefined,
+            additionalNotes:
+              data.administratorDetails.additionalNotes || undefined,
+            // Include documents for upload after creation
+            administratorDocuments: data.administratorDocuments || [],
+          };
+        } else {
+          // For individual and business, keep the wrapper structure
+          transformedData = {
+            individualDetails: data.individualDetails
+              ? {
+                  ...data.individualDetails,
+                  phone: normalizePhoneNumber(data.individualDetails.phone),
+                  secondaryPhone: normalizePhoneNumber(
+                    data.individualDetails.secondaryPhone
+                  ),
+                  secondaryEmail:
+                    data.individualDetails.secondaryEmail || undefined,
+                  additionalNotes:
+                    data.individualDetails.additionalNotes || undefined,
+                }
+              : undefined,
+            businessDetails: data.businessDetails
+              ? {
+                  type: data.businessDetails.type,
+                  legalName: data.businessDetails.legalName,
+                  nuisNipt: data.businessDetails.nuisNipt,
+                  address: data.businessDetails.address,
+                  phone: normalizePhoneNumber(data.businessDetails.phone),
+                  email: data.businessDetails.email,
+                  secondaryPhone: normalizePhoneNumber(
+                    data.businessDetails.secondaryPhone
+                  ),
+                  secondaryEmail:
+                    data.businessDetails.secondaryEmail || undefined,
+                  additionalNotes:
+                    data.businessDetails.additionalNotes || undefined,
+                  shareholders:
+                    data.businessDetails.shareholders &&
+                    data.businessDetails.shareholders.length > 0
+                      ? data.businessDetails.shareholders
+                          .map((s: any) => s.name)
+                          .filter((name: string) => name.trim() !== "")
+                      : undefined,
+                  administratorIds:
+                    data.businessDetails.administratorIds &&
+                    data.businessDetails.administratorIds.length > 0
+                      ? data.businessDetails.administratorIds
+                      : undefined,
+                }
+              : undefined,
+          };
+        }
+
+        await onSubmit(transformedData);
+      } catch (error) {
+        console.error("Submission failed:", error);
       }
-      
-      // Transform form data to DTO (remove customerType and handle nulls)
-      const transformedData: any = {
-        individualDetails: data.individualDetails ? {
-          ...data.individualDetails,
-          secondaryPhone: data.individualDetails.secondaryPhone || undefined,
-          secondaryEmail: data.individualDetails.secondaryEmail || undefined,
-          additionalNotes: data.individualDetails.additionalNotes || undefined
-        } : undefined,
-        businessDetails: data.businessDetails ? {
-          ...data.businessDetails,
-          secondaryPhone: data.businessDetails.secondaryPhone || undefined,
-          secondaryEmail: data.businessDetails.secondaryEmail || undefined,
-          additionalNotes: data.businessDetails.additionalNotes || undefined,
-          mainShareholders: data.businessDetails.mainShareholders || undefined
-        } : undefined,
-        endorserDetails: data.endorserDetails ? {
-          firstName: data.endorserDetails.firstName,
-          lastName: data.endorserDetails.lastName,
-          idNumber: data.endorserDetails.idNumber,
-          dateOfBirth: data.endorserDetails.dateOfBirth,
-          address: data.endorserDetails.address,
-          phone: data.endorserDetails.phone,
-          email: data.endorserDetails.email,
-          secondaryPhone: data.endorserDetails.secondaryPhone || undefined,
-          secondaryEmail: data.endorserDetails.secondaryEmail || undefined,
-          additionalNotes: data.endorserDetails.additionalNotes || undefined,
-          guaranteedAmount: data.endorserDetails.guaranteedAmount || 0,
-          relationshipToCustomer: data.endorserDetails.relationshipToCustomer || undefined,
-          financialInformation: data.endorserDetails.financialInformation || undefined,
-          active: data.endorserDetails.active ?? true,
-          notes: data.endorserDetails.notes || undefined
-        } : undefined
-      };
-      
-      await onSubmit(transformedData);
-    } catch (error) {
-      console.error('Submission failed:', error);
-    }
-  }, [onSubmit, trigger]);
+    },
+    [onSubmit, trigger]
+  );
 
   // Reset form when initialData changes
   React.useEffect(() => {
     if (initialData) {
       reset({
         customerType: customerType,
-        individualDetails: customerType === CustomerType.INDIVIDUAL ? {
-          type: CustomerType.INDIVIDUAL,
-          firstName: '',
-          lastName: '',
-          idNumber: '',
-          dateOfBirth: '',
-          address: '',
-          phone: '',
-          email: '',
-          secondaryPhone: '',
-          secondaryEmail: '',
-          additionalNotes: '',
-          ...initialData.individualDetails
-        } : undefined,
-        businessDetails: customerType === CustomerType.BUSINESS ? {
-          type: CustomerType.BUSINESS,
-          legalName: '',
-          nuisNipt: '',
-          administratorName: '',
-          administratorId: '',
-          administratorPosition: '',
-          mainShareholders: '',
-          address: '',
-          phone: '',
-          email: '',
-          secondaryPhone: '',
-          secondaryEmail: '',
-          additionalNotes: '',
-          ...initialData.businessDetails
-        } : undefined,
-        endorserDetails: customerType === CustomerType.ENDORSER ? {
-          type: CustomerType.ENDORSER,
-          firstName: '',
-          lastName: '',
-          idNumber: '',
-          dateOfBirth: '',
-          address: '',
-          phone: '',
-          email: '',
-          secondaryPhone: '',
-          secondaryEmail: '',
-          additionalNotes: '',
-          guaranteedAmount: 0,
-          relationshipToCustomer: '',
-          financialInformation: undefined,
-          active: true,
-          notes: '',
-          ...initialData.endorserDetails
-        } : undefined
+        individualDetails:
+          customerType === CustomerType.INDIVIDUAL
+            ? {
+                type: CustomerType.INDIVIDUAL,
+                firstName: "",
+                lastName: "",
+                idNumber: "",
+                dateOfBirth: "",
+                address: "",
+                phone: "",
+                email: "",
+                secondaryPhone: "",
+                secondaryEmail: "",
+                additionalNotes: "",
+                ...initialData.individualDetails,
+              }
+            : undefined,
+        businessDetails:
+          customerType === CustomerType.BUSINESS
+            ? {
+                type: CustomerType.BUSINESS,
+                legalName: "",
+                nuisNipt: "",
+                shareholders: [],
+                administratorIds: [],
+                address: "",
+                phone: "",
+                email: "",
+                secondaryPhone: "",
+                secondaryEmail: "",
+                additionalNotes: "",
+                ...initialData.businessDetails,
+              }
+            : undefined,
+        administratorDetails:
+          customerType === CustomerType.ADMINISTRATOR
+            ? {
+                type: CustomerType.ADMINISTRATOR,
+                nuisNipt: "",
+                companyName: "",
+                companyEmail: "",
+                companyPhone: "",
+                administratorName: "",
+                administratorId: "",
+                administratorPosition: "",
+                address: "",
+                phone: "",
+                email: "",
+                secondaryPhone: "",
+                secondaryEmail: "",
+                additionalNotes: "",
+                ...initialData.administratorDetails,
+              }
+            : undefined,
+        administratorDocuments:
+          customerType === CustomerType.ADMINISTRATOR
+            ? initialData?.administratorDocuments || []
+            : undefined,
       });
     }
   }, [initialData, reset, customerType]);
+
+  // Get total steps based on customer type
+  const getTotalSteps = useCallback(() => {
+    return customerType === CustomerType.ADMINISTRATOR ? 4 : 3;
+  }, [customerType]);
 
   // Step content renderer
   const renderStepContent = useCallback(() => {
     switch (activeStep) {
       case 0:
-        return <CustomerTypeStep customerType={customerType} onCustomerTypeChange={setCustomerType} />;
+        return (
+          <CustomerTypeStep
+            customerType={customerType}
+            onCustomerTypeChange={setCustomerType}
+          />
+        );
       case 1:
         return customerType === CustomerType.INDIVIDUAL ? (
           <IndividualDetailsStep />
         ) : customerType === CustomerType.BUSINESS ? (
           <BusinessDetailsStep />
         ) : (
-          <EndorserDetailsStep />
+          <AdministratorDetailsStep />
         );
       case 2:
+        // Documents step for administrators, Review step for others
+        if (customerType === CustomerType.ADMINISTRATOR) {
+          return <AdministratorDocumentsStep administratorId={administratorId} />;
+        }
+        // Review step for non-administrators
         return (
-          <Box sx={{ py: 4, textAlign: 'center' }}>
+          <Box sx={{ py: 4, textAlign: "center" }}>
             <Typography variant="h5" gutterBottom fontWeight={600}>
               Review & Confirm
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-              Please review your information and click save to create the customer
+              Please review your information and click save to create the
+              customer
             </Typography>
-            
-            <Box sx={{ 
-              p: 3, 
-              bgcolor: (theme) => theme.palette.grey[50], 
-              borderRadius: 2,
-              border: 1,
-              borderColor: 'divider',
-              maxWidth: 600,
-              mx: 'auto',
-              textAlign: 'left'
-            }}>
-              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                Customer Type: {
-                  customerType === CustomerType.INDIVIDUAL ? 'Individual' :
-                  customerType === CustomerType.BUSINESS ? 'Business' :
-                  'Endorser'
-                }
-              </Typography>
-              
-              {customerType === CustomerType.INDIVIDUAL && getValues('individualDetails') && (
-                <>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Name:</strong> {getValues('individualDetails.firstName')} {getValues('individualDetails.lastName')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Email:</strong> {getValues('individualDetails.email')}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Phone:</strong> {getValues('individualDetails.phone')}
-                  </Typography>
-                </>
-              )}
-              
-              {customerType === CustomerType.BUSINESS && getValues('businessDetails') && (
-                <>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Business:</strong> {getValues('businessDetails.legalName')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>NUIS/NIPT:</strong> {getValues('businessDetails.nuisNipt')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Email:</strong> {getValues('businessDetails.email')}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Phone:</strong> {getValues('businessDetails.phone')}
-                  </Typography>
-                </>
-              )}
 
-              {customerType === CustomerType.ENDORSER && getValues('endorserDetails') && (
-                <>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Name:</strong> {getValues('endorserDetails.firstName')} {getValues('endorserDetails.lastName')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>ID Number:</strong> {getValues('endorserDetails.idNumber')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Email:</strong> {getValues('endorserDetails.email')}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Phone:</strong> {getValues('endorserDetails.phone')}
-                  </Typography>
-                  {getValues('endorserDetails.guaranteedAmount') && (
+            <Box
+              sx={{
+                p: 3,
+                bgcolor: (theme) => theme.palette.grey[50],
+                borderRadius: 2,
+                border: 1,
+                borderColor: "divider",
+                maxWidth: 600,
+                mx: "auto",
+                textAlign: "left",
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Customer Type:{" "}
+                {customerType === CustomerType.INDIVIDUAL
+                  ? "Individual"
+                  : customerType === CustomerType.BUSINESS
+                  ? "Business"
+                  : "Administrator"}
+              </Typography>
+
+              {customerType === CustomerType.INDIVIDUAL &&
+                getValues("individualDetails") && (
+                  <>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Max Guarantee:</strong> ${getValues('endorserDetails.guaranteedAmount')}
+                      <strong>Name:</strong>{" "}
+                      {getValues("individualDetails.firstName")}{" "}
+                      {getValues("individualDetails.lastName")}
                     </Typography>
-                  )}
-                  {getValues('endorserDetails.relationshipToCustomer') && (
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Email:</strong>{" "}
+                      {getValues("individualDetails.email")}
+                    </Typography>
                     <Typography variant="body2">
-                      <strong>Relationship:</strong> {getValues('endorserDetails.relationshipToCustomer')}
+                      <strong>Phone:</strong>{" "}
+                      {getValues("individualDetails.phone")}
                     </Typography>
-                  )}
+                  </>
+                )}
+
+              {customerType === CustomerType.BUSINESS &&
+                getValues("businessDetails") && (
+                  <>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Business:</strong>{" "}
+                      {getValues("businessDetails.legalName")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>NUIS/NIPT:</strong>{" "}
+                      {getValues("businessDetails.nuisNipt")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Email:</strong>{" "}
+                      {getValues("businessDetails.email")}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Phone:</strong>{" "}
+                      {getValues("businessDetails.phone")}
+                    </Typography>
+                  </>
+                )}
+
+              {(customerType === CustomerType.INDIVIDUAL ||
+                customerType === CustomerType.BUSINESS) && (
+                <>
+                  {customerType === CustomerType.INDIVIDUAL &&
+                    getValues("individualDetails") && (
+                      <>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Name:</strong>{" "}
+                          {getValues("individualDetails.firstName")}{" "}
+                          {getValues("individualDetails.lastName")}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Email:</strong>{" "}
+                          {getValues("individualDetails.email")}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Phone:</strong>{" "}
+                          {getValues("individualDetails.phone")}
+                        </Typography>
+                      </>
+                    )}
+
+                  {customerType === CustomerType.BUSINESS &&
+                    getValues("businessDetails") && (
+                      <>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Business:</strong>{" "}
+                          {getValues("businessDetails.legalName")}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>NUIS/NIPT:</strong>{" "}
+                          {getValues("businessDetails.nuisNipt")}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
+                          <strong>Email:</strong>{" "}
+                          {getValues("businessDetails.email")}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Phone:</strong>{" "}
+                          {getValues("businessDetails.phone")}
+                        </Typography>
+                      </>
+                    )}
                 </>
               )}
             </Box>
           </Box>
         );
+      case 3:
+        // Review step for administrators only
+        if (customerType === CustomerType.ADMINISTRATOR) {
+          return (
+            <Box sx={{ py: 4, textAlign: "center" }}>
+              <Typography variant="h5" gutterBottom fontWeight={600}>
+                Review & Confirm
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                Please review your information and click save to create the
+                administrator
+              </Typography>
+
+              <Box
+                sx={{
+                  p: 3,
+                  bgcolor: (theme) => theme.palette.grey[50],
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: "divider",
+                  maxWidth: 600,
+                  mx: "auto",
+                  textAlign: "left",
+                }}
+              >
+                {getValues("administratorDetails") && (
+                  <>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Company:</strong>{" "}
+                      {getValues("administratorDetails.companyName")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>NUIS/NIPT:</strong>{" "}
+                      {getValues("administratorDetails.nuisNipt")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Administrator:</strong>{" "}
+                      {getValues("administratorDetails.administratorName")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Email:</strong>{" "}
+                      {getValues("administratorDetails.email")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Phone:</strong>{" "}
+                      {getValues("administratorDetails.phone")}
+                    </Typography>
+                    {getValues("administratorDocuments") &&
+                      Array.isArray(getValues("administratorDocuments")) &&
+                      getValues("administratorDocuments")!.length > 0 && (
+                        <Typography variant="body2" sx={{ mt: 2 }}>
+                          <strong>Documents:</strong>{" "}
+                          {getValues("administratorDocuments")!.length} uploaded
+                        </Typography>
+                      )}
+                  </>
+                )}
+              </Box>
+            </Box>
+          );
+        }
+        return null;
       default:
         return null;
     }
@@ -483,24 +761,26 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   // Get current step errors for display
   const currentStepErrors = useMemo(() => {
     const stepFields = getStepFields(activeStep);
-    return stepFields.filter((field: string) => {
-      const fieldPath = field.split('.');
-      let error = errors;
-      for (const key of fieldPath) {
-        error = (error as any)?.[key];
-      }
-      return error;
-    }).map((field: string) => ({
-      field,
-      message: (() => {
-        const fieldPath = field.split('.');
+    return stepFields
+      .filter((field: string) => {
+        const fieldPath = field.split(".");
         let error = errors;
         for (const key of fieldPath) {
           error = (error as any)?.[key];
         }
-        return (error as any)?.message;
-      })()
-    }));
+        return error;
+      })
+      .map((field: string) => ({
+        field,
+        message: (() => {
+          const fieldPath = field.split(".");
+          let error = errors;
+          for (const key of fieldPath) {
+            error = (error as any)?.[key];
+          }
+          return (error as any)?.message;
+        })(),
+      }));
   }, [activeStep, errors, getStepFields]);
 
   return (
@@ -509,18 +789,28 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         <Paper elevation={2} sx={{ p: 4 }}>
           {/* Header */}
           <Box mb={4}>
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-              {isEdit ? 'Edit Customer' : 'Add New Customer'}
+            <Typography
+              variant="h4"
+              component="h1"
+              gutterBottom
+              fontWeight="bold"
+            >
+              {isEdit ? "Edit Customer" : "Add New Customer"}
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              {isEdit ? 'Update customer information' : 'Enter customer details in the form below'}
+              {isEdit
+                ? "Update customer information"
+                : "Enter customer details in the form below"}
             </Typography>
           </Box>
 
           {/* Stepper */}
           <Box mb={4}>
             <Stepper activeStep={activeStep} alternativeLabel>
-              {STEP_CONFIG.map((stepConfig: any, index: number) => (
+              {(customerType === CustomerType.ADMINISTRATOR
+                ? ADMINISTRATOR_STEP_CONFIG
+                : STEP_CONFIG
+              ).map((stepConfig: any, index: number) => (
                 <Step key={stepConfig.label}>
                   <StepLabel
                     error={activeStep === index && currentStepErrors.length > 0}
@@ -551,49 +841,53 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           )}
 
           {/* Step Content */}
-          <Box mb={4}>
-            {renderStepContent()}
-          </Box>
-          
+          <Box mb={4}>{renderStepContent()}</Box>
+
           <Divider sx={{ my: 3 }} />
-          
+
           {/* Navigation */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <Button
               type="button"
               variant="outlined"
               onClick={handleBack}
               disabled={activeStep === 0}
-              sx={{ 
+              sx={{
                 borderRadius: 2,
                 px: 3,
                 py: 1.5,
-                textTransform: 'none',
-                fontWeight: 600
+                textTransform: "none",
+                fontWeight: 600,
               }}
             >
               Back
             </Button>
-            
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
               {/* Step indicator */}
               <Typography variant="body2" color="text.secondary">
-                Step {activeStep + 1} of {STEP_CONFIG.length}
+                Step {activeStep + 1} of {getTotalSteps()}
               </Typography>
-              
-              {activeStep < STEP_CONFIG.length - 1 ? (
-                <Button 
+
+              {activeStep < getTotalSteps() - 1 ? (
+                <Button
                   type="button"
-                  variant="contained" 
+                  variant="contained"
                   onClick={handleNext}
                   disabled={!isCurrentStepValid()}
-                  sx={{ 
+                  sx={{
                     borderRadius: 2,
                     px: 3,
                     py: 1.5,
-                    textTransform: 'none',
+                    textTransform: "none",
                     fontWeight: 600,
-                    boxShadow: 2
+                    boxShadow: 2,
                   }}
                 >
                   Next
@@ -604,18 +898,28 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                   variant="contained"
                   color="primary"
                   disabled={loading || !isValid}
-                  onClick={handleSubmit((data) => handleFinalSubmit(data as unknown as CustomerFormData))}
-                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
-                  sx={{ 
+                  onClick={handleSubmit((data) =>
+                    handleFinalSubmit(data as unknown as CustomerFormData)
+                  )}
+                  startIcon={
+                    loading ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : null
+                  }
+                  sx={{
                     borderRadius: 2,
                     px: 3,
                     py: 1.5,
-                    textTransform: 'none',
+                    textTransform: "none",
                     fontWeight: 600,
-                    boxShadow: 2
+                    boxShadow: 2,
                   }}
                 >
-                  {loading ? 'Saving...' : (isEdit ? 'Update Customer' : 'Create Customer')}
+                  {loading
+                    ? "Saving..."
+                    : isEdit
+                    ? "Update Customer"
+                    : "Create Customer"}
                 </Button>
               )}
             </Box>

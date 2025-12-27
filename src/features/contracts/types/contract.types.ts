@@ -109,6 +109,7 @@ export interface CreateContractDto {
     interestRate: number;
     loanTermMonths: number;
     monthlyPayment: number;
+    totalInterest: number;
     processingFeePercentage?: number;
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
@@ -151,6 +152,7 @@ export interface CreateContractDto {
 
   // Endorser guarantees
   endorserCollaterals?: {
+    type: "vehicle" | "property" | "personal_guarantee" | "other";
     description: string;
     value: number;
     endorserId: string;
@@ -164,13 +166,24 @@ export interface CreateContractDto {
   // Custom guarantee amount for contract
   guaranteeForContract?: number;
 
-  // Documents are handled separately via the document upload API
-
-  // Session key for linking uploaded documents to this contract (optional if no documents)
-  sessionKey?: string;
-
   // Contract terms
   terms?: Record<string, any>;
+}
+
+// Document metadata for upload
+export interface DocumentMetadata {
+  type: string;
+  title: string;
+  description?: string;
+  expiryDate: string; // Required - YYYY-MM-DD format
+}
+
+// NEW: Create contract with documents DTO - uses multipart/form-data
+export interface CreateContractWithDocumentsDto extends Omit<CreateContractDto, 'sessionKey'> {
+  // Files to upload
+  files?: File[];
+  // Document metadata (must match order of files)
+  documents?: DocumentMetadata[];
 }
 
 // Form data interface for the contract creation form
@@ -191,6 +204,7 @@ export interface ContractFormData {
     interestRate: number;
     loanTermMonths: number;
     monthlyPayment: number;
+    totalInterest?: number;
     processingFeePercentage?: number;
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
@@ -209,8 +223,10 @@ export interface ContractFormData {
   // Additional components
   selectedVehicles: string[];
   selectedVehicleData?: VehicleSummary[]; // Full vehicle data including documents
+  selectedCustomerData?: CustomerSummary | null; // Full customer data including documents
   selectedEndorsers: string[];
   guaranteeForContract?: number; // Amount the endorser guarantees for the contract
+  vehicleAsCollateral?: boolean; // Track if selected vehicle should be used as collateral
   collaterals: VehicleCollateral[];
   endorserCollaterals: EndorserCollateral[];
   documents: any[]; // Will be ContractDocument[] when imported
@@ -264,12 +280,24 @@ export interface ContractResponse {
   }[];
 }
 
+export interface CustomerDocument {
+  id: string;
+  type: string;
+  title: string;
+  fileName: string;
+  status: 'completed' | 'pending' | 'rejected';
+  downloadCount?: number;
+  createdAt?: string;
+  expiryDate?: string;
+}
+
 export interface CustomerSummary {
   id: string;
   name: string;
   type: string;
   email?: string;
   phone?: string;
+  documents?: CustomerDocument[];
 }
 
 export interface VehicleSummary {
@@ -277,7 +305,7 @@ export interface VehicleSummary {
   make: string;
   model: string;
   year: number;
-  licensePlate: string;
+  licensePlate?: string; // Optional - can be added later when used in contract
   vinNumber: string;
   status: string;
   // Additional vehicle properties
@@ -347,6 +375,7 @@ export interface ContractFormStep {
 export interface CustomerPickerProps {
   selectedCustomerId?: string;
   onCustomerSelect: (customer: CustomerSummary | null) => void;
+  onCustomerDataChange?: (customer: CustomerSummary | null) => void; // Callback for full customer data including documents
   preSelectedCustomerId?: string;
   disabled?: boolean;
   error?: string;
@@ -357,6 +386,8 @@ export interface VehiclePickerProps {
   selectedVehicleIds: string[];
   onVehicleSelect: (vehicleIds: string[]) => void;
   onVehicleDataChange?: (vehicles: VehicleSummary[]) => void; // New callback for full vehicle data
+  vehicleAsCollateral?: boolean; // Track if vehicle should be used as collateral
+  onVehicleAsCollateralChange?: (isCollateral: boolean) => void; // Callback for collateral checkbox
   customerId?: string;
   error?: string;
 }
