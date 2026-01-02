@@ -103,6 +103,11 @@ export const EditCustomerPage: React.FC = () => {
     fetchCustomerData();
   }, [id]);
 
+  const handleCancel = () => {
+    // Navigate back to customer detail page
+    navigate(`/customers/${id}`);
+  };
+
   const handleSubmit = async (data: any) => {
     if (!id || !customerType) {
       setError("Customer ID and type are required");
@@ -221,6 +226,7 @@ export const EditCustomerPage: React.FC = () => {
           onStepChange={setActiveStep}
           steps={getSteps()}
           isEdit={true}
+          onCancel={handleCancel}
         />
       </Box>
     </Box>

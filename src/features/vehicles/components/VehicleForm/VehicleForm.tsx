@@ -33,7 +33,12 @@ import {
 interface VehicleSubmissionData {
   vehicleData: Partial<Vehicle>;
   files?: File[];
-  documents?: { type: string; title: string; description?: string; expiryDate: string }[];
+  documents?: {
+    type: string;
+    title: string;
+    description?: string;
+    expiryDate: string;
+  }[];
 }
 
 interface VehicleFormProps {
@@ -44,6 +49,10 @@ interface VehicleFormProps {
   onStepChange: (step: number) => void;
   steps: string[];
   isEdit?: boolean;
+  vehicleId?: string;
+  initialDocuments?: VehicleDocumentFile[];
+  onPendingDocumentIdsChange?: (ids: string[]) => void;
+  onCancel?: () => void;
 }
 
 export const VehicleForm: React.FC<VehicleFormProps> = ({
@@ -52,13 +61,21 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   loading,
   activeStep,
   onStepChange,
-  steps = STEP_CONFIG.map(config => config.label), // Used in stepper component below
+  steps = STEP_CONFIG.map((config) => config.label), // Used in stepper component below
   isEdit = false,
+  vehicleId,
+  initialDocuments = [],
+  onPendingDocumentIdsChange,
+  onCancel,
 }) => {
   const validationSchema = useMemo(() => createVehicleValidationSchema(), []);
-  
+
   // Add state for vehicle documents (stored locally until submission)
-  const [vehicleDocuments, setVehicleDocuments] = React.useState<VehicleDocumentFile[]>([]);
+  const [vehicleDocuments, setVehicleDocuments] =
+    React.useState<VehicleDocumentFile[]>(initialDocuments);
+  const [pendingDocumentIds, setPendingDocumentIds] = React.useState<string[]>(
+    []
+  );
 
   console.log("📄 Vehicle Documents Count:", vehicleDocuments.length);
 
@@ -75,7 +92,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       fuelType: undefined,
       // transmission: '',
       // condition: '',
-      legalOwner: '',
+      legalOwner: "",
       isLiquidAsset: false,
       purchaseDate: undefined,
       // purchasePrice: null,
@@ -87,7 +104,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       currentValuation: undefined,
       marketValue: undefined,
       depreciatedValue: undefined,
-      ...initialData
+      ...initialData,
     },
     // @ts-ignore - Validation schema mismatch due to commented out fields
     resolver: yupResolver(validationSchema),
@@ -198,18 +215,44 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
 
         // Extract files and document metadata from the documents array
         const files: File[] = [];
-        const documentMetadata: { type: string; title: string; description?: string; expiryDate: string }[] = [];
-        
+        const documentMetadata: {
+          type: string;
+          title: string;
+          description?: string;
+          expiryDate: string;
+          parentDocumentId?: string; // For document replacements
+          version?: number;
+        }[] = [];
+        const documentReplacements: {
+          oldDocumentId: string;
+          newDocumentId: string;
+        }[] = [];
+
         if (vehicleDocuments && vehicleDocuments.length > 0) {
           vehicleDocuments.forEach((doc) => {
+            // Only process documents with files (new uploads or pending replacements)
             if (doc.file) {
               files.push(doc.file);
               documentMetadata.push({
                 type: doc.category,
                 title: doc.name,
                 description: doc.description || "",
-                expiryDate: doc.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                expiryDate:
+                  doc.expiryDate ||
+                  new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                    .toISOString()
+                    .split("T")[0],
+                parentDocumentId: doc.parentDocumentId, // Link to document being replaced
+                version: doc.version,
               });
+
+              // Track replacements
+              if (doc.parentDocumentId) {
+                documentReplacements.push({
+                  oldDocumentId: doc.parentDocumentId,
+                  newDocumentId: doc.id,
+                });
+              }
             }
           });
         }
@@ -219,7 +262,10 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
 
         // Clean up vehicle data - remove empty/null licensePlate
         const cleanedData = { ...data };
-        if (!cleanedData.licensePlate || cleanedData.licensePlate.trim() === '') {
+        if (
+          !cleanedData.licensePlate ||
+          cleanedData.licensePlate.trim() === ""
+        ) {
           delete cleanedData.licensePlate;
         }
 
@@ -228,8 +274,12 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
           vehicleData: cleanedData,
           files: files.length > 0 ? files : undefined,
           documents: documentMetadata.length > 0 ? documentMetadata : undefined,
+          documentReplacements:
+            documentReplacements.length > 0 ? documentReplacements : undefined,
+          pendingDocumentIds:
+            pendingDocumentIds.length > 0 ? pendingDocumentIds : undefined,
         };
-        
+
         console.log("🚀 Final submission data:", vehicleDataWithDocuments);
         await onSubmit(vehicleDataWithDocuments);
       } catch (error) {
@@ -254,7 +304,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         fuelType: undefined,
         // transmission: '',
         // condition: '',
-        legalOwner: '',
+        legalOwner: "",
         isLiquidAsset: false,
         // purchaseDate: null,
         // purchasePrice: null,
@@ -266,7 +316,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         currentValuation: undefined,
         marketValue: undefined,
         depreciatedValue: undefined,
-        ...initialData
+        ...initialData,
       });
     }
   }, [initialData, reset]);
@@ -286,6 +336,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
             documents={vehicleDocuments}
             onDocumentsChange={setVehicleDocuments}
             error={errors.documents?.message}
+            vehicleId={vehicleId}
+            onPendingDocumentIdsChange={(ids) => {
+              setPendingDocumentIds(ids);
+              onPendingDocumentIdsChange?.(ids);
+            }}
           />
         );
       default:
@@ -308,7 +363,6 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <FormProvider {...methods}>
         <Paper elevation={2} sx={{ p: 4 }}>
-
           {/* Stepper */}
           <Box mb={4}>
             <Stepper activeStep={activeStep} alternativeLabel>
@@ -355,21 +409,40 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               alignItems: "center",
             }}
           >
-            <Button
-              type="button"
-              variant="outlined"
-              onClick={handleBack}
-              disabled={activeStep === 0}
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                py: 1.5,
-                textTransform: "none",
-                fontWeight: 600,
-              }}
-            >
-              Back
-            </Button>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              {isEdit && onCancel && (
+                <Button
+                  type="button"
+                  variant="outlined"
+                  color="error"
+                  onClick={onCancel}
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    py: 1.5,
+                    textTransform: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outlined"
+                onClick={handleBack}
+                disabled={activeStep === 0}
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1.5,
+                  textTransform: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Back
+              </Button>
+            </Box>
 
             <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
               {/* Step indicator */}

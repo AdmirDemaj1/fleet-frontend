@@ -22,6 +22,7 @@ import {
   ContractsPage,
   CreateContractPage,
   ContractDetailsPage,
+  EditContractPage,
 } from "../features/contracts/containers";
 import {
   PaymentsPage,
@@ -114,7 +115,7 @@ export const AppRoutes: React.FC = () => {
           <Route index element={<ContractsPage />} />
           <Route path="create" element={<CreateContractPage />} />
           <Route path=":id" element={<ContractDetailsPage />} />
-          <Route path=":id/edit" element={<div>Edit Contract Page</div>} />
+          <Route path=":id/edit" element={<EditContractPage />} />
         </Route>
 
         <Route path="logs" element={<AuditPage />} />

@@ -88,6 +88,8 @@ interface CustomerFormProps {
   steps: string[];
   isEdit?: boolean;
   administratorId?: string; // Administrator ID for edit mode
+  onPendingDocumentIdsChange?: (ids: string[]) => void; // Callback to track pending document IDs
+  onCancel?: () => void; // Cancel handler for edit mode
 }
 
 // Helper function to normalize phone numbers (remove spaces and formatting)
@@ -107,6 +109,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   onStepChange,
   isEdit = false,
   administratorId,
+  onPendingDocumentIdsChange,
+  onCancel,
 }) => {
   const [customerType, setCustomerType] = React.useState<CustomerType>(
     initialData?.individualDetails
@@ -568,7 +572,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       case 2:
         // Documents step for administrators, Review step for others
         if (customerType === CustomerType.ADMINISTRATOR) {
-          return <AdministratorDocumentsStep administratorId={administratorId} />;
+          return (
+            <AdministratorDocumentsStep
+              administratorId={administratorId}
+              onPendingDocumentIdsChange={onPendingDocumentIdsChange}
+            />
+          );
         }
         // Review step for non-administrators
         return (
@@ -853,21 +862,40 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               alignItems: "center",
             }}
           >
-            <Button
-              type="button"
-              variant="outlined"
-              onClick={handleBack}
-              disabled={activeStep === 0}
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                py: 1.5,
-                textTransform: "none",
-                fontWeight: 600,
-              }}
-            >
-              Back
-            </Button>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              {isEdit && onCancel && (
+                <Button
+                  type="button"
+                  variant="outlined"
+                  color="error"
+                  onClick={onCancel}
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    py: 1.5,
+                    textTransform: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outlined"
+                onClick={handleBack}
+                disabled={activeStep === 0}
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1.5,
+                  textTransform: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Back
+              </Button>
+            </Box>
 
             <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
               {/* Step indicator */}

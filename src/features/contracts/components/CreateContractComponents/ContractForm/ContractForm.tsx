@@ -87,6 +87,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   loading,
   preSelectedCustomerId,
   isEdit = false,
+  contractId,
+  onPendingDocumentIdsChange,
+  onCancel,
 }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [submitError, setSubmitError] = useState<string>("");
@@ -568,7 +571,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
 
             {/* Contract Type */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth error={!!errors.type}>
+              <FormControl fullWidth error={!!errors.type} disabled={isEdit}>
                 <InputLabel>Contract Type</InputLabel>
                 <Select
                   value={watchedData.type}
@@ -601,6 +604,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     : dayjs().format("YYYY-MM-DD");
                   setValue("startDate", dateString, { shouldValidate: true });
                 }}
+                disabled={isEdit}
                 slotProps={{
                   textField: {
                     fullWidth: true,
@@ -609,6 +613,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                       errors.startDate?.message ||
                       "Select the contract start date",
                     required: true,
+                    InputProps: {
+                      readOnly: isEdit,
+                    },
                   },
                 }}
                 minDate={dayjs()}
@@ -655,12 +662,14 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     shouldValidate: true,
                   })
                 }
+                disabled={isEdit}
                 error={!!errors.totalAmount}
                 helperText={
                   errors.totalAmount?.message ||
                   "Principal amount to be financed"
                 }
                 InputProps={{
+                  readOnly: isEdit,
                   startAdornment: (
                     <InputAdornment position="start">$</InputAdornment>
                   ),
@@ -750,7 +759,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   const value = parseFloat(e.target.value) || 0;
                   setMarginRate(value);
                 }}
+                disabled={isEdit}
                 InputProps={{
+                  readOnly: isEdit,
                   startAdornment: (
                     <InputAdornment position="start">+</InputAdornment>
                   ),
@@ -858,16 +869,18 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     { shouldValidate: true }
                   )
                 }
+                disabled={isEdit}
+                InputProps={{
+                  readOnly: isEdit,
+                  endAdornment: (
+                    <InputAdornment position="end">months</InputAdornment>
+                  ),
+                }}
                 error={!!errors.loanDetails?.loanTermMonths}
                 helperText={
                   errors.loanDetails?.loanTermMonths?.message ||
                   "Loan duration in months"
                 }
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">months</InputAdornment>
-                  ),
-                }}
                 required
               />
             </Grid>
@@ -937,12 +950,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     }
                   }
                 }}
-                error={!!errors.loanDetails?.processingFeePercentage}
-                helperText={
-                  errors.loanDetails?.processingFeePercentage?.message ||
-                  "Enter percentage value (e.g., 2 for 2%)"
-                }
+                disabled={isEdit}
                 InputProps={{
+                  readOnly: isEdit,
                   endAdornment: (
                     <InputAdornment position="end">%</InputAdornment>
                   ),
@@ -952,6 +962,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   max: 100,
                   step: 0.01,
                 }}
+                error={!!errors.loanDetails?.processingFeePercentage}
+                helperText={
+                  errors.loanDetails?.processingFeePercentage?.message ||
+                  "Enter percentage value (e.g., 2 for 2%)"
+                }
               />
             </Grid>
 
@@ -985,12 +1000,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     }
                   }
                 }}
-                error={!!errors.loanDetails?.earlyRepaymentPenalty}
-                helperText={
-                  errors.loanDetails?.earlyRepaymentPenalty?.message ||
-                  "Enter percentage value (e.g., 3 for 3%) - Optional"
-                }
+                disabled={isEdit}
                 InputProps={{
+                  readOnly: isEdit,
                   endAdornment: (
                     <InputAdornment position="end">%</InputAdornment>
                   ),
@@ -1000,6 +1012,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   max: 100,
                   step: 0.01,
                 }}
+                error={!!errors.loanDetails?.earlyRepaymentPenalty}
+                helperText={
+                  errors.loanDetails?.earlyRepaymentPenalty?.message ||
+                  "Enter percentage value (e.g., 3 for 3%) - Optional"
+                }
               />
             </Grid>
 
@@ -1080,6 +1097,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         return (
           <VehiclePicker
             selectedVehicleIds={watchedData.selectedVehicles}
+            selectedVehicleData={watchedData.selectedVehicleData}
+            isEditMode={isEdit}
             onVehicleSelect={(vehicleIds) => {
               setValue("selectedVehicles", vehicleIds, {
                 shouldValidate: true,
@@ -1551,6 +1570,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 endorserId={watchedData.selectedEndorsers?.[0]} // Use first endorser if available
                 vehicleIds={watchedData.selectedVehicles || []} // Pass selected vehicles
                 vehicleData={watchedData.selectedVehicleData || []} // Pass full vehicle data including documents
+                contractId={contractId} // Pass contract ID for edit mode
+                onPendingDocumentIdsChange={onPendingDocumentIdsChange} // Track pending document IDs
               />
             </Box>
 
@@ -1708,14 +1729,26 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               alignItems: "center",
             }}
           >
-            <Button
-              startIcon={<ArrowBack />}
-              onClick={handleBack}
-              disabled={activeStep === 0 || loading}
-              variant="outlined"
-            >
-              Back
-            </Button>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <Button
+                startIcon={<ArrowBack />}
+                onClick={handleBack}
+                disabled={activeStep === 0 || loading}
+                variant="outlined"
+              >
+                Back
+              </Button>
+              {isEdit && onCancel && (
+                <Button
+                  onClick={onCancel}
+                  disabled={loading}
+                  variant="outlined"
+                  color="error"
+                >
+                  Cancel
+                </Button>
+              )}
+            </Box>
 
             <Typography variant="body2" color="text.secondary">
               Step {activeStep + 1} of {STEPS.length}
@@ -1731,7 +1764,13 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 variant="contained"
                 color="primary"
               >
-                {loading ? "Creating..." : "Create Contract"}
+                {loading
+                  ? isEdit
+                    ? "Updating..."
+                    : "Creating..."
+                  : isEdit
+                  ? "Update Contract"
+                  : "Create Contract"}
               </Button>
             ) : (
               <Button
