@@ -166,50 +166,86 @@ export const VehicleDocuments: React.FC<VehicleDocumentsProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  // Helper function to categorize a document (returns category index or -1)
+  const getDocumentCategory = (doc: Document): number => {
+    const docType = doc.type?.toLowerCase() || "";
+    const docTitle = doc.title?.toLowerCase() || "";
+
+    // Priority 1: Insurance Documents (check type first)
+    if (
+      docType === "insurance" ||
+      docType === "casco" ||
+      docType === "tpl" ||
+      docTitle.includes("insurance") ||
+      docTitle.includes("policy")
+    ) {
+      return 1; // Insurance Documents
+    }
+
+    // Priority 2: Legal Documents
+    if (
+      docType === "vehicle_registration" ||
+      docTitle.includes("registration") ||
+      docTitle.includes("title") ||
+      docTitle.includes("agreement")
+    ) {
+      return 0; // Legal Documents
+    }
+
+    // Priority 3: Maintenance Records
+    if (
+      docType === "vehicle_inspection" ||
+      docTitle.includes("maintenance") ||
+      docTitle.includes("service") ||
+      docTitle.includes("repair")
+    ) {
+      return 2; // Maintenance Records
+    }
+
+    // Priority 4: Photos & Media
+    if (
+      docType === "image" ||
+      docTitle.includes("photo") ||
+      docTitle.includes("image")
+    ) {
+      return 3; // Photos & Media
+    }
+
+    // Default: Other Documents
+    return 4; // Other Documents
+  };
+
   // Document categories for better organization
   const documentCategories = [
     {
       title: "Legal Documents",
-      documents: documents.filter(
-        (doc) =>
-          doc.title.toLowerCase().includes("registration") ||
-          doc.title.toLowerCase().includes("title") ||
-          doc.title.toLowerCase().includes("agreement")
-      ),
+      documents: documents.filter((doc) => getDocumentCategory(doc) === 0),
       icon: <Assignment />,
       color: theme.palette.primary.main,
     },
     {
       title: "Insurance Documents",
-      documents: documents.filter(
-        (doc) =>
-          doc.title.toLowerCase().includes("insurance") ||
-          doc.title.toLowerCase().includes("policy")
-      ),
+      documents: documents.filter((doc) => getDocumentCategory(doc) === 1),
       icon: <Security />,
       color: theme.palette.success.main,
     },
     {
       title: "Maintenance Records",
-      documents: documents.filter(
-        (doc) =>
-          doc.title.toLowerCase().includes("maintenance") ||
-          doc.title.toLowerCase().includes("service") ||
-          doc.title.toLowerCase().includes("repair")
-      ),
+      documents: documents.filter((doc) => getDocumentCategory(doc) === 2),
       icon: <Event />,
       color: theme.palette.warning.main,
     },
     {
       title: "Photos & Media",
-      documents: documents.filter(
-        (doc) =>
-          doc.type === "image" ||
-          doc.title.toLowerCase().includes("photo") ||
-          doc.title.toLowerCase().includes("image")
-      ),
+      documents: documents.filter((doc) => getDocumentCategory(doc) === 3),
       icon: <Image />,
       color: theme.palette.info.main,
+    },
+    {
+      title: "Other Documents",
+      documents: documents.filter((doc) => getDocumentCategory(doc) === 4),
+      icon: <Description />,
+      color: theme.palette.grey[600],
     },
   ];
 

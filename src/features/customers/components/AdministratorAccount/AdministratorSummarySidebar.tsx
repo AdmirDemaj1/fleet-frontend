@@ -20,6 +20,7 @@ import {
 } from "@mui/icons-material";
 import { format } from "date-fns";
 import { Administrator } from "../../types/customer.types";
+import { NonActiveDocuments } from "../../../../shared/components/NonActiveDocuments";
 
 interface AdministratorSummarySidebarProps {
   administrator: Administrator | any;
@@ -273,6 +274,14 @@ export const AdministratorSummarySidebar: React.FC<AdministratorSummarySidebarPr
               Created: {format(new Date(administrator.createdAt), "MMM d, yyyy")}
             </Typography>
           </Box>
+        )}
+
+        {/* Non-Active Documents Section */}
+        {administrator.id && (
+          <NonActiveDocuments
+            entityType="administrator"
+            entityId={administrator.id}
+          />
         )}
       </Box>
     </Paper>
