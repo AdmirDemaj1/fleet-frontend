@@ -18,7 +18,9 @@ export interface ContractDocument {
   name: string;
   type: string;
   size: number;
-  file: File;
+  file?: File; // Optional for existing documents
+  documentId?: string; // ID of existing document from API
+  fileName?: string; // Name of existing document file
   category: DocumentCategory;
   description?: string;
   expiryDate?: string; // YYYY-MM-DD format
@@ -28,5 +30,11 @@ export interface ContractDocument {
   verifiedAt?: Date;
   verifiedBy?: string;
   rejectionReason?: string;
+  // Versioning fields for optimistic updates
+  parentDocumentId?: string; // ID of document being replaced
+  version?: number; // Document version number
+  isCurrent?: boolean; // Whether this is the current active version
+  isPendingReplacement?: boolean; // Whether this document has a pending replacement
+  pendingReplacementId?: string; // ID of the pending replacement document
 }
 

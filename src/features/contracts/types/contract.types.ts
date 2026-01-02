@@ -233,6 +233,35 @@ export interface ContractFormData {
   terms?: Record<string, any>;
 }
 
+// Update Contract DTO - Matches backend UpdateContractDto structure
+export interface UpdateContractDto {
+  id?: string; // Optional contract ID
+
+  // Basic contract fields that can be updated
+  contractNumber?: string;
+  startDate?: string;
+  endDate?: string;
+  totalAmount?: number;
+
+  // Loan-specific details (required for loan contracts)
+  loanDetails?: {
+    id: string; // Required UUID for the loan details record
+    interestRate: number; // Required interest rate
+  };
+
+  // Leasing-specific details (required for leasing contracts)
+  leasingDetails?: {
+    id: string; // Required UUID for the leasing details record
+    interestRate: number; // Required interest rate
+  };
+
+  // Optional financial tracking fields
+  interestAmount?: number;
+  principalAmount?: number;
+  remainingInterestAmount?: number;
+  remainingPrincipalAmount?: number;
+}
+
 // Response types
 export interface ContractResponse {
   id: string;
@@ -386,6 +415,8 @@ export interface VehiclePickerProps {
   selectedVehicleIds: string[];
   onVehicleSelect: (vehicleIds: string[]) => void;
   onVehicleDataChange?: (vehicles: VehicleSummary[]) => void; // New callback for full vehicle data
+  selectedVehicleData?: VehicleSummary[]; // Pre-selected vehicle data (for edit mode)
+  isEditMode?: boolean; // Whether this is edit mode (vehicle may not be in available list)
   vehicleAsCollateral?: boolean; // Track if vehicle should be used as collateral
   onVehicleAsCollateralChange?: (isCollateral: boolean) => void; // Callback for collateral checkbox
   customerId?: string;
@@ -410,4 +441,7 @@ export interface ContractFormProps {
   loading: boolean;
   preSelectedCustomerId?: string;
   isEdit?: boolean;
+  contractId?: string; // For edit mode - contract ID for document uploads
+  onPendingDocumentIdsChange?: (ids: string[]) => void; // Callback to track pending document IDs
+  onCancel?: () => void; // Callback for cancel action (cleanup pending documents)
 }

@@ -36,24 +36,33 @@ import {
   Upload,
   Download,
   Visibility,
+  SwapHoriz,
 } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 import { useDropzone } from "react-dropzone";
 import { VehicleDocumentType } from "../../types/vehicleType";
 import { useNotification } from "../../../../shared/hooks/useNotification";
+import { documentApi } from "../../../../shared/api/documentApi";
 
 export interface VehicleDocumentFile {
   id: string;
   name: string;
   type: string;
   size: number;
-  file: File;
+  file?: File; // Optional for existing documents
+  documentId?: string; // ID of existing document from API
   category: VehicleDocumentType;
   description?: string;
   expiryDate?: string; // YYYY-MM-DD format
   isRequired: boolean;
-  status: "pending" | "uploaded" | "verified" | "rejected";
+  status: "pending" | "uploaded" | "verified" | "rejected" | "superseded";
   uploadedAt?: Date;
+  // Versioning fields for optimistic updates
+  parentDocumentId?: string; // ID of document being replaced
+  version?: number; // Document version number
+  isCurrent?: boolean; // Whether this is the current active version
+  isPendingReplacement?: boolean; // Whether this document has a pending replacement
+  pendingReplacementId?: string; // ID of the pending replacement document
 }
 
 const REQUIRED_VEHICLE_DOCUMENTS = [
@@ -126,12 +135,16 @@ interface VehicleDocumentUploadProps {
   documents: VehicleDocumentFile[];
   onDocumentsChange: (documents: VehicleDocumentFile[]) => void;
   error?: string;
+  vehicleId?: string; // Vehicle ID for edit mode - needed to delete existing documents
+  onPendingDocumentIdsChange?: (ids: string[]) => void; // Callback to track pending document IDs
 }
 
 export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
   documents,
   onDocumentsChange,
   error,
+  vehicleId,
+  onPendingDocumentIdsChange,
 }) => {
   const [isTypeDialogOpen, setIsTypeDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -146,6 +159,139 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
   );
   const [documentToDelete, setDocumentToDelete] =
     useState<VehicleDocumentFile | null>(null);
+  const [documentToReplace, setDocumentToReplace] =
+    useState<VehicleDocumentFile | null>(null);
+  const [replacingDocumentId, setReplacingDocumentId] = useState<string | null>(
+    null
+  );
+  const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
+
+  // Initialize pending document IDs from existing documents (for edit mode)
+  // Use a ref to track if we've already initialized to prevent loops
+  const hasInitializedRef = React.useRef(false);
+  const prevDocumentsLengthRef = React.useRef(0);
+  
+  useEffect(() => {
+    // Only initialize when documents are first loaded (length changes from 0 to >0)
+    const documentsJustLoaded = documents.length > 0 && prevDocumentsLengthRef.current === 0;
+    
+    if (vehicleId && documentsJustLoaded && !hasInitializedRef.current) {
+      const existingPendingIds = documents
+        .filter((doc) => doc.status === "pending" && (doc.documentId || doc.id))
+        .map((doc) => doc.documentId || doc.id)
+        .filter(Boolean) as string[];
+      
+      if (existingPendingIds.length > 0) {
+        console.log("📋 Initializing pending document IDs from existing documents:", existingPendingIds);
+        setPendingDocumentIds(existingPendingIds);
+        onPendingDocumentIdsChange?.(existingPendingIds);
+        hasInitializedRef.current = true;
+      } else {
+        // Even if no pending IDs found, mark as initialized to prevent re-checking
+        hasInitializedRef.current = true;
+      }
+    }
+    
+    // Update ref to track documents length
+    prevDocumentsLengthRef.current = documents.length;
+    
+    // Reset initialization flag if vehicleId changes
+    if (!vehicleId) {
+      hasInitializedRef.current = false;
+      prevDocumentsLengthRef.current = 0;
+    }
+  }, [vehicleId, documents.length, onPendingDocumentIdsChange]); // Only depend on length to avoid loops
+
+  // Load pending documents on mount if vehicleId is provided
+  // This is a fallback in case documents weren't loaded via initialDocuments
+  useEffect(() => {
+    if (vehicleId && documents.length === 0) {
+      loadPendingDocuments();
+    }
+  }, [vehicleId]);
+
+  const loadPendingDocuments = async () => {
+    if (!vehicleId) return;
+
+    try {
+      const pendingDocs = await documentApi.getPendingDocuments(
+        "vehicle",
+        vehicleId
+      );
+      console.log("📋 Loaded pending documents:", pendingDocs);
+
+      // Transform pending documents to VehicleDocumentFile format
+      const transformedPendingDocs: VehicleDocumentFile[] = pendingDocs.map(
+        (doc) => {
+          // Map document type from API to VehicleDocumentType enum
+          let category: VehicleDocumentType;
+          const docType = doc.type?.toLowerCase();
+
+          if (docType === "vehicle_registration") {
+            category = VehicleDocumentType.VEHICLE_REGISTRATION;
+          } else if (docType === "vehicle_inspection") {
+            category = VehicleDocumentType.VEHICLE_INSPECTION;
+          } else if (docType === "insurance") {
+            category = VehicleDocumentType.INSURANCE;
+          } else if (docType === "tpl") {
+            category = VehicleDocumentType.TPL;
+          } else if (docType === "casco") {
+            category = VehicleDocumentType.CASCO;
+          } else if (docType === "purchase_invoice") {
+            category = VehicleDocumentType.PURCHASE_INVOICE;
+          } else if (docType === "technical_passport") {
+            category = VehicleDocumentType.TECHNICAL_PASSPORT;
+          } else {
+            category = VehicleDocumentType.OTHER;
+          }
+
+          return {
+            id: doc.id,
+            name: doc.fileName || doc.title,
+            type: doc.type || "application/pdf",
+            size: 0,
+            documentId: doc.id,
+            category: category,
+            description: doc.title,
+            expiryDate: "", // Would need to be fetched separately if available
+            isRequired: [
+              VehicleDocumentType.VEHICLE_REGISTRATION,
+              VehicleDocumentType.VEHICLE_INSPECTION,
+              VehicleDocumentType.INSURANCE,
+              VehicleDocumentType.TPL,
+              VehicleDocumentType.CASCO,
+            ].includes(category),
+            status: "pending",
+            uploadedAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
+            parentDocumentId: (doc as any).parentDocumentId,
+            version: (doc as any).version,
+            isCurrent: (doc as any).isCurrent || false,
+          };
+        }
+      );
+
+      // Merge with existing documents, avoiding duplicates
+      const existingIds = new Set(documents.map((d) => d.documentId || d.id));
+      const newPendingDocs = transformedPendingDocs.filter(
+        (d) => !existingIds.has(d.documentId || d.id)
+      );
+
+      if (newPendingDocs.length > 0) {
+        onDocumentsChange([...documents, ...newPendingDocs]);
+        const newIds = [
+          ...pendingDocumentIds,
+          ...(newPendingDocs
+            .map((d) => d.documentId || d.id)
+            .filter(Boolean) as string[]),
+        ];
+        setPendingDocumentIds(newIds);
+        onPendingDocumentIdsChange?.(newIds);
+      }
+    } catch (error) {
+      console.warn("Failed to load pending documents:", error);
+      // Continue without pending documents if fetch fails
+    }
+  };
 
   // Notification system
   const { showSuccess, showError } = useNotification();
@@ -216,13 +362,74 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
     multiple: false, // Handle one file at a time
   });
 
-  const handleDeleteDocument = (documentId: string) => {
+  const handleDeleteDocument = async (documentId: string) => {
     try {
       console.log("Removing document:", documentId);
       setDeletingDocumentId(documentId);
 
-      // Remove from local state (documents are stored locally until vehicle creation)
-      const updatedDocuments = documents.filter((doc) => doc.id !== documentId);
+      // Find the document to check if it's an existing one from API
+      const documentToRemove = documents.find((doc) => doc.id === documentId);
+
+      // If it's a pending document in edit mode, delete it from API
+      // Check for both documentId and id (pending documents may use either)
+      const pendingDocId = documentToRemove?.documentId || documentToRemove?.id;
+      
+      console.log("🔍 Delete check:", {
+        vehicleId,
+        pendingDocId,
+        status: documentToRemove?.status,
+        documentId: documentToRemove?.documentId,
+        id: documentToRemove?.id,
+        documentToRemove,
+      });
+      
+      if (vehicleId && pendingDocId && documentToRemove?.status === "pending") {
+        try {
+          console.log(`🗑️ Deleting pending document: ${pendingDocId}`);
+          await documentApi.deletePendingDocuments([pendingDocId]);
+          console.log("✅ Deleted pending document from API");
+          
+          // Remove from pending document IDs
+          const updatedPendingIds = pendingDocumentIds.filter(
+            (id) => id !== pendingDocId
+          );
+          setPendingDocumentIds(updatedPendingIds);
+          onPendingDocumentIdsChange?.(updatedPendingIds);
+        } catch (error) {
+          console.error("Failed to delete pending document from API:", error);
+          // Continue with local removal even if API call fails
+        }
+      }
+      // If it's an existing ACTIVE document with documentId, delete it from API
+      else if (documentToRemove?.documentId && vehicleId) {
+        try {
+          await documentApi.deleteVehicleDocument(
+            vehicleId,
+            documentToRemove.documentId
+          );
+          console.log(
+            `✅ Deleted existing document ${documentToRemove.documentId} from API`
+          );
+        } catch (error) {
+          console.error("Failed to delete document from API:", error);
+          throw error;
+        }
+      }
+
+      // If document had a pending replacement, clear that flag
+      const updatedDocuments = documents
+        .filter((doc) => doc.id !== documentId)
+        .map((doc) => {
+          if (doc.pendingReplacementId === documentId) {
+            return {
+              ...doc,
+              isPendingReplacement: false,
+              pendingReplacementId: undefined,
+            };
+          }
+          return doc;
+        });
+
       onDocumentsChange(updatedDocuments);
 
       showSuccess("Document removed");
@@ -249,83 +456,351 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
     setDocumentToDelete(null);
   };
 
-  const handleConfirmDocumentUpload = () => {
+  const handleReplaceClick = (document: VehicleDocumentFile) => {
+    setDocumentToReplace(document);
+    // Open file picker
+    const input = window.document.createElement("input");
+    input.type = "file";
+    input.accept = "application/pdf,image/*,.doc,.docx";
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        // Set the pending file and use the existing document's category
+        setPendingFile(file);
+        setSelectedCategory(document.category);
+        setIsTypeDialogOpen(true);
+      }
+    };
+    input.click();
+  };
+
+  const handleConfirmReplace = async () => {
+    if (!pendingFile || !documentToReplace || !vehicleId) return;
+
+    try {
+      setReplacingDocumentId(documentToReplace.id);
+      setUploadError("");
+
+      // Check if expiry date is provided (required for ALL documents)
+      if (!documentExpiryDate) {
+        setUploadError(
+          "Expiry date is required for all documents. Please select an expiry date."
+        );
+        setReplacingDocumentId(null);
+        return;
+      }
+
+      // Check if expiry date is not in the past
+      const todayDate2 = new Date().toISOString().split("T")[0];
+      if (documentExpiryDate < todayDate2) {
+        setUploadError(
+          "Expiry date cannot be in the past. Please select a valid date."
+        );
+        setReplacingDocumentId(null);
+        return;
+      }
+
+      // Upload document immediately with PENDING status
+      const uploadedDoc = await documentApi.uploadPendingDocument(pendingFile, {
+        type: selectedCategory,
+        title: pendingFile.name,
+        description: documentDescription || documentToReplace.description,
+        vehicleId: vehicleId,
+        replacesDocumentId:
+          documentToReplace.documentId || documentToReplace.id,
+        expiryDate: documentExpiryDate,
+      });
+
+      console.log("✅ Uploaded pending document:", uploadedDoc);
+
+      // Transform uploaded document to VehicleDocumentFile format
+      const newDocument: VehicleDocumentFile = {
+        id: uploadedDoc.id,
+        name: uploadedDoc.fileName || uploadedDoc.title,
+        type: uploadedDoc.type || pendingFile.type,
+        size: pendingFile.size,
+        documentId: uploadedDoc.id,
+        category: selectedCategory,
+        description: documentDescription || documentToReplace.description,
+        expiryDate: documentExpiryDate,
+        isRequired: documentToReplace.isRequired,
+        status: "pending", // PENDING until vehicle update is confirmed
+        uploadedAt: new Date(uploadedDoc.createdAt),
+        parentDocumentId:
+          (uploadedDoc as any).parentDocumentId || documentToReplace.documentId,
+        version:
+          (uploadedDoc as any).version || (documentToReplace.version || 1) + 1,
+        isCurrent: (uploadedDoc as any).isCurrent || false,
+      };
+
+      // Mark old document as having a pending replacement
+      const updatedDocuments = documents.map((doc) => {
+        if (doc.id === documentToReplace.id) {
+          return {
+            ...doc,
+            isPendingReplacement: true,
+            pendingReplacementId: uploadedDoc.id,
+          };
+        }
+        return doc;
+      });
+
+      // Add the new pending document
+      updatedDocuments.push(newDocument);
+      onDocumentsChange(updatedDocuments);
+
+      // Track pending document ID
+      const newPendingIds = [...pendingDocumentIds, uploadedDoc.id];
+      setPendingDocumentIds(newPendingIds);
+      onPendingDocumentIdsChange?.(newPendingIds);
+
+      showSuccess(
+        `Document "${documentToReplace.name}" will be replaced with "${pendingFile.name}" when you save the vehicle.`
+      );
+
+      // Reset and close dialog
+      setPendingFile(null);
+      setDocumentToReplace(null);
+      setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
+      setDocumentDescription("");
+      setDocumentExpiryDate("");
+      setIsTypeDialogOpen(false);
+      setReplacingDocumentId(null);
+    } catch (error) {
+      console.error("Failed to replace document:", error);
+      setUploadError("Failed to upload document. Please try again.");
+      setReplacingDocumentId(null);
+    }
+  };
+
+  const handleConfirmDocumentUpload = async () => {
     if (!pendingFile) return;
 
-    // Check for duplicates by name
-    const existingNames = documents.map((doc) => doc.name);
-    if (existingNames.includes(pendingFile.name)) {
-      setUploadError(
-        `Document "${pendingFile.name}" has already been uploaded. Please use a different file or remove the existing one first.`
-      );
-      return;
-    }
+    try {
+      setUploadError("");
 
-    // Check if this document category already has a document uploaded
-    const existingCategoryDoc = documents.find(
-      (doc) => doc.category === selectedCategory
-    );
+      // Check for duplicates by name
+      const existingNames = documents.map((doc) => doc.name);
+      if (existingNames.includes(pendingFile.name)) {
+        setUploadError(
+          `Document "${pendingFile.name}" has already been uploaded. Please use a different file or remove the existing one first.`
+        );
+        return;
+      }
 
-    if (existingCategoryDoc) {
-      setUploadError(
-        `A document of type "${
-          REQUIRED_VEHICLE_DOCUMENTS.find(
-            (d) => d.category === selectedCategory
-          )?.name
-        }" has already been uploaded. Please remove the existing one first or choose a different category.`
-      );
-      return;
-    }
-
-    // Check if expiry date is provided (required for ALL documents)
-    if (!documentExpiryDate) {
-      setUploadError("Expiry date is required for all documents. Please select an expiry date.");
-      return;
-    }
-
-    // Check if expiry date is not in the past
-    const today = new Date().toISOString().split("T")[0];
-    if (documentExpiryDate < today) {
-      setUploadError("Expiry date cannot be in the past. Please select a valid date.");
-      return;
-    }
-
-    // Clear any previous errors
-    setUploadError("");
-
-    // Store document locally (no API call - documents will be uploaded with vehicle creation)
-    const newDocument: VehicleDocumentFile = {
-      id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: pendingFile.name,
-      type: pendingFile.type,
-      size: pendingFile.size,
-      file: pendingFile,
-      category: selectedCategory,
-      description: documentDescription,
-      expiryDate: documentExpiryDate,
-      isRequired: REQUIRED_VEHICLE_DOCUMENTS.some(
+      // Check if this document category already has a document uploaded
+      const existingCategoryDoc = documents.find(
         (doc) => doc.category === selectedCategory
-      ),
-      status: "pending", // Will be uploaded with vehicle creation
-      uploadedAt: new Date(),
-    };
+      );
 
-    console.log("📄 Document added locally (will be uploaded with vehicle):");
-    console.log("  📁 File:", pendingFile.name);
-    console.log("  📂 Category:", selectedCategory);
-    console.log("  📅 Expiry Date:", documentExpiryDate);
+      // Check if expiry date is provided (required for ALL documents)
+      if (!documentExpiryDate) {
+        setUploadError(
+          "Expiry date is required for all documents. Please select an expiry date."
+        );
+        return;
+      }
 
-    const updatedDocuments = [...documents, newDocument];
-    onDocumentsChange(updatedDocuments);
+      // Check if expiry date is not in the past
+      const todayDate = new Date().toISOString().split("T")[0];
+      if (documentExpiryDate < todayDate) {
+        setUploadError(
+          "Expiry date cannot be in the past. Please select a valid date."
+        );
+        return;
+      }
 
-    showSuccess(`Document "${pendingFile.name}" added successfully`);
+      // For create mode (no vehicleId), store document locally
+      if (!vehicleId) {
+        if (existingCategoryDoc) {
+          setUploadError(
+            `A document of type "${
+              REQUIRED_VEHICLE_DOCUMENTS.find(
+                (d) => d.category === selectedCategory
+              )?.name
+            }" has already been uploaded. Please remove the existing one first or choose a different category.`
+          );
+          return;
+        }
 
-    // Reset and close dialog
-    setPendingFile(null);
-    setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
-    setDocumentDescription("");
-    setDocumentExpiryDate("");
-    setIsTypeDialogOpen(false);
+        // Store document locally for create mode
+        const newDocument: VehicleDocumentFile = {
+          id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: pendingFile.name,
+          type: pendingFile.type,
+          size: pendingFile.size,
+          file: pendingFile,
+          category: selectedCategory,
+          description: documentDescription,
+          expiryDate: documentExpiryDate,
+          isRequired: REQUIRED_VEHICLE_DOCUMENTS.some(
+            (doc) => doc.category === selectedCategory
+          ),
+          status: "pending", // Will be uploaded with vehicle creation
+          uploadedAt: new Date(),
+        };
+
+        const updatedDocuments = [...documents, newDocument];
+        onDocumentsChange(updatedDocuments);
+
+        showSuccess(`Document "${pendingFile.name}" added successfully`);
+
+        // Reset and close dialog
+        setPendingFile(null);
+        setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
+        setDocumentDescription("");
+        setDocumentExpiryDate("");
+        setIsTypeDialogOpen(false);
+        return;
+      }
+
+      // For edit mode (vehicleId exists), upload immediately with PENDING status
+      if (existingCategoryDoc && vehicleId) {
+        // If it's an existing document from API, upload as replacement
+        if (existingCategoryDoc.documentId) {
+          // Upload immediately with PENDING status as replacement
+          const uploadedDoc = await documentApi.uploadPendingDocument(
+            pendingFile,
+            {
+              type: selectedCategory,
+              title: pendingFile.name,
+              description: documentDescription,
+              vehicleId: vehicleId,
+              replacesDocumentId: existingCategoryDoc.documentId,
+              expiryDate: documentExpiryDate,
+            }
+          );
+
+          // Transform and add to documents
+          const newDocument: VehicleDocumentFile = {
+            id: uploadedDoc.id,
+            name: uploadedDoc.fileName || uploadedDoc.title,
+            type: uploadedDoc.type || pendingFile.type,
+            size: pendingFile.size,
+            documentId: uploadedDoc.id,
+            category: selectedCategory,
+            description: documentDescription,
+            expiryDate: documentExpiryDate,
+            isRequired: existingCategoryDoc.isRequired,
+            status: "pending",
+            uploadedAt: new Date(uploadedDoc.createdAt),
+            parentDocumentId:
+              (uploadedDoc as any).parentDocumentId ||
+              existingCategoryDoc.documentId,
+            version:
+              (uploadedDoc as any).version ||
+              (existingCategoryDoc.version || 1) + 1,
+            isCurrent: false,
+          };
+
+          // Mark old document as having a pending replacement
+          const updatedDocuments = documents.map((doc) => {
+            if (doc.id === existingCategoryDoc.id) {
+              return {
+                ...doc,
+                isPendingReplacement: true,
+                pendingReplacementId: uploadedDoc.id,
+              };
+            }
+            return doc;
+          });
+
+          updatedDocuments.push(newDocument);
+          onDocumentsChange(updatedDocuments);
+          const newIds = [...pendingDocumentIds, uploadedDoc.id];
+          setPendingDocumentIds(newIds);
+          onPendingDocumentIdsChange?.(newIds);
+
+          showSuccess(
+            `Document "${existingCategoryDoc.name}" will be replaced with "${pendingFile.name}" when you save the vehicle.`
+          );
+
+          // Reset and close dialog
+          setPendingFile(null);
+          setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
+          setDocumentDescription("");
+          setDocumentExpiryDate("");
+          setIsTypeDialogOpen(false);
+          return;
+        } else {
+          setUploadError(
+            `A document of type "${
+              REQUIRED_VEHICLE_DOCUMENTS.find(
+                (d) => d.category === selectedCategory
+              )?.name
+            }" has already been uploaded. Please remove the existing one first or choose a different category.`
+          );
+          return;
+        }
+      }
+
+      // Check if expiry date is provided (required for ALL documents)
+      if (!documentExpiryDate) {
+        setUploadError(
+          "Expiry date is required for all documents. Please select an expiry date."
+        );
+        return;
+      }
+
+      // Check if expiry date is not in the past
+      const todayDate2 = new Date().toISOString().split("T")[0];
+      if (documentExpiryDate < todayDate2) {
+        setUploadError(
+          "Expiry date cannot be in the past. Please select a valid date."
+        );
+        return;
+      }
+
+      // Upload document immediately with PENDING status
+      const uploadedDoc = await documentApi.uploadPendingDocument(pendingFile, {
+        type: selectedCategory,
+        title: pendingFile.name,
+        description: documentDescription,
+        vehicleId: vehicleId,
+        expiryDate: documentExpiryDate,
+      });
+
+      console.log("✅ Uploaded pending document:", uploadedDoc);
+
+      // Transform uploaded document to VehicleDocumentFile format
+      const newDocument: VehicleDocumentFile = {
+        id: uploadedDoc.id,
+        name: uploadedDoc.fileName || uploadedDoc.title,
+        type: uploadedDoc.type || pendingFile.type,
+        size: pendingFile.size,
+        documentId: uploadedDoc.id,
+        category: selectedCategory,
+        description: documentDescription,
+        expiryDate: documentExpiryDate,
+        isRequired: REQUIRED_VEHICLE_DOCUMENTS.some(
+          (doc) => doc.category === selectedCategory
+        ),
+        status: "pending", // PENDING until vehicle update is confirmed
+        uploadedAt: new Date(uploadedDoc.createdAt),
+        version: (uploadedDoc as any).version || 1,
+        isCurrent: (uploadedDoc as any).isCurrent || false,
+      };
+
+      const updatedDocuments = [...documents, newDocument];
+      onDocumentsChange(updatedDocuments);
+      const newIds = [...pendingDocumentIds, uploadedDoc.id];
+      setPendingDocumentIds(newIds);
+      onPendingDocumentIdsChange?.(newIds);
+
+      showSuccess(
+        `Document "${pendingFile.name}" uploaded. Click Save to confirm changes.`
+      );
+
+      // Reset and close dialog
+      setPendingFile(null);
+      setSelectedCategory(VehicleDocumentType.VEHICLE_REGISTRATION);
+      setDocumentDescription("");
+      setDocumentExpiryDate("");
+      setIsTypeDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to upload document:", error);
+      setUploadError("Failed to upload document. Please try again.");
+    }
   };
 
   const handleCancelDocumentUpload = () => {
@@ -335,6 +810,8 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
     setDocumentExpiryDate("");
     setUploadError("");
     setIsTypeDialogOpen(false);
+    setDocumentToReplace(null);
+    setReplacingDocumentId(null);
   };
 
   const getFileIcon = (fileType: string) => {
@@ -405,6 +882,19 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {/* Pending Documents Warning */}
+      {pendingDocumentIds.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Typography variant="body2" fontWeight={600}>
+            You have {pendingDocumentIds.length} pending document(s)
+          </Typography>
+          <Typography variant="body2">
+            Click "Save" to confirm these changes. Pending documents will be
+            activated when you save the vehicle.
+          </Typography>
         </Alert>
       )}
 
@@ -552,97 +1042,285 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
           </Typography>
 
           <List>
-            {documents.map((document) => (
-              <ListItem
-                key={document.id}
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  mb: 1,
-                  bgcolor: "background.paper",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
-                  {getFileIcon(document.type)}
-                </Box>
+            {documents.map((document) => {
+              // Skip pending replacements in main list - they're shown with their parent
+              if (document.parentDocumentId && document.status === "pending") {
+                return null;
+              }
 
-                <ListItemText
-                  primary={
-                    <Box>
-                      <Typography variant="body2" fontWeight={500}>
-                        {document.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatFileSize(document.size)} • {document.category} •{" "}
-                        {document.uploadedAt?.toLocaleDateString()}
-                      </Typography>
+              const pendingReplacement = document.pendingReplacementId
+                ? documents.find((d) => d.id === document.pendingReplacementId)
+                : null;
+
+              return (
+                <React.Fragment key={document.id}>
+                  <ListItem
+                    sx={{
+                      border: "1px solid",
+                      borderColor: document.isPendingReplacement
+                        ? "warning.main"
+                        : "divider",
+                      borderRadius: 1,
+                      mb: 1,
+                      bgcolor: document.isPendingReplacement
+                        ? "warning.50"
+                        : "background.paper",
+                      opacity: document.isPendingReplacement ? 0.7 : 1,
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
+                      {getFileIcon(document.type)}
                     </Box>
-                  }
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      <Chip
-                        label={document.status}
-                        size="small"
-                        color={getStatusColor(document.status)}
-                        icon={getStatusIcon(document.status)}
-                        sx={{ mr: 1 }}
-                      />
-                      {document.isRequired && (
-                        <Chip
-                          label="Required"
+
+                    <ListItemText
+                      primary={
+                        <Box>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <Typography variant="body2" fontWeight={500}>
+                              {document.name}
+                            </Typography>
+                            {document.isPendingReplacement && (
+                              <Chip
+                                label="Will be replaced"
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatFileSize(document.size)} •{" "}
+                            {document.category} •{" "}
+                            {document.uploadedAt?.toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <Box sx={{ mt: 1 }}>
+                          <Chip
+                            label={document.status}
+                            size="small"
+                            color={getStatusColor(document.status)}
+                            icon={getStatusIcon(document.status)}
+                            sx={{ mr: 1 }}
+                          />
+                          {document.isRequired && (
+                            <Chip
+                              label="Required"
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ mr: 1 }}
+                            />
+                          )}
+                        </Box>
+                      }
+                    />
+
+                    <ListItemSecondaryAction>
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        {document.file ? (
+                          <>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                const url = URL.createObjectURL(document.file!);
+                                window.open(url, "_blank");
+                              }}
+                              title="Preview document"
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                const url = URL.createObjectURL(document.file!);
+                                const a = window.document.createElement("a");
+                                a.href = url;
+                                a.download = document.name;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                              title="Download document"
+                            >
+                              <Download fontSize="small" />
+                            </IconButton>
+                          </>
+                        ) : document.documentId ? (
+                          <>
+                            <IconButton
+                              size="small"
+                              onClick={async () => {
+                                try {
+                                  const blob =
+                                    await documentApi.downloadDocument(
+                                      document.documentId!
+                                    );
+                                  const blobUrl =
+                                    window.URL.createObjectURL(blob);
+                                  window.open(blobUrl, "_blank");
+                                  setTimeout(
+                                    () => window.URL.revokeObjectURL(blobUrl),
+                                    100
+                                  );
+                                } catch (error) {
+                                  showError("Failed to preview document");
+                                }
+                              }}
+                              title="Preview document"
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={async () => {
+                                try {
+                                  const blob =
+                                    await documentApi.downloadDocument(
+                                      document.documentId!
+                                    );
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = window.document.createElement("a");
+                                  a.href = url;
+                                  a.download = document.name;
+                                  a.click();
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  showError("Failed to download document");
+                                }
+                              }}
+                              title="Download document"
+                            >
+                              <Download fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleReplaceClick(document)}
+                              color="primary"
+                              title="Replace document"
+                              disabled={
+                                replacingDocumentId === document.id ||
+                                document.isPendingReplacement
+                              }
+                            >
+                              {replacingDocumentId === document.id ? (
+                                <CircularProgress size={20} />
+                              ) : (
+                                <SwapHoriz fontSize="small" />
+                              )}
+                            </IconButton>
+                          </>
+                        ) : null}
+                        <IconButton
                           size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-                  }
-                />
+                          onClick={() => handleDeleteClick(document)}
+                          color="error"
+                          title="Delete document"
+                          disabled={
+                            deletingDocumentId === document.id ||
+                            document.isPendingReplacement
+                          }
+                        >
+                          {deletingDocumentId === document.id ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <Delete fontSize="small" />
+                          )}
+                        </IconButton>
+                      </Box>
+                    </ListItemSecondaryAction>
+                  </ListItem>
 
-                <ListItemSecondaryAction>
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        const url = URL.createObjectURL(document.file);
-                        window.open(url, "_blank");
+                  {/* Show pending replacement document below the original */}
+                  {pendingReplacement && (
+                    <ListItem
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "success.main",
+                        borderRadius: 1,
+                        mb: 1,
+                        bgcolor: "success.50",
+                        ml: 4,
                       }}
-                      title="Preview document"
                     >
-                      <Visibility fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        const url = URL.createObjectURL(document.file);
-                        const a = window.document.createElement("a");
-                        a.href = url;
-                        a.download = document.name;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }}
-                      title="Download document"
-                    >
-                      <Download fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(document)}
-                      color="error"
-                      title="Delete document"
-                      disabled={deletingDocumentId === document.id}
-                    >
-                      {deletingDocumentId === document.id ? (
-                        <CircularProgress size={20} />
-                      ) : (
-                        <Delete fontSize="small" />
-                      )}
-                    </IconButton>
-                  </Box>
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mr: 2 }}
+                      >
+                        {getFileIcon(pendingReplacement.type)}
+                      </Box>
+                      <ListItemText
+                        primary={
+                          <Box>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Typography variant="body2" fontWeight={500}>
+                                {pendingReplacement.name} (New)
+                              </Typography>
+                              <Chip
+                                label="Pending Replacement"
+                                size="small"
+                                color="success"
+                                variant="outlined"
+                              />
+                            </Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {formatFileSize(pendingReplacement.size)} •{" "}
+                              {pendingReplacement.category}
+                            </Typography>
+                          </Box>
+                        }
+                        secondary={
+                          <Box sx={{ mt: 1 }}>
+                            <Chip
+                              label="Pending"
+                              size="small"
+                              color="warning"
+                              sx={{ mr: 1 }}
+                            />
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Will replace "{document.name}" when vehicle is
+                              saved
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                      <ListItemSecondaryAction>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteDocument(pendingReplacement.id)}
+                          color="error"
+                          title="Delete pending replacement"
+                          disabled={deletingDocumentId === pendingReplacement.id}
+                        >
+                          {deletingDocumentId === pendingReplacement.id ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <Delete fontSize="small" />
+                          )}
+                        </IconButton>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </List>
         </Box>
       )}
@@ -656,10 +1334,12 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
       >
         <DialogTitle>
           <Typography variant="h6" component="div">
-            Select Document Type
+            {documentToReplace ? "Replace Document" : "Select Document Type"}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Choose the appropriate category for: {pendingFile?.name}
+            {documentToReplace
+              ? `Replace "${documentToReplace.name}" with: ${pendingFile?.name}`
+              : `Choose the appropriate category for: ${pendingFile?.name}`}
           </Typography>
         </DialogTitle>
 
@@ -678,7 +1358,9 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
                   defaultExpiryDate.setFullYear(
                     defaultExpiryDate.getFullYear() + 1
                   );
-                  const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
+                  const formattedDate = defaultExpiryDate
+                    .toISOString()
+                    .split("T")[0];
                   setDocumentExpiryDate(formattedDate);
                   console.log(
                     "🗓️ Auto-set expiry date:",
@@ -739,7 +1421,10 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
                 }
               }}
               required
-              error={documentExpiryDate !== "" && documentExpiryDate < new Date().toISOString().split("T")[0]}
+              error={
+                documentExpiryDate !== "" &&
+                documentExpiryDate < new Date().toISOString().split("T")[0]
+              }
               InputLabelProps={{
                 shrink: true,
               }}
@@ -748,7 +1433,8 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
               }}
               sx={{ mt: 2 }}
               helperText={
-                documentExpiryDate !== "" && documentExpiryDate < new Date().toISOString().split("T")[0]
+                documentExpiryDate !== "" &&
+                documentExpiryDate < new Date().toISOString().split("T")[0]
                   ? "Expiry date cannot be in the past"
                   : "Please select the expiry date for this document (must be today or in the future)"
               }
@@ -785,16 +1471,25 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
             Cancel
           </Button>
           <Button
-            onClick={handleConfirmDocumentUpload}
+            onClick={
+              documentToReplace
+                ? handleConfirmReplace
+                : handleConfirmDocumentUpload
+            }
             variant="contained"
             disabled={
               !pendingFile ||
               !!uploadError ||
               !documentExpiryDate || // Expiry date is required for ALL documents
-              documentExpiryDate < new Date().toISOString().split("T")[0] // Cannot be in the past
+              documentExpiryDate < new Date().toISOString().split("T")[0] || // Cannot be in the past
+              replacingDocumentId !== null
             }
           >
-            Add Document
+            {replacingDocumentId
+              ? "Replacing..."
+              : documentToReplace
+              ? "Replace Document"
+              : "Add Document"}
           </Button>
         </DialogActions>
       </Dialog>

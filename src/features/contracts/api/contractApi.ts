@@ -3,6 +3,7 @@ import { getApiUrl } from "../../../shared/utils/env";
 import { tokenStorage } from "../../auth/utils/tokenStorage";
 import {
   CreateContractDto,
+  UpdateContractDto,
   ContractResponse,
   CustomerSummary,
   VehicleSummary,
@@ -53,8 +54,6 @@ export const contractApi = createApi({
       CreateContractWithDocumentsDto
     >({
       query: (data) => {
-        // Check if we have files to upload - if so, use FormData, otherwise use JSON
-        const hasFiles = data.files && data.files.length > 0;
 
         // if (hasFiles) {
         //   // Use FormData for file uploads
@@ -157,6 +156,28 @@ export const contractApi = createApi({
     getContract: builder.query<ContractResponse, string>({
       query: (id) => `/contracts/${id}`,
       providesTags: (_result, _error, id) => [{ type: "Contract", id }],
+    }),
+
+    updateContract: builder.mutation<any, { id: string; data: UpdateContractDto }>({
+      query: ({ id, data }) => {
+        console.log(
+          "🔄 Updating contract with data:",
+          JSON.stringify(data, null, 2)
+        );
+        return {
+          url: `/contracts/${id}`,
+          method: "PUT",
+          body: data,
+        };
+      },
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Contract", id },
+        "Contract",
+      ],
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Contract update failed:", response);
+        return response;
+      },
     }),
 
     getContracts: builder.query<
@@ -467,6 +488,7 @@ export const contractApi = createApi({
 export const {
   useCreateContractMutation,
   useCreateContractWithDependenciesMutation,
+  useUpdateContractMutation,
   useGetContractQuery,
   useGetContractsQuery,
   useGetCustomersQuery,

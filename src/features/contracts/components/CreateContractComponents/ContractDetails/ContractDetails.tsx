@@ -18,7 +18,11 @@ import { Controller, useFormContext } from 'react-hook-form';
 import { ContractType } from '../../../types/contract.types';
 import dayjs from 'dayjs';
 
-export const ContractDetails: React.FC = () => {
+interface ContractDetailsProps {
+  isEdit?: boolean;
+}
+
+export const ContractDetails: React.FC<ContractDetailsProps> = ({ isEdit = false }) => {
   const { control, formState: { errors }, watch } = useFormContext();
   
   const contractType = watch('type');
@@ -43,7 +47,7 @@ export const ContractDetails: React.FC = () => {
             control={control}
             rules={{ required: 'Contract type is required' }}
             render={({ field }) => (
-              <FormControl fullWidth error={!!errors.type}>
+              <FormControl fullWidth error={!!errors.type} disabled={isEdit}>
                 <InputLabel id="contract-type-label">Contract Type</InputLabel>
                 <Select
                   {...field}
@@ -97,12 +101,16 @@ export const ContractDetails: React.FC = () => {
                   onChange(newValue ? newValue.format('YYYY-MM-DD') : '');
                 }}
                 minDate={dayjs()}
+                disabled={isEdit}
                 slotProps={{
                   textField: {
                     fullWidth: true,
                     required: true,
                     error: !!errors.startDate,
-                    helperText: errors.startDate?.message as string || 'When the contract becomes effective'
+                    helperText: errors.startDate?.message as string || 'When the contract becomes effective',
+                    InputProps: {
+                      readOnly: isEdit,
+                    }
                   }
                 }}
               />
@@ -125,12 +133,16 @@ export const ContractDetails: React.FC = () => {
                   onChange(newValue ? newValue.format('YYYY-MM-DD') : '');
                 }}
                 minDate={startDate ? dayjs(startDate).add(1, 'day') : dayjs().add(1, 'day')}
+                disabled={isEdit}
                 slotProps={{
                   textField: {
                     fullWidth: true,
                     required: true,
                     error: !!errors.endDate,
-                    helperText: errors.endDate?.message as string || 'When the contract expires'
+                    helperText: errors.endDate?.message as string || 'When the contract expires',
+                    InputProps: {
+                      readOnly: isEdit,
+                    }
                   }
                 }}
               />
@@ -154,8 +166,10 @@ export const ContractDetails: React.FC = () => {
                 type="number"
                 fullWidth
                 required
+                disabled={isEdit}
                 InputProps={{
-                  startAdornment: <span style={{ marginRight: '8px' }}>$</span>
+                  startAdornment: <span style={{ marginRight: '8px' }}>$</span>,
+                  readOnly: isEdit,
                 }}
                 inputProps={{ min: 0, step: 0.01 }}
                 error={!!errors.totalAmount}

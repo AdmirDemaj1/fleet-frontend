@@ -159,12 +159,100 @@ export const vehicleApi = {
 
   // Update a vehicle
   updateVehicle: async (id: string, vehicleData: Partial<Vehicle>): Promise<Vehicle> => {
+    // Remove read-only fields that should not be sent in update request
+    const {
+      id: _id,
+      vin: _vin,
+      contractId: _contractId,
+      lastValuationDate: _lastValuationDate,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      createdBy: _createdBy,
+      updatedBy: _updatedBy,
+      ...cleanedData
+    } = vehicleData as any;
+
     // Only include licensePlate if it has a valid value
-    const cleanedData = { ...vehicleData };
     if (cleanedData.licensePlate !== undefined && (!cleanedData.licensePlate || cleanedData.licensePlate.trim() === '')) {
       delete cleanedData.licensePlate;
     }
+    
     const response = await api.put<Vehicle>(`/vehicles/${id}`, cleanedData);
+    return response.data;
+  },
+
+  // Update vehicle with documents atomically (for optimistic document replacements)
+  updateVehicleWithDocuments: async (data: {
+    vehicleId: string;
+    vehicleData: Partial<Vehicle>;
+    files?: File[];
+    documents?: { 
+      type: string; 
+      title: string; 
+      description?: string; 
+      expiryDate: string;
+      parentDocumentId?: string;
+      version?: number;
+    }[];
+    documentReplacements?: { oldDocumentId: string; newDocumentId: string }[];
+  }): Promise<Vehicle> => {
+    const formData = new FormData();
+    const { vehicleId, vehicleData: vData, files, documents, documentReplacements } = data;
+
+    // Remove read-only fields from vehicle data
+    const {
+      id: _id,
+      vin: _vin,
+      contractId: _contractId,
+      lastValuationDate: _lastValuationDate,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      createdBy: _createdBy,
+      updatedBy: _updatedBy,
+      ...cleanedVehicleData
+    } = vData as any;
+
+    // Append vehicle data fields
+    Object.keys(cleanedVehicleData).forEach((key) => {
+      const value = (cleanedVehicleData as any)[key];
+      if (value !== undefined && value !== null) {
+        if (value instanceof Date) {
+          formData.append(key, value.toISOString());
+        } else if (typeof value === 'object') {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, String(value));
+        }
+      }
+    });
+
+    // Append document files
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
+    }
+
+    // Append document metadata
+    if (documents && documents.length > 0) {
+      formData.append('documents', JSON.stringify(documents));
+    }
+
+    // Append document replacements for atomic updates
+    if (documentReplacements && documentReplacements.length > 0) {
+      formData.append('documentReplacements', JSON.stringify(documentReplacements));
+    }
+
+    console.log('🔄 Updating vehicle with atomic document replacements:');
+    console.log('📁 Files:', files?.length || 0);
+    console.log('📋 Documents:', documents?.length || 0);
+    console.log('🔄 Replacements:', documentReplacements?.length || 0);
+
+    const response = await api.put<Vehicle>(`/vehicles/${vehicleId}/with-documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

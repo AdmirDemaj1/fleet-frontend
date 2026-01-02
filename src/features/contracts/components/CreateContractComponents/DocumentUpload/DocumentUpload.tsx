@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -36,6 +36,7 @@ import {
   Upload,
   Download,
   Visibility,
+  SwapHoriz,
 } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
 import { useDropzone } from "react-dropzone";
@@ -43,6 +44,7 @@ import { useNotification } from "../../../../../shared/hooks/useNotification";
 import { VehicleSummary, CustomerSummary } from "../../../types/contract.types";
 import { getApiUrl } from "../../../../../shared/utils/env";
 import { DocumentCategory, ContractDocument } from "./documentUpload.types";
+import { documentApi } from "../../../../../shared/api/documentApi";
 
 // Re-export types for consumers
 export { DocumentCategory } from "./documentUpload.types";
@@ -57,6 +59,8 @@ interface DocumentUploadProps {
   endorserId?: string;
   vehicleIds: string[];
   vehicleData?: VehicleSummary[]; // Full vehicle data including documents
+  contractId?: string; // For edit mode - if provided, documents are uploaded immediately with PENDING status
+  onPendingDocumentIdsChange?: (ids: string[]) => void; // Callback to track pending document IDs
 }
 
 const REQUIRED_DOCUMENTS = [
@@ -131,7 +135,8 @@ const OPTIONAL_DOCUMENTS = [
   {
     category: DocumentCategory.INSURANCE,
     name: "Insurance Certificate",
-    description: "Current vehicle insurance policy (provided by selected vehicle)",
+    description:
+      "Current vehicle insurance policy (provided by selected vehicle)",
     isRequired: false, // No longer required for manual upload
     acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -140,7 +145,8 @@ const OPTIONAL_DOCUMENTS = [
   {
     category: DocumentCategory.TPL,
     name: "Third Party Liability (TPL)",
-    description: "Third party liability insurance certificate (provided by selected vehicle)",
+    description:
+      "Third party liability insurance certificate (provided by selected vehicle)",
     isRequired: false, // No longer required for manual upload
     acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -149,7 +155,8 @@ const OPTIONAL_DOCUMENTS = [
   {
     category: DocumentCategory.CASCO,
     name: "CASCO Insurance",
-    description: "Comprehensive vehicle insurance certificate (provided by selected vehicle)",
+    description:
+      "Comprehensive vehicle insurance certificate (provided by selected vehicle)",
     isRequired: false, // No longer required for manual upload
     acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -169,6 +176,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   endorserId,
   vehicleIds,
   vehicleData = [],
+  contractId,
+  onPendingDocumentIdsChange,
 }) => {
   const [isTypeDialogOpen, setIsTypeDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -184,9 +193,36 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [documentToDelete, setDocumentToDelete] =
     useState<ContractDocument | null>(null);
   const [previewDocument, setPreviewDocument] = useState<any | null>(null); // For vehicle document preview
+  const [replacingDocumentId, setReplacingDocumentId] = useState<string | null>(
+    null
+  );
+  const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
 
   // Notification system
   const { showSuccess, showError } = useNotification();
+
+  // Initialize pending document IDs from existing documents (for edit mode)
+  // Use a ref to track if we've already initialized to prevent loops
+  const hasInitializedRef = useRef(false);
+  
+  useEffect(() => {
+    if (contractId && documents.length > 0 && !hasInitializedRef.current) {
+      const existingPendingIds = documents
+        .filter((doc) => doc.status === "pending" && doc.documentId)
+        .map((doc) => doc.documentId!)
+        .filter(Boolean);
+      
+      if (existingPendingIds.length > 0) {
+        setPendingDocumentIds(existingPendingIds);
+        onPendingDocumentIdsChange?.(existingPendingIds);
+        hasInitializedRef.current = true;
+      }
+    }
+    // Reset initialization flag if contractId changes
+    if (!contractId) {
+      hasInitializedRef.current = false;
+    }
+  }, [contractId]); // Only depend on contractId to avoid loops
 
   // Effect to set expiry date when dialog opens - required for ALL documents
   useEffect(() => {
@@ -267,7 +303,27 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       console.log("Removing document:", documentId);
       setDeletingDocumentId(documentId);
 
-      // Remove from local state (documents are stored locally until contract creation)
+      const documentToRemove = documents.find((doc) => doc.id === documentId);
+      
+      // If it's a pending document in edit mode, delete it from API
+      if (contractId && documentToRemove?.documentId && documentToRemove.status === "pending") {
+        try {
+          await documentApi.deletePendingDocuments([documentToRemove.documentId]);
+          console.log("✅ Deleted pending document from API");
+          
+          // Remove from pending document IDs
+          const updatedPendingIds = pendingDocumentIds.filter(
+            (id) => id !== documentToRemove.documentId
+          );
+          setPendingDocumentIds(updatedPendingIds);
+          onPendingDocumentIdsChange?.(updatedPendingIds);
+        } catch (error) {
+          console.error("Failed to delete pending document from API:", error);
+          // Continue with local removal even if API call fails
+        }
+      }
+
+      // Remove from local state
       const updatedDocuments = documents.filter((doc) => doc.id !== documentId);
       onDocumentsChange(updatedDocuments);
 
@@ -347,39 +403,97 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     // Check if expiry date is not in the past
     const today = new Date().toISOString().split("T")[0];
     if (documentExpiryDate < today) {
-      setUploadError("Expiry date cannot be in the past. Please select a valid date.");
+      setUploadError(
+        "Expiry date cannot be in the past. Please select a valid date."
+      );
       return;
     }
 
     // Clear any previous errors
     setUploadError("");
 
-    // Store document locally (no API call - documents will be uploaded with contract creation)
-    const newDocument: ContractDocument = {
-      id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: pendingFile.name,
-      type: pendingFile.type,
-      size: pendingFile.size,
-      file: pendingFile,
-      category: selectedCategory,
-      description: documentDescription,
-      expiryDate: documentExpiryDate,
-      isRequired: REQUIRED_DOCUMENTS.some(
-        (doc) => doc.category === selectedCategory
-      ),
-      status: "pending", // Will be uploaded with contract creation
-      uploadedAt: new Date(),
-    };
+    // For edit mode (contractId exists), upload immediately with PENDING status
+    if (contractId) {
+      try {
+        // Map category to document type
+        const documentType = selectedCategory; // Category already matches document type
+        
+        // Upload document immediately with PENDING status
+        const uploadedDoc = await documentApi.uploadPendingDocument(pendingFile, {
+          type: documentType,
+          title: pendingFile.name,
+          description: documentDescription,
+          contractId: contractId,
+          expiryDate: documentExpiryDate,
+        });
 
-    console.log("📄 Document added locally (will be uploaded with contract):");
-    console.log("  📁 File:", pendingFile.name);
-    console.log("  📂 Category:", selectedCategory);
-    console.log("  📅 Expiry Date:", documentExpiryDate);
+        console.log("✅ Uploaded pending document:", uploadedDoc);
 
-    const updatedDocuments = [...documents, newDocument];
-    onDocumentsChange(updatedDocuments);
+        // Create document object from uploaded document
+        const newDocument: ContractDocument = {
+          id: uploadedDoc.id,
+          name: pendingFile.name,
+          type: pendingFile.type,
+          size: pendingFile.size,
+          file: pendingFile,
+          documentId: uploadedDoc.id,
+          fileName: uploadedDoc.fileName || uploadedDoc.title,
+          category: selectedCategory,
+          description: documentDescription,
+          expiryDate: documentExpiryDate,
+          isRequired: REQUIRED_DOCUMENTS.some(
+            (doc) => doc.category === selectedCategory
+          ),
+          status: "pending", // PENDING until contract update is confirmed
+          uploadedAt: new Date(uploadedDoc.createdAt),
+          version: (uploadedDoc as any).version || 1,
+          isCurrent: (uploadedDoc as any).isCurrent || false,
+        };
 
-    showSuccess(`Document "${pendingFile.name}" added successfully`);
+        const updatedDocuments = [...documents, newDocument];
+        onDocumentsChange(updatedDocuments);
+
+        // Update pending document IDs
+        const newPendingIds = [...pendingDocumentIds, uploadedDoc.id];
+        setPendingDocumentIds(newPendingIds);
+        onPendingDocumentIdsChange?.(newPendingIds);
+
+        showSuccess(
+          `Document "${pendingFile.name}" uploaded. Click Save to confirm changes.`
+        );
+      } catch (error) {
+        console.error("Failed to upload document:", error);
+        setUploadError("Failed to upload document. Please try again.");
+        return;
+      }
+    } else {
+      // For create mode (no contractId), store document locally
+      const newDocument: ContractDocument = {
+        id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: pendingFile.name,
+        type: pendingFile.type,
+        size: pendingFile.size,
+        file: pendingFile,
+        category: selectedCategory,
+        description: documentDescription,
+        expiryDate: documentExpiryDate,
+        isRequired: REQUIRED_DOCUMENTS.some(
+          (doc) => doc.category === selectedCategory
+        ),
+        status: "pending", // Will be uploaded with contract creation
+        uploadedAt: new Date(),
+      };
+
+      console.log("📄 Document added locally (will be uploaded with contract):");
+      console.log("  📁 File:", pendingFile.name);
+      console.log("  📂 Category:", selectedCategory);
+      console.log("  📅 Expiry Date:", documentExpiryDate);
+
+      const updatedDocuments = [...documents, newDocument];
+      onDocumentsChange(updatedDocuments);
+
+      showSuccess(`Document "${pendingFile.name}" added successfully`);
+    }
 
     // Reset and close dialog
     setPendingFile(null);
@@ -398,23 +512,140 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setIsTypeDialogOpen(false);
   };
 
-  // Replace document locally (documents are stored locally until contract creation)
-  const handleReplaceDocument = (documentId: string, newFile: File) => {
-    const updatedDocuments = documents.map((doc) => {
-      if (doc.id === documentId) {
-        return {
-          ...doc,
+  // Replace document - supports both create mode (local) and edit mode (optimistic update)
+  const handleReplaceDocument = async (document: ContractDocument, newFile: File) => {
+    const defaultExpiryDate = new Date();
+    defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
+    const formattedDate = defaultExpiryDate.toISOString().split('T')[0];
+
+    // For edit mode (contractId exists), upload immediately with PENDING status
+    if (contractId && document.documentId) {
+      try {
+        setReplacingDocumentId(document.id);
+        
+        // Upload document immediately with PENDING status as replacement
+        const uploadedDoc = await documentApi.uploadPendingDocument(newFile, {
+          type: document.category,
+          title: newFile.name,
+          description: document.description || '',
+          contractId: contractId,
+          replacesDocumentId: document.documentId,
+          expiryDate: formattedDate,
+        });
+
+        console.log('✅ Uploaded pending replacement document:', uploadedDoc);
+
+        // Create pending replacement document
+        const pendingReplacement: ContractDocument = {
+          id: uploadedDoc.id,
           name: newFile.name,
-          file: newFile,
-          size: newFile.size,
           type: newFile.type,
+          size: newFile.size,
+          file: newFile,
+          documentId: uploadedDoc.id,
+          fileName: uploadedDoc.fileName || uploadedDoc.title,
+          category: document.category,
+          description: document.description,
+          expiryDate: formattedDate,
+          isRequired: document.isRequired,
+          status: 'pending',
+          uploadedAt: new Date(uploadedDoc.createdAt),
+          parentDocumentId: document.documentId,
         };
+
+        // Mark old document as having a pending replacement
+        const updatedDocuments = documents.map((doc) => {
+          if (doc.id === document.id) {
+            return {
+              ...doc,
+              isPendingReplacement: true,
+              pendingReplacementId: uploadedDoc.id,
+            };
+          }
+          return doc;
+        });
+
+        // Add pending replacement to documents list
+        updatedDocuments.push(pendingReplacement);
+        onDocumentsChange(updatedDocuments);
+
+        // Update pending document IDs
+        const newPendingIds = [...pendingDocumentIds, uploadedDoc.id];
+        setPendingDocumentIds(newPendingIds);
+        onPendingDocumentIdsChange?.(newPendingIds);
+
+        showSuccess("Document replacement uploaded. Click Save to confirm.");
+      } catch (error) {
+        console.error('Failed to upload replacement document:', error);
+        showError('Failed to upload replacement document. Please try again.');
+      } finally {
+        setReplacingDocumentId(null);
       }
-      return doc;
-    });
+    } else {
+      // For create mode (no contractId), just replace locally
+      const updatedDocuments = documents.map((doc) => {
+        if (doc.id === document.id) {
+          return {
+            ...doc,
+            name: newFile.name,
+            file: newFile,
+            size: newFile.size,
+            type: newFile.type,
+          };
+        }
+        return doc;
+      });
+
+      onDocumentsChange(updatedDocuments);
+      showSuccess("Document replaced successfully");
+    }
+  };
+
+  const handleReplaceClick = (document: ContractDocument) => {
+    const input = window.document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf,image/*';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        await handleReplaceDocument(document, file);
+      }
+    };
+    input.click();
+  };
+
+  const handleCancelReplacement = async (document: ContractDocument) => {
+    if (!document.pendingReplacementId) return;
+
+    // Delete pending document if it was uploaded
+    if (contractId && document.pendingReplacementId) {
+      try {
+        await documentApi.deletePendingDocuments([document.pendingReplacementId]);
+      } catch (error) {
+        console.error('Failed to delete pending document:', error);
+      }
+    }
+
+    // Remove pending replacement from documents
+    const updatedDocuments = documents
+      .filter((d) => d.id !== document.pendingReplacementId)
+      .map((d) => {
+        if (d.id === document.id) {
+          return {
+            ...d,
+            isPendingReplacement: false,
+            pendingReplacementId: undefined,
+          };
+        }
+        return d;
+      });
 
     onDocumentsChange(updatedDocuments);
-    showSuccess("Document replaced successfully");
+
+    // Update pending document IDs
+    const newPendingIds = pendingDocumentIds.filter(id => id !== document.pendingReplacementId);
+    setPendingDocumentIds(newPendingIds);
+    onPendingDocumentIdsChange?.(newPendingIds);
   };
 
   const getFileIcon = (fileType: string) => {
@@ -468,27 +699,40 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
   // Helper function to properly join URLs
   const buildFullUrl = useCallback((relativePath: string) => {
-    const baseUrl = getApiUrl().replace(/\/$/, ''); // Remove trailing slash
-    const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+    const baseUrl = getApiUrl().replace(/\/$/, ""); // Remove trailing slash
+    const path = relativePath.startsWith("/")
+      ? relativePath
+      : `/${relativePath}`;
     return `${baseUrl}${path}`;
   }, []);
 
   // Handle vehicle document preview
-  const handlePreviewVehicleDocument = useCallback((document: any) => {
-    console.log('🔍 Opening vehicle document preview:', document);
-    console.log('  📄 Preview URL:', document.previewUrl);
-    console.log('  📥 Download URL:', document.downloadUrl);
-    console.log('  🌐 Full Preview URL:', buildFullUrl(document.previewUrl || document.downloadUrl));
-    setPreviewDocument(document);
-  }, [buildFullUrl]);
+  const handlePreviewVehicleDocument = useCallback(
+    (document: any) => {
+      console.log("🔍 Opening vehicle document preview:", document);
+      console.log("  📄 Preview URL:", document.previewUrl);
+      console.log("  📥 Download URL:", document.downloadUrl);
+      console.log(
+        "  🌐 Full Preview URL:",
+        buildFullUrl(document.previewUrl || document.downloadUrl)
+      );
+      setPreviewDocument(document);
+    },
+    [buildFullUrl]
+  );
 
   // Handle customer document preview
-  const handlePreviewCustomerDocument = useCallback((document: any) => {
-    console.log('🔍 Opening customer document preview:', document);
-    // Open document preview in new tab using the document ID
-    const previewUrl = buildFullUrl(`/documents/${document.id}/preview`);
-    window.open(previewUrl, '_blank');
-  }, [buildFullUrl]);
+  const handlePreviewCustomerDocument = useCallback(
+    (document: any) => {
+      console.log("🔍 Opening customer document preview:", document);
+      // Open document preview in new tab using the document ID
+      const previewUrl = buildFullUrl(`/documents/${document.id}/preview`);
+      window.open(previewUrl, "_blank");
+    },
+    [buildFullUrl]
+  );
+
+  console.log("documents", documents);
 
   return (
     <Box>
@@ -513,173 +757,215 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           📋 Document Requirements Updated
         </Typography>
         <Typography variant="body2">
-          • Customer documents (ID Card, Registration) are automatically provided from the selected customer.<br />
-          • Vehicle-related documents (Insurance, TPL, CASCO) are automatically provided from the selected vehicle.<br />
-          • Endorser documents are optional and not required for contract creation.
+          • Customer documents (ID Card, Registration) are automatically
+          provided from the selected customer.
+          <br />
+          • Vehicle-related documents (Insurance, TPL, CASCO) are automatically
+          provided from the selected vehicle.
+          <br />• Endorser documents are optional and not required for contract
+          creation.
         </Typography>
       </Alert>
 
       {/* Customer Documents Section */}
-      {customerData && customerData.documents && customerData.documents.length > 0 && (
-        <Card sx={{ mb: 3, border: '2px solid', borderColor: 'primary.main', bgcolor: 'primary.50' }}>
-          <CardContent>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ display: "flex", alignItems: "center", gap: 1, color: 'primary.main' }}
-            >
-              <CheckCircle />
-              Customer Documents (Already Available)
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              The following documents are already associated with the selected customer:
-            </Typography>
-            
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                👤 {customerData.name} ({customerData.type})
+      {customerData &&
+        customerData.documents &&
+        customerData.documents.length > 0 && (
+          <Card
+            sx={{
+              mb: 3,
+              border: "2px solid",
+              borderColor: "primary.main",
+              bgcolor: "primary.50",
+            }}
+          >
+            <CardContent>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  color: "primary.main",
+                }}
+              >
+                <CheckCircle />
+                Customer Documents (Already Available)
               </Typography>
-              <Grid container spacing={1}>
-                {customerData.documents.map((doc) => (
-                  <Grid item xs={12} sm={6} md={4} key={doc.id}>
-                    <Card 
-                      variant="outlined" 
-                      sx={{ 
-                        p: 1, 
-                        border: '1px solid', 
-                        borderColor: 'primary.main',
-                        bgcolor: 'primary.50',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1
-                      }}
-                    >
-                      <CheckCircle color="primary" fontSize="small" />
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontWeight: 600,
-                            display: 'block',
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {doc.type.replace(/_/g, ' ').toUpperCase()}
-                        </Typography>
-                        <Typography 
-                          variant="caption" 
-                          color="text.secondary"
-                          sx={{ 
-                            display: 'block',
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {doc.title}
-                        </Typography>
-                      </Box>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handlePreviewCustomerDocument(doc)}
-                        sx={{ ml: 'auto' }}
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                The following documents are already associated with the selected
+                customer:
+              </Typography>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                  👤 {customerData.name} ({customerData.type})
+                </Typography>
+                <Grid container spacing={1}>
+                  {customerData.documents.map((doc) => (
+                    <Grid item xs={12} sm={6} md={4} key={doc.id}>
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          p: 1,
+                          border: "1px solid",
+                          borderColor: "primary.main",
+                          bgcolor: "primary.50",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                        }}
                       >
-                        <Visibility fontSize="small" />
-                      </IconButton>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
+                        <CheckCircle color="primary" fontSize="small" />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontWeight: 600,
+                              display: "block",
+                              textOverflow: "ellipsis",
+                              overflow: "hidden",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {doc.type.replace(/_/g, " ").toUpperCase()}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              display: "block",
+                              textOverflow: "ellipsis",
+                              overflow: "hidden",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {doc.title}
+                          </Typography>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handlePreviewCustomerDocument(doc)}
+                          sx={{ ml: "auto" }}
+                        >
+                          <Visibility fontSize="small" />
+                        </IconButton>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Vehicle Documents Section */}
-      {vehicleData && vehicleData.length > 0 && vehicleData.some(v => v.documents && v.documents.length > 0) && (
-        <Card sx={{ mb: 3, border: '2px solid', borderColor: 'success.main', bgcolor: 'success.50' }}>
-          <CardContent>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ display: "flex", alignItems: "center", gap: 1, color: 'success.main' }}
-            >
-              <CheckCircle />
-              Vehicle Documents (Already Available)
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              The following documents are already associated with the selected vehicle(s):
-            </Typography>
-            
-            {vehicleData.map((vehicle) => (
-              vehicle.documents && vehicle.documents.length > 0 && (
-                <Box key={vehicle.id} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                    📋 {vehicle.year} {vehicle.make} {vehicle.model} - {vehicle.licensePlate}
-                  </Typography>
-                  <Grid container spacing={1}>
-                    {vehicle.documents.map((doc) => (
-                      <Grid item xs={12} sm={6} md={4} key={doc.id}>
-                        <Card 
-                          variant="outlined" 
-                          sx={{ 
-                            p: 1, 
-                            border: '1px solid', 
-                            borderColor: 'success.main',
-                            bgcolor: 'success.50',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
-                          }}
-                        >
-                          <CheckCircle color="success" fontSize="small" />
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography 
-                              variant="caption" 
-                              sx={{ 
-                                fontWeight: 600,
-                                display: 'block',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap'
+      {vehicleData &&
+        vehicleData.length > 0 &&
+        vehicleData.some((v) => v.documents && v.documents.length > 0) && (
+          <Card
+            sx={{
+              mb: 3,
+              border: "2px solid",
+              borderColor: "success.main",
+              bgcolor: "success.50",
+            }}
+          >
+            <CardContent>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  color: "success.main",
+                }}
+              >
+                <CheckCircle />
+                Vehicle Documents (Already Available)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                The following documents are already associated with the selected
+                vehicle(s):
+              </Typography>
+
+              {vehicleData.map(
+                (vehicle) =>
+                  vehicle.documents &&
+                  vehicle.documents.length > 0 && (
+                    <Box key={vehicle.id} sx={{ mb: 2 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ mb: 1, fontWeight: 600 }}
+                      >
+                        📋 {vehicle.year} {vehicle.make} {vehicle.model} -{" "}
+                        {vehicle.licensePlate}
+                      </Typography>
+                      <Grid container spacing={1}>
+                        {vehicle.documents.map((doc) => (
+                          <Grid item xs={12} sm={6} md={4} key={doc.id}>
+                            <Card
+                              variant="outlined"
+                              sx={{
+                                p: 1,
+                                border: "1px solid",
+                                borderColor: "success.main",
+                                bgcolor: "success.50",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
                               }}
                             >
-                              {doc.type}
-                            </Typography>
-                            <Typography 
-                              variant="caption" 
-                              color="text.secondary"
-                              sx={{ 
-                                display: 'block',
-                                textOverflow: 'ellipsis',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              {doc.title}
-                            </Typography>
-                          </Box>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handlePreviewVehicleDocument(doc)}
-                            sx={{ ml: 'auto' }}
-                          >
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                        </Card>
+                              <CheckCircle color="success" fontSize="small" />
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    fontWeight: 600,
+                                    display: "block",
+                                    textOverflow: "ellipsis",
+                                    overflow: "hidden",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {doc.type}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{
+                                    display: "block",
+                                    textOverflow: "ellipsis",
+                                    overflow: "hidden",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {doc.title}
+                                </Typography>
+                              </Box>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() =>
+                                  handlePreviewVehicleDocument(doc)
+                                }
+                                sx={{ ml: "auto" }}
+                              >
+                                <Visibility fontSize="small" />
+                              </IconButton>
+                            </Card>
+                          </Grid>
+                        ))}
                       </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )
-            ))}
-          </CardContent>
-        </Card>
-      )}
+                    </Box>
+                  )
+              )}
+            </CardContent>
+          </Card>
+        )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -700,7 +986,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           information will not be associated.
         </Alert>
       )}
-
 
       {/* Missing Required Documents Alert */}
       {missingRequired.length > 0 && (
@@ -726,6 +1011,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           </Box>
         </Alert>
       )}
+
+      
 
       {/* Document Upload Area */}
       <Paper
@@ -864,6 +1151,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         </Box>
       )}
 
+     
+
       {/* Uploaded Documents List */}
       {documents.length > 0 && (
         <Box sx={{ mt: 3 }}>
@@ -872,97 +1161,281 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           </Typography>
 
           <List>
-            {documents.map((document) => (
-              <ListItem
-                key={document.id}
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  mb: 1,
-                  bgcolor: "background.paper",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
-                  {getFileIcon(document.type)}
-                </Box>
+            {documents.map((document) => {
+              // Skip pending replacements in main list - they're shown with their parent
+              if (document.parentDocumentId && document.status === "pending") {
+                return null;
+              }
 
-                <ListItemText
-                  primary={
-                    <Box>
-                      <Typography variant="body2" fontWeight={500}>
-                        {document.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatFileSize(document.size)} • {document.category} •{" "}
-                        {document.uploadedAt?.toLocaleDateString()}
-                      </Typography>
+              const pendingReplacement = document.pendingReplacementId
+                ? documents.find((d) => d.id === document.pendingReplacementId)
+                : null;
+
+              return (
+                <React.Fragment key={document.id}>
+                  <ListItem
+                    sx={{
+                      border: "1px solid",
+                      borderColor: document.isPendingReplacement
+                        ? "warning.main"
+                        : "divider",
+                      borderRadius: 1,
+                      mb: 1,
+                      bgcolor: document.isPendingReplacement
+                        ? "warning.50"
+                        : "background.paper",
+                      opacity: document.isPendingReplacement ? 0.7 : 1,
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", mr: 2 }}>
+                      {getFileIcon(document.type)}
                     </Box>
-                  }
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      <Chip
-                        label={document.status}
-                        size="small"
-                        color={getStatusColor(document.status)}
-                        icon={getStatusIcon(document.status)}
-                        sx={{ mr: 1 }}
-                      />
-                      {document.isRequired && (
-                        <Chip
-                          label="Required"
+
+                    <ListItemText
+                      primary={
+                        <Box>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <Typography variant="body2" fontWeight={500}>
+                              {document.name}
+                            </Typography>
+                            {document.isPendingReplacement && (
+                              <Chip
+                                label="Will be replaced"
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatFileSize(document.size)} •{" "}
+                            {document.category} •{" "}
+                            {document.uploadedAt?.toLocaleDateString() ||
+                              "Existing"}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <Box sx={{ mt: 1 }}>
+                          <Chip
+                            label={document.status}
+                            size="small"
+                            color={getStatusColor(document.status)}
+                            icon={getStatusIcon(document.status)}
+                            sx={{ mr: 1 }}
+                          />
+                          {document.isRequired && (
+                            <Chip
+                              label="Required"
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ mr: 1 }}
+                            />
+                          )}
+                        </Box>
+                      }
+                    />
+
+                    <ListItemSecondaryAction>
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        {document.file ? (
+                          <>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                const url = URL.createObjectURL(document.file!);
+                                window.open(url, "_blank");
+                              }}
+                              title="Preview document"
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                const url = URL.createObjectURL(document.file!);
+                                const a = window.document.createElement("a");
+                                a.href = url;
+                                a.download = document.name;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                              title="Download document"
+                            >
+                              <Download fontSize="small" />
+                            </IconButton>
+                          </>
+                        ) : document.documentId ? (
+                          <>
+                            <IconButton
+                              size="small"
+                              onClick={async () => {
+                                try {
+                                  const blob =
+                                    await documentApi.downloadDocument(
+                                      document.documentId!
+                                    );
+                                  const blobUrl =
+                                    window.URL.createObjectURL(blob);
+                                  window.open(blobUrl, "_blank");
+                                  setTimeout(
+                                    () => window.URL.revokeObjectURL(blobUrl),
+                                    100
+                                  );
+                                } catch (error) {
+                                  showError("Failed to preview document");
+                                }
+                              }}
+                              title="Preview document"
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={async () => {
+                                try {
+                                  const blob =
+                                    await documentApi.downloadDocument(
+                                      document.documentId!
+                                    );
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = window.document.createElement("a");
+                                  a.href = url;
+                                  a.download = document.name;
+                                  a.click();
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  showError("Failed to download document");
+                                }
+                              }}
+                              title="Download document"
+                            >
+                              <Download fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleReplaceClick(document)}
+                              color="primary"
+                              title="Replace document"
+                              disabled={
+                                replacingDocumentId === document.id ||
+                                document.isPendingReplacement
+                              }
+                            >
+                              {replacingDocumentId === document.id ? (
+                                <CircularProgress size={20} />
+                              ) : (
+                                <SwapHoriz fontSize="small" />
+                              )}
+                            </IconButton>
+                          </>
+                        ) : null}
+                        <IconButton
                           size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-                  }
-                />
+                          onClick={() => handleDeleteClick(document)}
+                          color="error"
+                          title="Delete document"
+                          disabled={
+                            deletingDocumentId === document.id ||
+                            document.isPendingReplacement
+                          }
+                        >
+                          {deletingDocumentId === document.id ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <Delete fontSize="small" />
+                          )}
+                        </IconButton>
+                      </Box>
+                    </ListItemSecondaryAction>
+                  </ListItem>
 
-                <ListItemSecondaryAction>
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        const url = URL.createObjectURL(document.file);
-                        window.open(url, "_blank");
+                  {/* Show pending replacement document below the original */}
+                  {pendingReplacement && (
+                    <ListItem
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "success.main",
+                        borderRadius: 1,
+                        mb: 1,
+                        bgcolor: "success.50",
+                        ml: 4,
                       }}
-                      title="Preview document"
                     >
-                      <Visibility fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        const url = URL.createObjectURL(document.file);
-                        const a = window.document.createElement("a");
-                        a.href = url;
-                        a.download = document.name;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }}
-                      title="Download document"
-                    >
-                      <Download fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(document)}
-                      color="error"
-                      title="Delete document (will ask for confirmation)"
-                      disabled={deletingDocumentId === document.id}
-                    >
-                      {deletingDocumentId === document.id ? (
-                        <CircularProgress size={20} />
-                      ) : (
-                        <Delete fontSize="small" />
-                      )}
-                    </IconButton>
-                  </Box>
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mr: 2 }}
+                      >
+                        {getFileIcon(pendingReplacement.type)}
+                      </Box>
+                      <ListItemText
+                        primary={
+                          <Box>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Typography variant="body2" fontWeight={500}>
+                                {pendingReplacement.name} (New)
+                              </Typography>
+                              <Chip
+                                label="Pending Replacement"
+                                size="small"
+                                color="success"
+                                variant="outlined"
+                              />
+                            </Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {formatFileSize(pendingReplacement.size)} •{" "}
+                              {pendingReplacement.category}
+                            </Typography>
+                          </Box>
+                        }
+                        secondary={
+                          <Box sx={{ mt: 1 }}>
+                            <Chip
+                              label="Pending"
+                              size="small"
+                              color="warning"
+                              sx={{ mr: 1 }}
+                            />
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Will replace "{document.name}" when contract is
+                              saved
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                      <ListItemSecondaryAction>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleCancelReplacement(document)}
+                          color="error"
+                          title="Cancel replacement"
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </List>
         </Box>
       )}
@@ -1048,7 +1521,9 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                   defaultExpiryDate.setFullYear(
                     defaultExpiryDate.getFullYear() + 1
                   );
-                  const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
+                  const formattedDate = defaultExpiryDate
+                    .toISOString()
+                    .split("T")[0];
                   setDocumentExpiryDate(formattedDate);
                   console.log(
                     "🗓️ Auto-set expiry date:",
@@ -1062,12 +1537,25 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                 {ALL_DOCUMENTS.map((doc) => (
                   <MenuItem key={doc.category} value={doc.category}>
                     <Box>
-                      <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography
+                        variant="body1"
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
                         {doc.name}
                         {doc.isRequired ? (
-                          <Chip label="Required" size="small" color="error" variant="outlined" />
+                          <Chip
+                            label="Required"
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                          />
                         ) : (
-                          <Chip label="Optional" size="small" color="info" variant="outlined" />
+                          <Chip
+                            label="Optional"
+                            size="small"
+                            color="info"
+                            variant="outlined"
+                          />
                         )}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
@@ -1116,7 +1604,10 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                 }
               }}
               required
-              error={documentExpiryDate !== "" && documentExpiryDate < new Date().toISOString().split("T")[0]}
+              error={
+                documentExpiryDate !== "" &&
+                documentExpiryDate < new Date().toISOString().split("T")[0]
+              }
               InputLabelProps={{
                 shrink: true,
               }}
@@ -1125,7 +1616,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
               }}
               sx={{ mt: 2 }}
               helperText={
-                documentExpiryDate !== "" && documentExpiryDate < new Date().toISOString().split("T")[0]
+                documentExpiryDate !== "" &&
+                documentExpiryDate < new Date().toISOString().split("T")[0]
                   ? "Expiry date cannot be in the past"
                   : "Please select the expiry date for this document (must be today or in the future)"
               }
@@ -1219,7 +1711,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           maxWidth="md"
           fullWidth
         >
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Visibility />
             Vehicle Document Preview
           </DialogTitle>
@@ -1232,59 +1724,69 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                 {previewDocument.title}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Created: {new Date(previewDocument.createdAt).toLocaleDateString()}
+                Created:{" "}
+                {new Date(previewDocument.createdAt).toLocaleDateString()}
               </Typography>
             </Box>
-            
+
             {/* Preview action buttons */}
             {(previewDocument.previewUrl || previewDocument.downloadUrl) && (
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column',
-                gap: 2,
-                mt: 2,
-                p: 3,
-                border: '1px solid', 
-                borderColor: 'divider',
-                borderRadius: 2,
-                bgcolor: 'background.paper'
-              }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  mt: 2,
+                  p: 3,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  bgcolor: "background.paper",
+                }}
+              >
                 <Typography variant="body2" color="text.secondary">
                   Document preview options:
                 </Typography>
-                
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                   {previewDocument.previewUrl && (
                     <Button
                       variant="contained"
                       startIcon={<Visibility />}
                       onClick={() => {
-                        window.open(buildFullUrl(previewDocument.previewUrl), '_blank');
+                        window.open(
+                          buildFullUrl(previewDocument.previewUrl),
+                          "_blank"
+                        );
                       }}
                     >
                       Open Preview
                     </Button>
                   )}
-                  
+
                   {previewDocument.downloadUrl && (
                     <Button
                       variant="outlined"
                       startIcon={<Download />}
                       onClick={() => {
-                        window.open(buildFullUrl(previewDocument.downloadUrl), '_blank');
+                        window.open(
+                          buildFullUrl(previewDocument.downloadUrl),
+                          "_blank"
+                        );
                       }}
                     >
                       Download
                     </Button>
                   )}
                 </Box>
-                
+
                 <Alert severity="info" sx={{ mt: 1 }}>
-                  Due to browser security restrictions, the document will open in a new tab for preview.
+                  Due to browser security restrictions, the document will open
+                  in a new tab for preview.
                 </Alert>
               </Box>
             )}
-            
+
             {/* Show message if no preview available */}
             {!previewDocument.previewUrl && !previewDocument.downloadUrl && (
               <Alert severity="warning" sx={{ mt: 2 }}>
@@ -1293,7 +1795,10 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setPreviewDocument(null)} variant="contained">
+            <Button
+              onClick={() => setPreviewDocument(null)}
+              variant="contained"
+            >
               Close
             </Button>
           </DialogActions>
@@ -1302,3 +1807,4 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     </Box>
   );
 };
+
