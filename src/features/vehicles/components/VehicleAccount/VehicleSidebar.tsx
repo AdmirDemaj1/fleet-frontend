@@ -30,6 +30,7 @@ import { format } from 'date-fns';
 import { Vehicle, VehicleStatus } from '../../types/vehicleType';
 import { BrandLogo } from '../../../../shared/components';
 import { hasBrandLogo } from '../../../../shared/utils/brandLogos';
+import { NonActiveDocuments } from '../../../../shared/components/NonActiveDocuments';
 
 interface VehicleSidebarProps {
   vehicle: Vehicle;
@@ -395,6 +396,12 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
           )}
         </List>
       </Box>
+
+      {/* Non-Active Documents Section */}
+      <NonActiveDocuments
+        entityType="vehicle"
+        entityId={vehicle.id}
+      />
     </Paper>
   );
 };

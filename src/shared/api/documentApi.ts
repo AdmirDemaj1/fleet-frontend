@@ -84,6 +84,66 @@ export const documentApi = {
     }
   },
 
+  // Get non-active documents by customer ID
+  getNonActiveCustomerDocuments: async (
+    customerId: string
+  ): Promise<Document[]> => {
+    try {
+      const response = await api.get<Document[]>(
+        `/documents/non-active/customer/${customerId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching non-active customer documents:", error);
+      throw error;
+    }
+  },
+
+  // Get non-active documents by vehicle ID
+  getNonActiveVehicleDocuments: async (
+    vehicleId: string
+  ): Promise<Document[]> => {
+    try {
+      const response = await api.get<Document[]>(
+        `/documents/non-active/vehicle/${vehicleId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching non-active vehicle documents:", error);
+      throw error;
+    }
+  },
+
+  // Get non-active documents by contract ID
+  getNonActiveContractDocuments: async (
+    contractId: string
+  ): Promise<Document[]> => {
+    try {
+      const response = await api.get<Document[]>(
+        `/documents/non-active/contract/${contractId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching non-active contract documents:", error);
+      throw error;
+    }
+  },
+
+  // Get non-active documents by administrator ID
+  getNonActiveAdministratorDocuments: async (
+    administratorId: string
+  ): Promise<Document[]> => {
+    try {
+      const response = await api.get<Document[]>(
+        `/documents/non-active/administrator/${administratorId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching non-active administrator documents:", error);
+      throw error;
+    }
+  },
+
   // Delete administrator document
   deleteAdministratorDocument: async (
     administratorId: string,

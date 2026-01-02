@@ -36,6 +36,7 @@ import {
 import { format } from "date-fns";
 import { Document } from "../../../shared/types/document.types";
 import { documentApi } from "../../../shared/api/documentApi";
+import { NonActiveDocuments } from "../../../shared/components/NonActiveDocuments";
 
 interface ContractDocumentsProps {
   contractId: string;
@@ -425,6 +426,14 @@ export const ContractDocuments: React.FC<ContractDocumentsProps> = ({
           <ListItemText primary="Download" />
         </MenuItem>
       </Menu>
+
+      {/* Non-Active Documents Section */}
+      <Box sx={{ borderTop: `1px solid ${theme.palette.divider}`, p: 3 }}>
+        <NonActiveDocuments
+          entityType="contract"
+          entityId={contractId}
+        />
+      </Box>
 
     </Box>
   );

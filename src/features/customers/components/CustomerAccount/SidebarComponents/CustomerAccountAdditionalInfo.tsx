@@ -28,6 +28,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { CustomerType, Administrator } from "../../../types/customer.types";
 import { documentApi } from "../../../../../shared/api/documentApi";
+import { NonActiveDocuments } from "../../../../../shared/components/NonActiveDocuments";
 
 interface CustomerAccountAdditionalInfoProps {
   customerData: any;
@@ -640,6 +641,14 @@ const CustomerAccountAdditionalInfo: React.FC<
               </Button>
             </Box>
           </Box>
+        )}
+
+        {/* Non-Active Documents Section */}
+        {customerData?.id && (
+          <NonActiveDocuments
+            entityType={isAdministrator ? 'administrator' : 'customer'}
+            entityId={customerData.id}
+          />
         )}
     </Box>
   );
