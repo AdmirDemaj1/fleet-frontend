@@ -28,6 +28,21 @@ export const CreateContractPage: React.FC = () => {
       const response = await createContract(contractData).unwrap();
       console.log('Contract creation response:', response);
 
+      // Check for warnings (e.g., amortization plan generation failures)
+      if (response.warnings && Array.isArray(response.warnings) && response.warnings.length > 0) {
+        const warningMessages = response.warnings.join('\n');
+        console.warn('Contract creation warnings:', warningMessages);
+        
+        // Show warnings but don't fail the operation
+        response.warnings.forEach((warning: string) => {
+          if (warning.includes('amortization plan')) {
+            showInfo(`Contract created successfully. Note: ${warning}`);
+          } else {
+            showInfo(`Warning: ${warning}`);
+          }
+        });
+      }
+
       // Get the contract ID from the response
       // Response structure: { requiresApproval: false, data: { contract: { id: "..." }, ... }, message: "...", error: false }
       const contractId = response?.data?.contract?.id || response?.data?.id || response?.contract?.id || response?.id;

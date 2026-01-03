@@ -16,6 +16,9 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   IconButton,
+  Button,
+  Tooltip,
+  CircularProgress,
 } from "@mui/material";
 import {
   AccountBalance,
@@ -24,8 +27,10 @@ import {
   BarChart,
   TableChart,
   Print,
+  Download,
 } from "@mui/icons-material";
 import { ContractResponse } from "../types/contract.types";
+import { useAmortizationPlan } from "../hooks/useAmortizationPlan";
 
 interface PaymentScheduleItem {
   period: number;
@@ -39,22 +44,31 @@ interface ContractPaymentScheduleProps {
   contract: ContractResponse;
 }
 
-export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = ({
-  contract,
-}) => {
+export const ContractPaymentSchedule: React.FC<
+  ContractPaymentScheduleProps
+> = ({ contract }) => {
   const theme = useTheme();
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const {
+    planInfo,
+    loading: planLoading,
+    downloading,
+    downloadPlan,
+    hasPlan,
+  } = useAmortizationPlan(contract.id);
 
   // Print function for the payment schedule table
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
     const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Payment Schedule - Contract ${contract.contractNumber || contract.id}</title>
+          <title>Payment Schedule - Contract ${
+            contract.contractNumber || contract.id
+          }</title>
           <style>
             @media print {
               @page { margin: 0.5in; }
@@ -303,7 +317,9 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
           <div class="letterhead">
             <div class="letterhead-content">
               <div class="company-logo">
-                <img src="${window.location.origin}/images/logo/antigone-logo-exact.png" alt="Antigone Logo" />
+                <img src="${
+                  window.location.origin
+                }/images/logo/antigone-logo-exact.png" alt="Antigone Logo" />
               </div>
             </div>
           </div>
@@ -319,23 +335,32 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
             <div class="contract-info-grid">
               <div class="contract-info-item">
                 <span class="contract-info-label">Contract Number:</span>
-                <span class="contract-info-value">${contract.contractNumber || contract.id}</span>
+                <span class="contract-info-value">${
+                  contract.contractNumber || contract.id
+                }</span>
               </div>
               <div class="contract-info-item">
                 <span class="contract-info-label">Generated Date:</span>
-                <span class="contract-info-value">${new Date().toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}</span>
+                <span class="contract-info-value">${new Date().toLocaleDateString(
+                  "en-US",
+                  {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  }
+                )}</span>
               </div>
               <div class="contract-info-item">
                 <span class="contract-info-label">Contract Type:</span>
-                <span class="contract-info-value">${contract.type?.toUpperCase() || 'LOAN'}</span>
+                <span class="contract-info-value">${
+                  contract.type?.toUpperCase() || "LOAN"
+                }</span>
               </div>
               <div class="contract-info-item">
                 <span class="contract-info-label">Status:</span>
-                <span class="contract-info-value">${contract.status?.toUpperCase() || 'ACTIVE'}</span>
+                <span class="contract-info-value">${
+                  contract.status?.toUpperCase() || "ACTIVE"
+                }</span>
               </div>
             </div>
           </div>
@@ -345,22 +370,30 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
             <div class="summary-item primary">
               <div class="icon">€</div>
               <div class="label">Monthly Payment</div>
-              <div class="value">${formatCurrency(summaryStats?.monthlyPayment || 0)}</div>
+              <div class="value">${formatCurrency(
+                summaryStats?.monthlyPayment || 0
+              )}</div>
             </div>
             <div class="summary-item success">
               <div class="icon">↗</div>
               <div class="label">Total Principal</div>
-              <div class="value">${formatCurrency(summaryStats?.totalPrincipal || 0)}</div>
+              <div class="value">${formatCurrency(
+                summaryStats?.totalPrincipal || 0
+              )}</div>
             </div>
             <div class="summary-item info">
               <div class="icon">%</div>
               <div class="label">Total Interest</div>
-              <div class="value">${formatCurrency(summaryStats?.totalInterest || 0)}</div>
+              <div class="value">${formatCurrency(
+                summaryStats?.totalInterest || 0
+              )}</div>
             </div>
             <div class="summary-item warning">
               <div class="icon">Σ</div>
               <div class="label">Total Payments</div>
-              <div class="value">${formatCurrency(summaryStats?.totalPayments || 0)}</div>
+              <div class="value">${formatCurrency(
+                summaryStats?.totalPayments || 0
+              )}</div>
             </div>
           </div>
 
@@ -377,7 +410,9 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                 </tr>
               </thead>
               <tbody>
-                ${paymentSchedule.map(row => `
+                ${paymentSchedule
+                  .map(
+                    (row) => `
                   <tr>
                     <td class="period-cell">${row.period}</td>
                     <td>${formatCurrency(row.payment)}</td>
@@ -385,7 +420,9 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                     <td>${formatCurrency(row.principal)}</td>
                     <td>${formatCurrency(row.balance)}</td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join("")}
               </tbody>
             </table>
           </div>
@@ -393,7 +430,9 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
           <!-- Enhanced Footer with Branding -->
           <div class="footer">
             <div class="footer-logo">
-              <img src="${window.location.origin}/images/logo/antigone-logo-exact.png" alt="Antigone" />
+              <img src="${
+                window.location.origin
+              }/images/logo/antigone-logo-exact.png" alt="Antigone" />
             </div>
             <p class="footer-text">
               This payment schedule was automatically generated by Antigone Fleet Management System.
@@ -419,17 +458,18 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
   // Calculate amortization schedule
   const paymentSchedule = useMemo<PaymentScheduleItem[]>(() => {
     const principal = parseFloat(contract.totalAmount || "0");
-    
+
     // Extract rate and term from different contract types or use defaults
     let annualRate = 0.05; // Default 5% annual rate
     let termMonths = 12; // Default 12 months
-    
+
     // Try to get values from contract or calculate from dates
     if (contract.startDate && contract.endDate) {
       const startDate = new Date(contract.startDate);
       const endDate = new Date(contract.endDate);
-      const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                        (endDate.getMonth() - startDate.getMonth());
+      const monthsDiff =
+        (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        (endDate.getMonth() - startDate.getMonth());
       termMonths = monthsDiff > 0 ? monthsDiff : 12;
     }
 
@@ -480,7 +520,7 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
 
     const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
-    const maxAmount = Math.max(...paymentSchedule.map(item => item.payment));
+    const maxAmount = Math.max(...paymentSchedule.map((item) => item.payment));
     const width = 750;
     const height = 420;
     const paddingLeft = 80;
@@ -509,7 +549,14 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
     };
 
     return (
-      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "100%",
+        }}
+      >
         <Box sx={{ position: "relative", zIndex: 1 }}>
           <svg width={width} height={height} style={{ overflow: "visible" }}>
             {/* Background elements - Grid, areas, and lines */}
@@ -529,28 +576,48 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               ))}
 
               {/* Vertical grid lines */}
-              {paymentSchedule.filter((_, i) => i % Math.ceil(paymentSchedule.length / 8) === 0).map((item, index) => (
-                <line
-                  key={`v-grid-${index}`}
-                  x1={paddingLeft + (item.period - 1) / (paymentSchedule.length - 1) * chartWidth}
-                  y1={paddingTop}
-                  x2={paddingLeft + (item.period - 1) / (paymentSchedule.length - 1) * chartWidth}
-                  y2={paddingTop + chartHeight}
-                  stroke={alpha(theme.palette.divider, 0.1)}
-                  strokeWidth={1}
-                />
-              ))}
+              {paymentSchedule
+                .filter(
+                  (_, i) => i % Math.ceil(paymentSchedule.length / 8) === 0
+                )
+                .map((item, index) => (
+                  <line
+                    key={`v-grid-${index}`}
+                    x1={
+                      paddingLeft +
+                      ((item.period - 1) / (paymentSchedule.length - 1)) *
+                        chartWidth
+                    }
+                    y1={paddingTop}
+                    x2={
+                      paddingLeft +
+                      ((item.period - 1) / (paymentSchedule.length - 1)) *
+                        chartWidth
+                    }
+                    y2={paddingTop + chartHeight}
+                    stroke={alpha(theme.palette.divider, 0.1)}
+                    strokeWidth={1}
+                  />
+                ))}
 
               {/* Principal area */}
               <path
-                d={`${createPath(principalPoints)} L ${paddingLeft + chartWidth} ${paddingTop + chartHeight} L ${paddingLeft} ${paddingTop + chartHeight} Z`}
+                d={`${createPath(principalPoints)} L ${
+                  paddingLeft + chartWidth
+                } ${paddingTop + chartHeight} L ${paddingLeft} ${
+                  paddingTop + chartHeight
+                } Z`}
                 fill={alpha(theme.palette.primary.main, 0.1)}
                 stroke="none"
               />
 
               {/* Interest area */}
               <path
-                d={`${createPath(interestPoints)} L ${paddingLeft + chartWidth} ${paddingTop + chartHeight} L ${paddingLeft} ${paddingTop + chartHeight} Z`}
+                d={`${createPath(interestPoints)} L ${
+                  paddingLeft + chartWidth
+                } ${paddingTop + chartHeight} L ${paddingLeft} ${
+                  paddingTop + chartHeight
+                } Z`}
                 fill={alpha(theme.palette.info.main, 0.1)}
                 stroke="none"
               />
@@ -592,19 +659,27 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               ))}
 
               {/* X-axis labels */}
-              {paymentSchedule.filter((_, i) => i % Math.ceil(paymentSchedule.length / 8) === 0).map((item) => (
-                <text
-                  key={item.period}
-                  x={paddingLeft + (item.period - 1) / (paymentSchedule.length - 1) * chartWidth}
-                  y={paddingTop + chartHeight + 18}
-                  textAnchor="middle"
-                  fontSize="12"
-                  fontWeight="500"
-                  fill={theme.palette.text.secondary}
-                >
-                  {item.period}
-                </text>
-              ))}
+              {paymentSchedule
+                .filter(
+                  (_, i) => i % Math.ceil(paymentSchedule.length / 8) === 0
+                )
+                .map((item) => (
+                  <text
+                    key={item.period}
+                    x={
+                      paddingLeft +
+                      ((item.period - 1) / (paymentSchedule.length - 1)) *
+                        chartWidth
+                    }
+                    y={paddingTop + chartHeight + 18}
+                    textAnchor="middle"
+                    fontSize="12"
+                    fontWeight="500"
+                    fill={theme.palette.text.secondary}
+                  >
+                    {item.period}
+                  </text>
+                ))}
 
               {/* Axis lines */}
               <line
@@ -631,7 +706,7 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               {paymentSchedule.map((_, index) => {
                 const principalPoint = principalPoints[index];
                 const interestPoint = interestPoints[index];
-                
+
                 return (
                   <circle
                     key={`hover-area-${index}`}
@@ -651,9 +726,9 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                 const principalPoint = principalPoints[index];
                 const interestPoint = interestPoints[index];
                 const isHovered = hoveredPoint === index;
-                
+
                 if (!isHovered) return null;
-                
+
                 return (
                   <line
                     key={`connection-${index}`}
@@ -673,7 +748,7 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                 const principalPoint = principalPoints[index];
                 const interestPoint = interestPoints[index];
                 const isHovered = hoveredPoint === index;
-                
+
                 return (
                   <g key={`points-${index}`}>
                     {/* Principal point */}
@@ -684,13 +759,15 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                       fill={theme.palette.primary.main}
                       stroke="white"
                       strokeWidth={2}
-                      style={{ 
+                      style={{
                         pointerEvents: "none",
-                        filter: isHovered ? "drop-shadow(0 2px 8px rgba(0,0,0,0.3))" : "none",
-                        transition: "all 0.2s ease"
+                        filter: isHovered
+                          ? "drop-shadow(0 2px 8px rgba(0,0,0,0.3))"
+                          : "none",
+                        transition: "all 0.2s ease",
                       }}
                     />
-                    
+
                     {/* Interest point */}
                     <circle
                       cx={interestPoint.x}
@@ -699,10 +776,12 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                       fill={theme.palette.info.main}
                       stroke="white"
                       strokeWidth={2}
-                      style={{ 
+                      style={{
                         pointerEvents: "none",
-                        filter: isHovered ? "drop-shadow(0 2px 8px rgba(0,0,0,0.3))" : "none",
-                        transition: "all 0.2s ease"
+                        filter: isHovered
+                          ? "drop-shadow(0 2px 8px rgba(0,0,0,0.3))"
+                          : "none",
+                        transition: "all 0.2s ease",
                       }}
                     />
                   </g>
@@ -716,9 +795,9 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                 const principalPoint = principalPoints[index];
                 const interestPoint = interestPoints[index];
                 const isHovered = hoveredPoint === index;
-                
+
                 if (!isHovered) return null;
-                
+
                 return (
                   <g key={`tooltip-${index}`}>
                     {(() => {
@@ -726,21 +805,25 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                       const tooltipWidth = 160;
                       const tooltipHeight = 65;
                       const minY = Math.min(principalPoint.y, interestPoint.y);
-                      
+
                       // Determine horizontal position
                       let tooltipX = principalPoint.x - tooltipWidth / 2;
                       if (tooltipX < paddingLeft) {
                         tooltipX = paddingLeft + 10;
-                      } else if (tooltipX + tooltipWidth > paddingLeft + chartWidth) {
+                      } else if (
+                        tooltipX + tooltipWidth >
+                        paddingLeft + chartWidth
+                      ) {
                         tooltipX = paddingLeft + chartWidth - tooltipWidth - 10;
                       }
-                      
+
                       // Determine vertical position
                       let tooltipY = minY - tooltipHeight - 15;
                       if (tooltipY < paddingTop) {
-                        tooltipY = Math.max(principalPoint.y, interestPoint.y) + 25;
+                        tooltipY =
+                          Math.max(principalPoint.y, interestPoint.y) + 25;
                       }
-                      
+
                       return (
                         <>
                           {/* Tooltip background */}
@@ -753,12 +836,12 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                             stroke={theme.palette.divider}
                             strokeWidth={1}
                             rx={8}
-                            style={{ 
+                            style={{
                               filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.2))",
-                              opacity: 0.98
+                              opacity: 0.98,
                             }}
                           />
-                          
+
                           {/* Period label */}
                           <text
                             x={tooltipX + tooltipWidth / 2}
@@ -770,7 +853,7 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                           >
                             Payment {item.period}
                           </text>
-                          
+
                           {/* Principal amount */}
                           <text
                             x={tooltipX + tooltipWidth / 2}
@@ -780,9 +863,10 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                             fill={theme.palette.primary.main}
                             fontWeight="600"
                           >
-                            Principal: €{Math.round(item.principal).toLocaleString()}
+                            Principal: €
+                            {Math.round(item.principal).toLocaleString()}
                           </text>
-                          
+
                           {/* Interest amount */}
                           <text
                             x={tooltipX + tooltipWidth / 2}
@@ -792,9 +876,10 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                             fill={theme.palette.info.main}
                             fontWeight="600"
                           >
-                            Interest: €{Math.round(item.interest).toLocaleString()}
+                            Interest: €
+                            {Math.round(item.interest).toLocaleString()}
                           </text>
-                          
+
                           {/* Total payment */}
                           <text
                             x={tooltipX + tooltipWidth / 2}
@@ -814,19 +899,17 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               })}
             </g>
           </svg>
-
-
         </Box>
 
         {/* Interactive Instructions */}
-        <Typography 
-          variant="caption" 
-          color="text.secondary" 
-          sx={{ 
-            mt: 2, 
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{
+            mt: 2,
             fontStyle: "italic",
             textAlign: "center",
-            maxWidth: 500
+            maxWidth: 500,
           }}
         >
           Hover over data points to see payment details
@@ -839,9 +922,18 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
   const summaryStats = useMemo(() => {
     if (paymentSchedule.length === 0) return null;
 
-    const totalPayments = paymentSchedule.reduce((sum, item) => sum + item.payment, 0);
-    const totalInterest = paymentSchedule.reduce((sum, item) => sum + item.interest, 0);
-    const totalPrincipal = paymentSchedule.reduce((sum, item) => sum + item.principal, 0);
+    const totalPayments = paymentSchedule.reduce(
+      (sum, item) => sum + item.payment,
+      0
+    );
+    const totalInterest = paymentSchedule.reduce(
+      (sum, item) => sum + item.interest,
+      0
+    );
+    const totalPrincipal = paymentSchedule.reduce(
+      (sum, item) => sum + item.principal,
+      0
+    );
 
     return {
       totalPayments,
@@ -864,7 +956,8 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
         }}
       >
         <Typography variant="body1" color="text.secondary">
-          Unable to calculate payment schedule. Please ensure contract has valid financial data.
+          Unable to calculate payment schedule. Please ensure contract has valid
+          financial data.
         </Typography>
       </Paper>
     );
@@ -881,7 +974,14 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
       }}
     >
       {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 3,
+        }}
+      >
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <Avatar
             sx={{
@@ -904,22 +1004,56 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
           </Box>
         </Box>
 
-        {/* View Toggle */}
-        <ToggleButtonGroup
-          value={viewMode}
-          exclusive
-          onChange={(_, newMode) => newMode && setViewMode(newMode)}
-          size="small"
-        >
-          <ToggleButton value="chart" aria-label="chart view">
-            <BarChart sx={{ fontSize: 18, mr: 1 }} />
-            Chart
-          </ToggleButton>
-          <ToggleButton value="table" aria-label="table view">
-            <TableChart sx={{ fontSize: 18, mr: 1 }} />
-            Table
-          </ToggleButton>
-        </ToggleButtonGroup>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          {/* Download Excel Button */}
+          {hasPlan && (
+            <Tooltip
+              title={
+                planInfo
+                  ? `Download Excel (${planInfo.downloadCount} downloads)`
+                  : "Download Excel"
+              }
+            >
+              <Button
+                variant="outlined"
+                startIcon={
+                  downloading ? <CircularProgress size={16} /> : <Download />
+                }
+                onClick={downloadPlan}
+                disabled={downloading || planLoading}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 2,
+                  borderColor: "success.main",
+                  color: "success.main",
+                  "&:hover": {
+                    borderColor: "success.dark",
+                    bgcolor: alpha(theme.palette.success.main, 0.05),
+                  },
+                }}
+              >
+                {downloading ? "Downloading..." : "Download Excel"}
+              </Button>
+            </Tooltip>
+          )}
+
+          {/* View Toggle */}
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, newMode) => newMode && setViewMode(newMode)}
+            size="small"
+          >
+            <ToggleButton value="chart" aria-label="chart view">
+              <BarChart sx={{ fontSize: 18, mr: 1 }} />
+              Chart
+            </ToggleButton>
+            <ToggleButton value="table" aria-label="table view">
+              <TableChart sx={{ fontSize: 18, mr: 1 }} />
+              Table
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
       </Box>
 
       {/* Summary Statistics */}
@@ -938,10 +1072,15 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               color="text.secondary"
               sx={{ display: "flex", alignItems: "center", mb: 1 }}
             >
-              <AttachMoney sx={{ fontSize: 14, mr: 1, color: "primary.main" }} />
+              <AttachMoney
+                sx={{ fontSize: 14, mr: 1, color: "primary.main" }}
+              />
               Monthly Payment
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "primary.main" }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 700, color: "primary.main" }}
+            >
               {formatCurrency(summaryStats.monthlyPayment)}
             </Typography>
           </Box>
@@ -963,7 +1102,10 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               <TrendingUp sx={{ fontSize: 14, mr: 1, color: "success.main" }} />
               Total Principal
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "success.main" }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 700, color: "success.main" }}
+            >
               {formatCurrency(summaryStats.totalPrincipal)}
             </Typography>
           </Box>
@@ -985,7 +1127,10 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               <BarChart sx={{ fontSize: 14, mr: 1, color: "info.main" }} />
               Total Interest
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "info.main" }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 700, color: "info.main" }}
+            >
               {formatCurrency(summaryStats?.totalInterest || 0)}
             </Typography>
           </Box>
@@ -1004,10 +1149,15 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
               color="text.secondary"
               sx={{ display: "flex", alignItems: "center", mb: 1 }}
             >
-              <AccountBalance sx={{ fontSize: 14, mr: 1, color: "warning.main" }} />
+              <AccountBalance
+                sx={{ fontSize: 14, mr: 1, color: "warning.main" }}
+              />
               Total Payments
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "warning.main" }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 700, color: "warning.main" }}
+            >
               {formatCurrency(summaryStats.totalPayments)}
             </Typography>
           </Box>
@@ -1027,9 +1177,11 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 3 }}>
             Principal vs Interest Over Time
           </Typography>
-          
+
           {/* Legend */}
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 3, mb: 3 }}>
+          <Box
+            sx={{ display: "flex", justifyContent: "center", gap: 3, mb: 3 }}
+          >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Box
                 sx={{
@@ -1058,22 +1210,26 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
             </Box>
           </Box>
 
-          <Box sx={{ 
-            height: 520, 
-            width: "100%", 
-            maxWidth: "100%",
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            overflow: "visible",
-            position: "relative"
-          }}>
-            <Box sx={{ 
-              width: "100%", 
-              maxWidth: 700,
-              display: "flex", 
-              justifyContent: "center" 
-            }}>
+          <Box
+            sx={{
+              height: 520,
+              width: "100%",
+              maxWidth: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "visible",
+              position: "relative",
+            }}
+          >
+            <Box
+              sx={{
+                width: "100%",
+                maxWidth: 700,
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
               <CustomChart />
             </Box>
           </Box>
@@ -1091,7 +1247,14 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
           }}
         >
           <Box sx={{ p: 3, pb: 0 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                 Payment Schedule Details
               </Typography>
@@ -1099,13 +1262,13 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                 onClick={handlePrint}
                 color="primary"
                 size="small"
-                sx={{ 
-                  border: 1, 
-                  borderColor: 'primary.main',
-                  '&:hover': {
-                    backgroundColor: 'primary.light',
-                    color: 'white'
-                  }
+                sx={{
+                  border: 1,
+                  borderColor: "primary.main",
+                  "&:hover": {
+                    backgroundColor: "primary.light",
+                    color: "white",
+                  },
                 }}
               >
                 <Print />
@@ -1229,7 +1392,8 @@ export const ContractPaymentSchedule: React.FC<ContractPaymentScheduleProps> = (
                       align="right"
                       sx={{
                         fontWeight: 500,
-                        color: row.balance === 0 ? "success.main" : "text.primary",
+                        color:
+                          row.balance === 0 ? "success.main" : "text.primary",
                       }}
                     >
                       {formatCurrency(row.balance)}
