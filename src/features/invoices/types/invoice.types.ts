@@ -10,6 +10,7 @@ export enum PaymentStatus {
 export enum PaymentType {
   SCHEDULED = 'scheduled',
   MANUAL = 'manual',
+  EXTRA = 'extra',
   LATE_FEE = 'late_fee',
   PENALTY = 'penalty',
   REFUND = 'refund',
@@ -48,6 +49,7 @@ export interface Payment {
   creditedAmount?: number | string;
   principalAmount?: number | string;
   interestAmount?: number | string;
+  paymentNumber?: number | null;
   recalculationHistory?: RecalculationHistoryEntry[];
 }
 
@@ -102,6 +104,16 @@ export interface RegisterPaymentDto {
   notes?: string;
   paymentMethod?: string;
   transactionReference?: string;
+}
+
+export interface CreatePrepaymentDto {
+  contractId: string;
+  amount: number;
+  paymentDate: string;
+  paymentMethod: 'cash' | 'bank_transfer' | 'online_banking' | 'credit_card' | 'debit_card' | 'check' | 'other';
+  transactionReference?: string;
+  notes?: string;
+  prepaymentOption?: 'reduce_term' | 'reduce_payment';
 }
 
 export interface PaymentFilters {

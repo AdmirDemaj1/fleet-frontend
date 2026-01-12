@@ -4,12 +4,14 @@ import {
   PaymentWithCreditResponse,
   PaymentQueryParams,
   CreatePaymentDto,
+  CreatePrepaymentDto,
   UpdatePaymentDto,
   MarkPaymentPaidDto,
   MarkPaymentPaidWithCreditDto,
   RegisterPaymentDto,
   CustomerCreditBalance,
   PaymentStatus,
+  PaymentType,
 } from "../types/invoice.types";
 
 import { getApiUrl } from "../../../shared/utils/env";
@@ -136,15 +138,17 @@ export const paymentsApi = createApi({
       {
         contractId: string;
         status?: PaymentStatus;
+        type?: PaymentType | 'extra';
         limit?: number;
         page?: number;
         offset?: number;
       }
     >({
-      query: ({ contractId, status, limit, page, offset }) => {
+      query: ({ contractId, status, type, limit, page, offset }) => {
         const searchParams = new URLSearchParams();
 
         if (status) searchParams.append("status", status);
+        if (type) searchParams.append("type", type);
         if (limit) searchParams.append("limit", String(limit));
         if (page) searchParams.append("page", String(page));
         if (offset) searchParams.append("offset", String(offset));
@@ -215,6 +219,58 @@ export const paymentsApi = createApi({
             hasPreviousPage: false,
           },
         };
+      },
+    }),
+
+    getCurrentPaymentsByContract: builder.query<
+      Payment[],
+      {
+        contractId: string;
+        status?: PaymentStatus | "late" | "defaulted";
+        type?: PaymentType | "extra";
+        limit?: number;
+        offset?: number;
+      }
+    >({
+      query: ({ contractId, status, type, limit, offset }) => {
+        const searchParams = new URLSearchParams();
+
+        if (status) searchParams.append("status", status);
+        if (type) searchParams.append("type", type);
+        if (limit) searchParams.append("limit", String(limit));
+        if (offset) searchParams.append("offset", String(offset));
+
+        const queryString = searchParams.toString();
+        const url = `/payments/contract/${contractId}/current${
+          queryString ? `?${queryString}` : ""
+        }`;
+
+        console.log("Getting current payments for contract:", url);
+        return url;
+      },
+      providesTags: (_result, _error, { contractId, status, type }) => [
+        {
+          type: "Payment",
+          id: `contract-${contractId}-current-${status || "all"}-${
+            type || "all"
+          }`,
+        },
+        { type: "Payment", id: "LIST" },
+      ],
+      transformResponse: (response: any) => {
+        console.log("Current payments API response:", response);
+
+        // Handle array response
+        if (Array.isArray(response)) {
+          return response;
+        }
+
+        // Handle object with data property
+        if (response && typeof response === "object" && "data" in response) {
+          return Array.isArray(response.data) ? response.data : [];
+        }
+
+        return [];
       },
     }),
 
@@ -308,6 +364,55 @@ export const paymentsApi = createApi({
           dispatch(contractApi.util.invalidateTags(["Contract"]));
 
           console.log("✅ Contract cache invalidated after payment creation");
+        } catch (error) {
+          console.error("❌ Failed to invalidate contract cache:", error);
+        }
+      },
+    }),
+
+    createPrepayment: builder.mutation<
+      {
+        requiresApproval?: boolean;
+        approvalRequestId?: string;
+        message?: string;
+        data?: Payment;
+      },
+      CreatePrepaymentDto
+    >({
+      query: (prepaymentData) => ({
+        url: "/payments/prepayment",
+        method: "POST",
+        body: prepaymentData,
+      }),
+      invalidatesTags: ["Payment"],
+      transformResponse: (response: any) => {
+        // Handle both approval request response and direct payment response
+        if (response.requiresApproval) {
+          return {
+            requiresApproval: true,
+            approvalRequestId: response.approvalRequestId,
+            message:
+              response.message ||
+              "Action requires approval. Request has been submitted.",
+          };
+        }
+        return { data: response };
+      },
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+
+          // Import contractApi and invalidate contract cache
+          const { contractApi } = await import(
+            "../../contracts/api/contractApi"
+          );
+
+          // Invalidate all contract queries since new prepayments affect contract financial data
+          dispatch(contractApi.util.invalidateTags(["Contract"]));
+
+          console.log(
+            "✅ Contract cache invalidated after prepayment creation"
+          );
         } catch (error) {
           console.error("❌ Failed to invalidate contract cache:", error);
         }
@@ -526,8 +631,10 @@ export const {
   useGetPaymentsQuery,
   useGetPaymentByIdQuery,
   useGetPaymentsByContractQuery,
+  useGetCurrentPaymentsByContractQuery,
   useGetPaymentsByCustomerQuery,
   useCreatePaymentMutation,
+  useCreatePrepaymentMutation,
   useUpdatePaymentMutation,
   useDeletePaymentMutation,
   useRegisterPaymentMutation,

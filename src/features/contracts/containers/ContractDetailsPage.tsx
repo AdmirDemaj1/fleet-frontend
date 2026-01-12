@@ -177,7 +177,8 @@ export const ContractDetailsPage: React.FC = () => {
             <Grid item xs={12}>
               <ContractQuickActions 
                 contractId={contract.id} 
-                customerId={contract.customerId} 
+                customerId={contract.customerId}
+                contract={contract}
               />
             </Grid>
 

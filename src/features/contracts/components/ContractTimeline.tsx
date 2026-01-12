@@ -18,7 +18,8 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { ContractResponse } from "../types/contract.types";
-import { useGetPaymentsByContractQuery } from "../../invoices/api/paymentsApi";
+import { useGetCurrentPaymentsByContractQuery } from "../../invoices/api/paymentsApi";
+import { PaymentType } from "../../invoices/types/invoice.types";
 import dayjs from "dayjs";
 
 interface ContractTimelineProps {
@@ -31,13 +32,45 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
   const theme = useTheme();
   const navigate = useNavigate();
 
-  // Fetch payment data for this contract
-  const { data: paymentsResponse } = useGetPaymentsByContractQuery({
-    contractId: contract.id,
-    limit: 100, // Get all payments to show complete timeline
-  });
+  // Fetch payment data for this contract - filter for scheduled payments only
+  // Using getCurrentPaymentsByContract which supports type filter on the /current endpoint
+  const { data: allPayments = [] } = useGetCurrentPaymentsByContractQuery(
+    {
+      contractId: contract.id,
+      type: PaymentType.SCHEDULED, // Only get scheduled payments
+    },
+    {
+      refetchOnMountOrArgChange: true,
+    }
+  );
 
-  const payments = paymentsResponse?.data || [];
+  // Filter to only include scheduled payments with a paymentNumber
+  // This is a strict filter to ensure we only show scheduled payments with payment numbers
+  const payments = React.useMemo(() => {
+    const filtered = allPayments.filter(
+      (payment: any) => {
+        // Must be scheduled type (case-insensitive check)
+        const isScheduled = payment.type?.toLowerCase() === 'scheduled';
+        // Must have a valid paymentNumber (not null, not undefined, and is a number)
+        const hasPaymentNumber = 
+          payment.paymentNumber !== null && 
+          payment.paymentNumber !== undefined &&
+          typeof payment.paymentNumber === 'number';
+        
+        return isScheduled && hasPaymentNumber;
+      }
+    );
+    
+    // Debug logging
+    console.log('ContractTimeline - All payments from API:', allPayments.length);
+    console.log('ContractTimeline - Filtered scheduled payments with paymentNumber:', filtered.length);
+    if (allPayments.length > 0) {
+      console.log('ContractTimeline - Payment types:', [...new Set(allPayments.map((p: any) => p.type))]);
+      console.log('ContractTimeline - Payments with paymentNumber:', allPayments.filter((p: any) => p.paymentNumber !== null && p.paymentNumber !== undefined).length);
+    }
+    
+    return filtered;
+  }, [allPayments]);
 
   const formatDate = (dateString?: string): string => {
     if (!dateString) return "N/A";
@@ -52,40 +85,49 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
     const monthlyStatuses = [];
     const currentDate = dayjs();
     
-    // Sort payments by due date for better matching
-    const sortedPayments = [...payments].sort((a, b) => 
-      dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf()
-    );
-
+    // Sort payments by paymentNumber for accurate matching
+    const sortedPayments = [...payments]
+      .filter((p: any) => p.paymentNumber !== null && p.paymentNumber !== undefined)
+      .sort((a, b) => {
+        // First sort by paymentNumber
+        if (a.paymentNumber !== b.paymentNumber) {
+          return (a.paymentNumber || 0) - (b.paymentNumber || 0);
+        }
+        // If paymentNumber is the same, sort by due date
+        return dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf();
+      });
 
     for (let i = 0; i < totalMonths; i++) {
       const monthDate = startDate.add(i, "month");
 
-      // Try multiple matching strategies to find the right payment for this month
-      let monthPayment = null;
+      // Match payment by paymentNumber (paymentNumber 1 = first month, etc.)
+      // If multiple payments have the same paymentNumber (due to recalculations),
+      // prefer the one that matches the month date
+      const paymentsWithNumber = sortedPayments.filter((payment: any) => 
+        payment.paymentNumber === i + 1
+      );
       
-      // Strategy 1: Sequential matching (use sorted payments by due date)
-      if (i < sortedPayments.length) {
-        monthPayment = sortedPayments[i];
+      let monthPayment = paymentsWithNumber.find((payment: any) => {
+        const paymentDue = dayjs(payment.dueDate);
+        return (
+          paymentDue.year() === monthDate.year() &&
+          paymentDue.month() === monthDate.month()
+        );
+      });
+      
+      // If no date match, use the first payment with this paymentNumber
+      if (!monthPayment && paymentsWithNumber.length > 0) {
+        monthPayment = paymentsWithNumber[0];
       }
       
-      // Strategy 2: If sequential doesn't work, try date-based matching
+      // Fallback: If no match by paymentNumber, try date-based matching
       if (!monthPayment) {
-        monthPayment = payments.find((payment) => {
+        monthPayment = sortedPayments.find((payment: any) => {
           const paymentDue = dayjs(payment.dueDate);
           return (
             paymentDue.year() === monthDate.year() &&
             paymentDue.month() === monthDate.month()
           );
-        });
-      }
-      
-      // Strategy 3: If still no match, try finding closest payment by month offset
-      if (!monthPayment) {
-        monthPayment = payments.find((payment) => {
-          const paymentDue = dayjs(payment.dueDate);
-          const paymentMonthOffset = paymentDue.diff(startDate, "month");
-          return Math.abs(paymentMonthOffset - i) <= 1; // Allow 1 month tolerance
         });
       }
       

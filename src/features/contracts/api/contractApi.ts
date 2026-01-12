@@ -4,6 +4,7 @@ import { tokenStorage } from "../../auth/utils/tokenStorage";
 import {
   CreateContractDto,
   UpdateContractDto,
+  UpdateEuriborRateDto,
   ContractResponse,
   CustomerSummary,
   VehicleSummary,
@@ -11,6 +12,7 @@ import {
   ContractType,
   ContractStatus,
   CreateContractWithDocumentsDto,
+  AmortizationScheduleResponse,
 } from "../types/contract.types";
 
 export const contractApi = createApi({
@@ -133,9 +135,17 @@ export const contractApi = createApi({
           ...(data.guaranteeForContract !== undefined && {
             guaranteeForContract: data.guaranteeForContract,
           }),
+          // Add Euribor-related fields
+          ...(data.euriborRateId && { euriborRateId: data.euriborRateId }),
+          ...(data.margin !== undefined && { margin: Number(data.margin) || 0 }),
+          ...(data.euriborTenor && { euriborTenor: data.euriborTenor }),
         };
 
-        // console.log('🚀 Creating contract (JSON):', JSON.stringify(jsonData, null, 2));
+        console.log('🚀 Creating contract (JSON):', JSON.stringify(jsonData, null, 2));
+        console.log('🔍 Euribor fields in API call:');
+        console.log('  - euriborRateId:', jsonData.euriborRateId);
+        console.log('  - margin:', jsonData.margin);
+        console.log('  - euriborTenor:', jsonData.euriborTenor);
 
         return {
           url: "/contracts/with-dependencies",
@@ -482,6 +492,84 @@ export const contractApi = createApi({
         params: params,
       }),
     }),
+
+    // Update Euribor rate for a contract
+    updateEuriborRate: builder.mutation<
+      any,
+      { contractId: string; data: UpdateEuriborRateDto }
+    >({
+      query: ({ contractId, data }) => {
+        console.log(
+          "🔄 Updating Euribor rate for contract:",
+          contractId,
+          "with data:",
+          JSON.stringify(data, null, 2)
+        );
+        return {
+          url: `/contracts/${contractId}/amortization/update-euribor`,
+          method: "POST",
+          body: data,
+        };
+      },
+      invalidatesTags: (_result, _error, { contractId }) => [
+        { type: "Contract", id: contractId },
+        "Contract",
+      ],
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Euribor rate update failed:", response);
+        return response;
+      },
+    }),
+
+    // Get amortization schedule as JSON (for preview)
+    getAmortizationSchedule: builder.query<
+      AmortizationScheduleResponse,
+      { contractId: string; grouped?: boolean }
+    >({
+      query: ({ contractId, grouped }) => {
+        const params = new URLSearchParams();
+        if (grouped) {
+          params.append("grouped", "true");
+        }
+        const queryString = params.toString();
+        return {
+          url: `/contracts/${contractId}/amortization${
+            queryString ? `?${queryString}` : ""
+          }`,
+        };
+      },
+      providesTags: (_result, _error, { contractId }) => [
+        { type: "Contract", id: contractId },
+      ],
+    }),
+
+    // Export amortization schedule to Excel
+    exportAmortizationSchedule: builder.mutation<
+      Blob,
+      { contractId: string; versionId?: string }
+    >({
+      query: ({ contractId, versionId }) => {
+        const params = new URLSearchParams();
+        if (versionId) {
+          params.append("versionId", versionId);
+        }
+        const queryString = params.toString();
+        return {
+          url: `/contracts/${contractId}/amortization/export/excel${
+            queryString ? `?${queryString}` : ""
+          }`,
+          method: "GET",
+          responseHandler: async (response) => {
+            const blob = await response.blob();
+            return blob;
+          },
+        };
+      },
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Amortization schedule export failed:", response);
+        return response;
+      },
+    }),
   }),
 });
 
@@ -497,6 +585,8 @@ export const {
   useGetVehicleQuery,
   useGetEndorsersQuery,
   useGetEndorserQuery,
-
   useCalculateLoanPaymentQuery,
+  useUpdateEuriborRateMutation,
+  useGetAmortizationScheduleQuery,
+  useExportAmortizationScheduleMutation,
 } = contractApi;

@@ -97,6 +97,9 @@ export interface CreateContractDto {
   endDate: string;
   totalAmount: number;
   interestRate: number;
+  euriborRateId: string; // ID from euribor_rates table which was selected for the contract
+  margin?: number; // Optional - will be calculated if not provided (as decimal, e.g., 0.04 for 4%)
+  euriborTenor?: string; // Optional - will come from EURIBOR rate if euriborRateId is provided (e.g., "12m")
 
   // Contract type-specific details
   loanDetails?: {
@@ -179,7 +182,8 @@ export interface DocumentMetadata {
 }
 
 // NEW: Create contract with documents DTO - uses multipart/form-data
-export interface CreateContractWithDocumentsDto extends Omit<CreateContractDto, 'sessionKey'> {
+export interface CreateContractWithDocumentsDto
+  extends Omit<CreateContractDto, "sessionKey"> {
   // Files to upload
   files?: File[];
   // Document metadata (must match order of files)
@@ -230,7 +234,59 @@ export interface ContractFormData {
   collaterals: VehicleCollateral[];
   endorserCollaterals: EndorserCollateral[];
   documents: any[]; // Will be ContractDocument[] when imported
+  euriborRateId?: string; // Selected Euribor rate ID
   terms?: Record<string, any>;
+}
+
+// Update Euribor Rate DTO
+export interface UpdateEuriborRateDto {
+  euriborRateId: string; // ID of the selected Euribor rate
+  margin?: number;
+}
+
+// Amortization Schedule Types
+export interface AmortizationScheduleEntry {
+  paymentNumber: number;
+  month: string;
+  beginningBalance: number;
+  monthlyInterestAmount: number;
+  principalRepayment: number;
+  monthlyMortgagePayment: number;
+  endingBalance: number;
+  paidAmount?: number;
+  paymentDate?: string;
+  difference?: number;
+  poStatus?: string;
+  monthlyNetIncome?: number;
+}
+
+export interface AmortizationScheduleSection {
+  sectionNumber: number;
+  monthlyPaymentAmount: number;
+  startDate: string;
+  endDate: string;
+  changeReason: string;
+  changeMetadata?: any;
+  versionNumber: number;
+  entries: AmortizationScheduleEntry[];
+}
+
+export interface AmortizationScheduleResponse {
+  success: boolean;
+  data: {
+    versionId: string;
+    versionNumber: number;
+    reason?: string;
+    effectiveStartDate?: string;
+    interestRate?: number;
+    monthlyPaymentAmount?: number;
+    remainingLoanAmount?: number;
+    remainingTermMonths?: number;
+    schedule: AmortizationScheduleEntry[];
+    sections?: AmortizationScheduleSection[];
+    metadata?: any;
+    schedulerInfo?: any;
+  };
 }
 
 // Update Contract DTO - Matches backend UpdateContractDto structure
@@ -314,7 +370,7 @@ export interface CustomerDocument {
   type: string;
   title: string;
   fileName: string;
-  status: 'completed' | 'pending' | 'rejected';
+  status: "completed" | "pending" | "rejected";
   downloadCount?: number;
   createdAt?: string;
   expiryDate?: string;
