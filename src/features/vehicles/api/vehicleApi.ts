@@ -141,13 +141,50 @@ export const vehicleApi = {
     if (vehicleData.legalOwner) formData.append('legalOwner', vehicleData.legalOwner);
     if (vehicleData.isLiquidAsset !== undefined) formData.append('isLiquidAsset', String(vehicleData.isLiquidAsset));
     if (vehicleData.purchaseDate) formData.append('purchaseDate', vehicleData.purchaseDate);
-    if (vehicleData.currentValuation !== undefined) formData.append('currentValuation', String(vehicleData.currentValuation));
-    if (vehicleData.marketValue !== undefined) formData.append('marketValue', String(vehicleData.marketValue));
-    if (vehicleData.depreciatedValue !== undefined) formData.append('depreciatedValue', String(vehicleData.depreciatedValue));
+    
+    // Handle numeric fields - ensure they're valid numbers and convert properly
+    // Only send if they're valid numbers (not empty strings, not NaN, not Infinity)
+    if (vehicleData.currentValuation !== undefined && vehicleData.currentValuation !== null) {
+      const strValue = String(vehicleData.currentValuation);
+      if (strValue !== '' && strValue !== 'null' && strValue !== 'undefined') {
+        const value = parseFloat(strValue);
+        if (!isNaN(value) && isFinite(value) && value >= 0) {
+          formData.append('currentValuation', value.toString());
+        }
+      }
+    }
+    if (vehicleData.marketValue !== undefined && vehicleData.marketValue !== null) {
+      const strValue = String(vehicleData.marketValue);
+      if (strValue !== '' && strValue !== 'null' && strValue !== 'undefined') {
+        const value = parseFloat(strValue);
+        if (!isNaN(value) && isFinite(value) && value >= 0) {
+          formData.append('marketValue', value.toString());
+        }
+      }
+    }
+    if (vehicleData.depreciatedValue !== undefined && vehicleData.depreciatedValue !== null) {
+      const strValue = String(vehicleData.depreciatedValue);
+      if (strValue !== '' && strValue !== 'null' && strValue !== 'undefined') {
+        const value = parseFloat(strValue);
+        if (!isNaN(value) && isFinite(value) && value >= 0) {
+          formData.append('depreciatedValue', value.toString());
+        }
+      }
+    }
 
     console.log('🚗 Creating vehicle with documents:');
     console.log('📁 Files:', data.files?.length || 0);
     console.log('📋 Documents metadata:', data.documents?.length || 0);
+    console.log('💰 Valuation fields:', {
+      currentValuation: vehicleData.currentValuation,
+      marketValue: vehicleData.marketValue,
+      depreciatedValue: vehicleData.depreciatedValue,
+      types: {
+        currentValuation: typeof vehicleData.currentValuation,
+        marketValue: typeof vehicleData.marketValue,
+        depreciatedValue: typeof vehicleData.depreciatedValue,
+      }
+    });
 
     const response = await api.post<any>('/vehicles/with-documents', formData, {
       headers: {

@@ -79,7 +79,7 @@ interface EnhancedVehicleSummary extends VehicleSummary {
 
 interface VehiclePickerState {
   searchTerm: string;
-  selectedVehicle: EnhancedVehicleSummary | null;
+  selectedVehicles: EnhancedVehicleSummary[]; // Changed to array for multiple selection
   isOpen: boolean;
   hasInteracted: boolean;
   isCreateModalOpen: boolean;
@@ -105,7 +105,7 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
 
   const [state, setState] = useState<VehiclePickerState>({
     searchTerm: "",
-    selectedVehicle: null,
+    selectedVehicles: [], // Changed to array for multiple selection
     isOpen: false,
     hasInteracted: false,
     isCreateModalOpen: false,
@@ -173,13 +173,15 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
     [vehiclesResponse]
   );
 
-  // Get available vehicles (excluding selected one)
+  // Get available vehicles (excluding selected ones)
   const availableVehicles = useMemo(
     () =>
-      state.selectedVehicle
-        ? allVehicles.filter((v) => v.id !== state.selectedVehicle!.id)
+      state.selectedVehicles.length > 0
+        ? allVehicles.filter(
+            (v) => !state.selectedVehicles.some((sv) => sv.id === v.id)
+          )
         : allVehicles,
-    [allVehicles, state.selectedVehicle]
+    [allVehicles, state.selectedVehicles]
   );
 
   // Check if a vehicle is complete (has license plate and required documents)
@@ -225,79 +227,96 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
     []
   );
 
-  // Update selected vehicle when IDs change
+  // Update selected vehicles when IDs change
   useEffect(() => {
-    const vehicleId = selectedVehicleIds[0]; // Only first vehicle since we allow only one
-    if (vehicleId) {
-      let selected: EnhancedVehicleSummary | undefined;
+    if (selectedVehicleIds && selectedVehicleIds.length > 0) {
+      const selectedVehicles: EnhancedVehicleSummary[] = [];
 
-      // In edit mode, use selectedVehicleData if provided (vehicle may not be in available list)
+      // In edit mode, use selectedVehicleData if provided (vehicles may not be in available list)
       if (isEditMode && selectedVehicleData && selectedVehicleData.length > 0) {
-        const vehicleFromData = selectedVehicleData.find(
-          (v) => v.id === vehicleId
-        );
-        if (vehicleFromData) {
-          // Transform to EnhancedVehicleSummary format for edit mode
-          selected = {
-            ...vehicleFromData,
-            status: "AVAILABLE" as const, // Override status for display
-            isVerified: true,
-          } as EnhancedVehicleSummary;
+        selectedVehicleIds.forEach((vehicleId) => {
+          const vehicleFromData = selectedVehicleData.find(
+            (v) => v.id === vehicleId
+          );
+          if (vehicleFromData) {
+            // Transform to EnhancedVehicleSummary format for edit mode
+            selectedVehicles.push({
+              ...vehicleFromData,
+              status: "AVAILABLE" as const, // Override status for display
+              isVerified: true,
+            } as EnhancedVehicleSummary);
+          }
+        });
+      }
+
+      // For any IDs not found in selectedVehicleData, try to find in available vehicles
+      selectedVehicleIds.forEach((vehicleId) => {
+        if (!selectedVehicles.find((v) => v.id === vehicleId)) {
+          const vehicle = allVehicles.find((v) => v.id === vehicleId);
+          if (vehicle) {
+            selectedVehicles.push(vehicle);
+          }
         }
-      }
+      });
 
-      // If not in edit mode or not found in selectedVehicleData, try to find in available vehicles
-      if (!selected) {
-        selected = allVehicles.find((v) => v.id === vehicleId);
+      // Update state only if the selection has changed
+      const currentIds = state.selectedVehicles.map((v) => v.id).sort();
+      const newIds = selectedVehicles.map((v) => v.id).sort();
+      if (JSON.stringify(currentIds) !== JSON.stringify(newIds)) {
+        setState((prev) => ({ ...prev, selectedVehicles }));
       }
-
-      if (selected && selected.id !== state.selectedVehicle?.id) {
-        setState((prev) => ({ ...prev, selectedVehicle: selected }));
-      }
-    } else if (!vehicleId && state.selectedVehicle) {
-      setState((prev) => ({ ...prev, selectedVehicle: null }));
+    } else if (
+      (!selectedVehicleIds || selectedVehicleIds.length === 0) &&
+      state.selectedVehicles.length > 0
+    ) {
+      setState((prev) => ({ ...prev, selectedVehicles: [] }));
     }
   }, [
     selectedVehicleIds,
     allVehicles,
     selectedVehicleData,
     isEditMode,
-    state.selectedVehicle?.id,
+    state.selectedVehicles,
   ]);
 
   // Handle vehicle selection - check if complete first
   const handleVehicleSelect = useCallback(
-    (vehicle: EnhancedVehicleSummary | null) => {
-      if (vehicle) {
-        // Check if vehicle is complete
-        if (!isVehicleComplete(vehicle)) {
-          // Vehicle is incomplete - show completion modal
+    (vehicles: EnhancedVehicleSummary[] | null) => {
+      if (vehicles && vehicles.length > 0) {
+        // Check if any vehicle is incomplete
+        const incompleteVehicles = vehicles.filter(
+          (v) => !isVehicleComplete(v)
+        );
+
+        if (incompleteVehicles.length > 0) {
+          // Show completion modal for first incomplete vehicle
           setState((prev) => ({
             ...prev,
-            pendingVehicle: vehicle,
+            pendingVehicle: incompleteVehicles[0],
             isCompletionModalOpen: true,
             hasInteracted: true,
           }));
           return;
         }
 
-        // Vehicle is complete - proceed with selection
+        // All vehicles are complete - proceed with selection
         setState((prev) => ({
           ...prev,
-          selectedVehicle: vehicle,
+          selectedVehicles: vehicles,
           hasInteracted: true,
         }));
 
-        onVehicleSelect([vehicle.id]); // Single vehicle array
+        const vehicleIds = vehicles.map((v) => v.id);
+        onVehicleSelect(vehicleIds);
         // Also pass the full vehicle data including documents
         if (onVehicleDataChange) {
-          onVehicleDataChange([vehicle]);
+          onVehicleDataChange(vehicles);
         }
       } else {
         // Clearing selection
         setState((prev) => ({
           ...prev,
-          selectedVehicle: null,
+          selectedVehicles: [],
           hasInteracted: true,
         }));
         onVehicleSelect([]); // Empty array
@@ -375,19 +394,21 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
           color: newVehicle.color,
         };
 
-        // Select the newly created vehicle
+        // Add the newly created vehicle to selected vehicles
         setState((prev) => ({
           ...prev,
-          selectedVehicle: enhancedVehicle,
+          selectedVehicles: [...prev.selectedVehicles, enhancedVehicle],
           isCreateModalOpen: false,
           isCreatingVehicle: false,
         }));
 
-        // Notify parent component
-        onVehicleSelect([enhancedVehicle.id]);
+        // Notify parent component - add to existing selection
+        const newVehicleIds = [...selectedVehicleIds, enhancedVehicle.id];
+        onVehicleSelect(newVehicleIds);
         // Also pass the full vehicle data
         if (onVehicleDataChange) {
-          onVehicleDataChange([enhancedVehicle]);
+          const existingVehicles = selectedVehicleData || [];
+          onVehicleDataChange([...existingVehicles, enhancedVehicle]);
         }
 
         // Refresh the vehicle list
@@ -397,7 +418,13 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         setState((prev) => ({ ...prev, isCreatingVehicle: false }));
       }
     },
-    [onVehicleSelect, onVehicleDataChange, refetch]
+    [
+      onVehicleSelect,
+      onVehicleDataChange,
+      refetch,
+      selectedVehicleIds,
+      selectedVehicleData,
+    ]
   );
 
   // Handle closing completion modal
@@ -486,19 +513,32 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
           documentsCount: updatedVehicle.documents?.length || 0,
         });
 
-        // Now select the completed vehicle
-        setState((prev) => ({
-          ...prev,
-          selectedVehicle: updatedVehicle,
-          pendingVehicle: null,
-          isCompletionModalOpen: false,
-          isCompletingVehicle: false,
-        }));
+        // Add the completed vehicle to selected vehicles
+        setState((prev) => {
+          const existingVehicles = prev.selectedVehicles.filter(
+            (v) => v.id !== updatedVehicle.id
+          );
+          return {
+            ...prev,
+            selectedVehicles: [...existingVehicles, updatedVehicle],
+            pendingVehicle: null,
+            isCompletionModalOpen: false,
+            isCompletingVehicle: false,
+          };
+        });
 
-        onVehicleSelect([updatedVehicle.id]);
+        // Add to existing selection
+        const newVehicleIds = [
+          ...selectedVehicleIds.filter((id) => id !== updatedVehicle.id),
+          updatedVehicle.id,
+        ];
+        onVehicleSelect(newVehicleIds);
         if (onVehicleDataChange) {
           // Pass the updated vehicle data with the new license plate
-          onVehicleDataChange([updatedVehicle]);
+          const existingVehicles = (selectedVehicleData || []).filter(
+            (v) => v.id !== updatedVehicle.id
+          );
+          onVehicleDataChange([...existingVehicles, updatedVehicle]);
           console.log(
             "📤 Passed updated vehicle data to parent with licensePlate:",
             updatedVehicle.licensePlate
@@ -570,10 +610,10 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
             component="h3"
             sx={{ fontWeight: 600, color: "primary.main" }}
           >
-            Select Vehicle
+            Select Vehicles
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Choose one available vehicle for this contract
+            Choose one or more available vehicles for this contract
           </Typography>
         </Box>
         <Tooltip title="Create a new vehicle">
@@ -595,9 +635,10 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
 
       {/* Vehicle Selection Autocomplete */}
       <Autocomplete
+        multiple
         options={availableVehicles}
         getOptionLabel={getVehicleDisplayName}
-        value={state.selectedVehicle}
+        value={state.selectedVehicles}
         onChange={(_event, value) => {
           handleVehicleSelect(value);
         }}
@@ -607,21 +648,24 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         open={state.isOpen}
         loading={isLoading}
         filterOptions={(x) => x} // API handles filtering
-        blurOnSelect={true} // Close dropdown after selection
+        blurOnSelect={false} // Keep dropdown open for multiple selection
         clearOnBlur={false} // Don't clear on blur
         selectOnFocus={false} // Don't select on focus
         handleHomeEndKeys
         openOnFocus={true} // Open dropdown when focused
+        disableCloseOnSelect={true} // Keep dropdown open after selection for multiple
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Select Vehicle"
-            placeholder="Search available vehicles..."
+            label="Select Vehicles"
+            placeholder="Search and select available vehicles..."
             error={!!error}
             helperText={
               error ||
               `${availableVehicles.length} available vehicles found${
-                state.selectedVehicle ? " (1 selected)" : ""
+                state.selectedVehicles.length > 0
+                  ? ` (${state.selectedVehicles.length} selected)`
+                  : ""
               }`
             }
             InputProps={{
@@ -659,7 +703,9 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         )}
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
-          const isSelected = option.id === state.selectedVehicle?.id;
+          const isSelected = state.selectedVehicles.some(
+            (v) => v.id === option.id
+          );
           const isComplete = isVehicleComplete(option);
           const missingItems = !isComplete
             ? getVehicleMissingItems(option)
@@ -818,164 +864,128 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         }
       />
 
-      {/* Selected Vehicle Display */}
-      {state.selectedVehicle && (
-        <Fade in timeout={300}>
-          <Card
-            elevation={0}
-            sx={{
-              mt: 3,
-              border: "2px solid",
-              borderColor: "success.main",
-              borderRadius: 2,
-              bgcolor: alpha(theme.palette.success.main, 0.02),
-              transition: "all 0.3s ease",
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
-              >
-                <BrandLogo brandName={state.selectedVehicle.make} size={150} />
-                <Box sx={{ flex: 1 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 600, color: "text.primary" }}
-                  >
-                    {state.selectedVehicle.year} {state.selectedVehicle.make}{" "}
-                    {state.selectedVehicle.model}
-                  </Typography>
-                  <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-                    <Chip
-                      label="Selected"
-                      size="small"
-                      color="success"
-                      sx={{ fontSize: "0.7rem" }}
-                    />
-                    {state.selectedVehicle.isVerified && (
-                      <Chip
-                        label="Verified"
-                        size="small"
-                        color="info"
-                        variant="outlined"
-                        sx={{ fontSize: "0.7rem" }}
-                      />
-                    )}
-                  </Box>
-                </Box>
-                <Tooltip title="Remove selection">
-                  <IconButton
-                    color="error"
-                    onClick={() => handleVehicleSelect(null)}
-                    sx={{
-                      bgcolor: "background.paper",
-                      boxShadow: theme.shadows[2],
-                      "&:hover": {
-                        bgcolor: "error.main",
-                        color: "white",
-                      },
-                    }}
-                  >
-                    <Clear />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  🏷️ License Plate:{" "}
-                  <strong>{state.selectedVehicle.licensePlate}</strong>
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  🔢 VIN:{" "}
-                  <strong style={{ fontFamily: "monospace" }}>
-                    {state.selectedVehicle.vinNumber}
-                  </strong>
-                </Typography>
-                {state.selectedVehicle.color && (
-                  <Typography variant="body2" color="text.secondary">
-                    🎨 Color: <strong>{state.selectedVehicle.color}</strong>
-                  </Typography>
-                )}
-                {state.selectedVehicle.mileage && (
-                  <Typography variant="body2" color="text.secondary">
-                    📏 Mileage:{" "}
-                    <strong>
-                      {state.selectedVehicle.mileage.toLocaleString()} km
-                    </strong>
-                  </Typography>
-                )}
-                {state.selectedVehicle.fuelType && (
-                  <Typography variant="body2" color="text.secondary">
-                    ⛽ Fuel Type:{" "}
-                    <strong>{state.selectedVehicle.fuelType}</strong>
-                  </Typography>
-                )}
-
-                {/* Collateral Checkbox */}
-                <Box
+      {/* Selected Vehicles Display */}
+      {state.selectedVehicles.length > 0 && (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+            Selected Vehicles ({state.selectedVehicles.length})
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {state.selectedVehicles.map((vehicle) => (
+              <Fade in timeout={300} key={vehicle.id}>
+                <Card
+                  elevation={0}
                   sx={{
-                    mt: 2,
-                    pt: 2,
-                    borderTop: "1px solid",
-                    borderColor: "divider",
+                    border: "2px solid",
+                    borderColor: "success.main",
+                    borderRadius: 2,
+                    bgcolor: alpha(theme.palette.success.main, 0.02),
+                    transition: "all 0.3s ease",
                   }}
                 >
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={vehicleAsCollateral}
-                        onChange={(e) => {
-                          if (onVehicleAsCollateralChange) {
-                            onVehicleAsCollateralChange(e.target.checked);
-                          }
-                        }}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <Security
-                          sx={{
-                            fontSize: 18,
-                            color: vehicleAsCollateral
-                              ? "primary.main"
-                              : "text.secondary",
-                          }}
-                        />
+                  <CardContent sx={{ p: 3 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        mb: 2,
+                      }}
+                    >
+                      <BrandLogo brandName={vehicle.make} size={150} />
+                      <Box sx={{ flex: 1 }}>
                         <Typography
-                          variant="body2"
-                          sx={{ fontWeight: vehicleAsCollateral ? 600 : 400 }}
+                          variant="h6"
+                          sx={{ fontWeight: 600, color: "text.primary" }}
                         >
-                          Use this vehicle as collateral
+                          {vehicle.year} {vehicle.make} {vehicle.model}
                         </Typography>
+                        <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+                          <Chip
+                            label="Selected"
+                            size="small"
+                            color="success"
+                            sx={{ fontSize: "0.7rem" }}
+                          />
+                          {vehicle.isVerified && (
+                            <Chip
+                              label="Verified"
+                              size="small"
+                              color="info"
+                              variant="outlined"
+                              sx={{ fontSize: "0.7rem" }}
+                            />
+                          )}
+                        </Box>
                       </Box>
-                    }
-                  />
-                  {vehicleAsCollateral && (
-                    <Alert severity="info" sx={{ mt: 1 }}>
-                      <Typography variant="caption">
-                        This vehicle will be added as collateral for the
-                        contract with an estimated value of $
-                        {(
-                          state.selectedVehicle.marketValue ||
-                          state.selectedVehicle.currentValuation ||
-                          0
-                        ).toLocaleString()}
+                      <Tooltip title="Remove vehicle">
+                        <IconButton
+                          color="error"
+                          onClick={() => {
+                            const updatedVehicles =
+                              state.selectedVehicles.filter(
+                                (v) => v.id !== vehicle.id
+                              );
+                            handleVehicleSelect(
+                              updatedVehicles.length > 0
+                                ? updatedVehicles
+                                : null
+                            );
+                          }}
+                          sx={{
+                            bgcolor: "background.paper",
+                            boxShadow: theme.shadows[2],
+                            "&:hover": {
+                              bgcolor: "error.main",
+                              color: "white",
+                            },
+                          }}
+                        >
+                          <Clear />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+
+                    <Box
+                      sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        🏷️ License Plate:{" "}
+                        <strong>{vehicle.licensePlate}</strong>
                       </Typography>
-                    </Alert>
-                  )}
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Fade>
+                      <Typography variant="body2" color="text.secondary">
+                        🔢 VIN:{" "}
+                        <strong style={{ fontFamily: "monospace" }}>
+                          {vehicle.vinNumber}
+                        </strong>
+                      </Typography>
+                      {vehicle.color && (
+                        <Typography variant="body2" color="text.secondary">
+                          🎨 Color: <strong>{vehicle.color}</strong>
+                        </Typography>
+                      )}
+                      {vehicle.mileage && (
+                        <Typography variant="body2" color="text.secondary">
+                          📏 Mileage:{" "}
+                          <strong>{vehicle.mileage.toLocaleString()} km</strong>
+                        </Typography>
+                      )}
+                      {vehicle.fuelType && (
+                        <Typography variant="body2" color="text.secondary">
+                          ⛽ Fuel Type: <strong>{vehicle.fuelType}</strong>
+                        </Typography>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Fade>
+            ))}
+          </Box>
+        </Box>
       )}
 
       {/* Empty state */}
-      {!state.selectedVehicle && !isLoading && (
+      {state.selectedVehicles.length === 0 && !isLoading && (
         <Paper
           elevation={0}
           sx={{
