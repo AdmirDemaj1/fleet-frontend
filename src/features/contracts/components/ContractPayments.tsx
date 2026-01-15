@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -17,7 +17,16 @@ import {
   Alert,
   Button,
   Stack,
-  TablePagination
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  CircularProgress,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel
 } from '@mui/material';
 import {
   Receipt,
@@ -26,11 +35,15 @@ import {
   Warning,
   Error as ErrorIcon,
   Pending,
-  Visibility
+  Visibility,
+  Add,
+  AttachMoney,
+  FilterList
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useGetPaymentsByContractQuery } from '../../invoices/api/paymentsApi';
+import { useGetCurrentPaymentsByContractQuery, useCreatePrepaymentMutation } from '../../invoices/api/paymentsApi';
 import { format } from 'date-fns';
+import { useNotification } from '../../../shared/hooks/useNotification';
 
 interface ContractPaymentsProps {
   contractId: string;
@@ -39,57 +52,36 @@ interface ContractPaymentsProps {
 export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  
-  // Direct pagination state management - using offset instead of page
-  const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  const { showSuccess, showError } = useNotification();
   
   // Filter state management
-  const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<string>('');
 
-  // Calculate offset from page
-  const offset = page * rowsPerPage;
+  // Extra Payment Dialog State
+  const [extraPaymentDialogOpen, setExtraPaymentDialogOpen] = useState(false);
+  const [extraPaymentAmount, setExtraPaymentAmount] = useState<string>('');
+  const [extraPaymentDate, setExtraPaymentDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [extraPaymentMethod, setExtraPaymentMethod] = useState<string>('bank_transfer');
+  const [extraTransactionReference, setExtraTransactionReference] = useState<string>('');
+  const [extraNotes, setExtraNotes] = useState<string>('');
+  const [extraPrepaymentOption, setExtraPrepaymentOption] = useState<'reduce_term' | 'reduce_payment'>('reduce_payment');
+  const [createPrepayment, { isLoading: isCreatingPayment }] = useCreatePrepaymentMutation();
 
-  // Enhanced pagination handlers
-  const handlePageChange = React.useCallback((_event: unknown, newPage: number) => {
-    setPage(newPage);
-  }, []);
-
-  const handleRowsPerPageChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const newRowsPerPage = parseInt(event.target.value, 10);
-    setRowsPerPage(newRowsPerPage);
-    setPage(0); // Reset to first page
-  }, []);
-
-  // Filter handlers
-  const handleFilterChange = React.useCallback((filter: string | null) => {
-    setActiveFilter(filter);
-    setPage(0); // Reset to first page when filter changes
-  }, []);
-
-  // Create a unique query key using offset instead of page
-  const queryKey = React.useMemo(() => {
-    const baseQuery = {
+  // Fetch current payments for the contract with filters
+  const { data: payments = [], isLoading, error } = useGetCurrentPaymentsByContractQuery(
+    {
       contractId,
-      offset,
-      limit: rowsPerPage
-    };
-    
-    // Only add status filter if it's not null
-    if (activeFilter) {
-      return { ...baseQuery, status: activeFilter as any };
+      ...(statusFilter && { status: statusFilter as any }),
+      ...(typeFilter && { type: typeFilter as any }),
+    },
+    {
+      // Force refetch when contractId or filters change
+      refetchOnMountOrArgChange: true
     }
-    
-    return baseQuery;
-  }, [contractId, offset, rowsPerPage, activeFilter]);
+  );
 
-  const { data: paymentsResponse, isLoading, error } = useGetPaymentsByContractQuery(queryKey, {
-    // Force refetch when parameters change
-    refetchOnMountOrArgChange: true
-  });
-
-  const payments = paymentsResponse?.data || [];
-  const totalCount = paymentsResponse?.meta?.total || 0;
+  const totalCount = payments.length;
 
   const formatCurrency = (amount: string | number): string => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -156,6 +148,84 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
 
   const handleViewAllPayments = () => {
     navigate(`/payments?contractId=${contractId}`);
+  };
+
+  // Filter handlers
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+  };
+
+  const handleTypeFilterChange = (value: string) => {
+    setTypeFilter(value);
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter('');
+    setTypeFilter('');
+  };
+
+  const handleOpenExtraPaymentDialog = () => {
+    setExtraPaymentDialogOpen(true);
+    setExtraPaymentAmount('');
+    setExtraPaymentDate(format(new Date(), 'yyyy-MM-dd'));
+    setExtraPaymentMethod('bank_transfer');
+    setExtraTransactionReference('');
+    setExtraNotes('');
+    setExtraPrepaymentOption('reduce_payment');
+  };
+
+  const handleCloseExtraPaymentDialog = () => {
+    setExtraPaymentDialogOpen(false);
+    setExtraPaymentAmount('');
+    setExtraPaymentDate(format(new Date(), 'yyyy-MM-dd'));
+    setExtraPaymentMethod('bank_transfer');
+    setExtraTransactionReference('');
+    setExtraNotes('');
+    setExtraPrepaymentOption('reduce_payment');
+  };
+
+  const handleSubmitExtraPayment = async () => {
+    if (!extraPaymentAmount || parseFloat(extraPaymentAmount) <= 0) {
+      showError('Please enter a valid payment amount');
+      return;
+    }
+
+    if (!extraPaymentMethod) {
+      showError('Please select a payment method');
+      return;
+    }
+
+    try {
+      const prepaymentData = {
+        contractId,
+        amount: parseFloat(extraPaymentAmount),
+        paymentDate: extraPaymentDate,
+        paymentMethod: extraPaymentMethod as 'cash' | 'bank_transfer' | 'online_banking' | 'credit_card' | 'debit_card' | 'check' | 'other',
+        ...(extraTransactionReference && { transactionReference: extraTransactionReference }),
+        ...(extraNotes && { notes: extraNotes }),
+        prepaymentOption: extraPrepaymentOption,
+      };
+
+      const response = await createPrepayment(prepaymentData).unwrap();
+      
+      if (response.requiresApproval) {
+        showSuccess(response.message || 'Prepayment request submitted for approval');
+      } else {
+        showSuccess('Prepayment recorded successfully');
+      }
+
+      handleCloseExtraPaymentDialog();
+      
+      // Refetch payments to show the new payment
+      // The query will automatically refetch due to cache invalidation
+    } catch (error: any) {
+      console.error('Error creating prepayment:', error);
+      showError(
+        error?.data?.message ||
+        error?.message ||
+        'Failed to record prepayment. Please try again.'
+      );
+    }
   };
 
   if (isLoading) {
@@ -230,120 +300,104 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {totalCount > 0 
-                ? `Showing ${Math.min(page * rowsPerPage + 1, totalCount)}-${Math.min((page + 1) * rowsPerPage, totalCount)} of ${totalCount} payments`
+                ? `${totalCount} payment${totalCount !== 1 ? 's' : ''}`
                 : 'Payment schedule and history'
               }
             </Typography>
           </Box>
         </Box>
         
-        <Button
-          variant="outlined"
-          startIcon={<Visibility />}
-          onClick={handleViewAllPayments}
-          sx={{
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 600,
-            borderColor: alpha(theme.palette.divider, 0.3),
-            '&:hover': {
-              borderColor: 'primary.main',
-              bgcolor: alpha(theme.palette.primary.main, 0.05)
-            }
-          }}
-        >
-          View All
-        </Button>
-      </Box>
-
-      {/* Filter Buttons */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 500 }}>
-          Filter by Status
-        </Typography>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={2}>
           <Button
-            variant={activeFilter === null ? 'contained' : 'outlined'}
-            onClick={() => handleFilterChange(null)}
+            variant="contained"
+            startIcon={<Add />}
+            onClick={handleOpenExtraPaymentDialog}
             sx={{
               borderRadius: 2,
               textTransform: 'none',
               fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
+              bgcolor: 'success.main',
+              '&:hover': {
+                bgcolor: 'success.dark'
+              }
+            }}
+          >
+            Extra Payment
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Visibility />}
+            onClick={handleViewAllPayments}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 600,
               borderColor: alpha(theme.palette.divider, 0.3),
               '&:hover': {
                 borderColor: 'primary.main',
-                bgcolor: activeFilter === null ? 'primary.main' : alpha(theme.palette.primary.main, 0.05)
+                bgcolor: alpha(theme.palette.primary.main, 0.05)
               }
             }}
           >
-            All
-          </Button>
-          <Button
-            variant={activeFilter === 'paid' ? 'contained' : 'outlined'}
-            startIcon={<CheckCircle />}
-            onClick={() => handleFilterChange('paid')}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              borderColor: activeFilter === 'paid' ? 'success.main' : alpha(theme.palette.success.main, 0.3),
-              color: activeFilter === 'paid' ? 'white' : 'success.main',
-              bgcolor: activeFilter === 'paid' ? 'success.main' : 'transparent',
-              '&:hover': {
-                borderColor: 'success.main',
-                bgcolor: activeFilter === 'paid' ? 'success.dark' : alpha(theme.palette.success.main, 0.05)
-              }
-            }}
-          >
-            Paid
-          </Button>
-          <Button
-            variant={activeFilter === 'pending' ? 'contained' : 'outlined'}
-            startIcon={<Pending />}
-            onClick={() => handleFilterChange('pending')}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              borderColor: activeFilter === 'pending' ? 'warning.main' : alpha(theme.palette.warning.main, 0.3),
-              color: activeFilter === 'pending' ? 'white' : 'warning.main',
-              bgcolor: activeFilter === 'pending' ? 'warning.main' : 'transparent',
-              '&:hover': {
-                borderColor: 'warning.main',
-                bgcolor: activeFilter === 'pending' ? 'warning.dark' : alpha(theme.palette.warning.main, 0.05)
-              }
-            }}
-          >
-            Pending
-          </Button>
-          <Button
-            variant={activeFilter === 'overdue' ? 'contained' : 'outlined'}
-            startIcon={<ErrorIcon />}
-            onClick={() => handleFilterChange('overdue')}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              minWidth: 'auto',
-              px: 2,
-              borderColor: activeFilter === 'overdue' ? 'error.main' : alpha(theme.palette.error.main, 0.3),
-              color: activeFilter === 'overdue' ? 'white' : 'error.main',
-              bgcolor: activeFilter === 'overdue' ? 'error.main' : 'transparent',
-              '&:hover': {
-                borderColor: 'error.main',
-                bgcolor: activeFilter === 'overdue' ? 'error.dark' : alpha(theme.palette.error.main, 0.05)
-              }
-            }}
-          >
-            Overdue
+            View All
           </Button>
         </Stack>
+      </Box>
+
+      {/* Filter Section */}
+      <Box sx={{ mb: 3, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.02), borderRadius: 2, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FilterList sx={{ color: 'text.secondary', fontSize: 20 }} />
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, minWidth: 'fit-content' }}>
+              Filters:
+            </Typography>
+          </Box>
+          
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={statusFilter}
+              onChange={(e) => handleStatusFilterChange(e.target.value)}
+              label="Status"
+            >
+              <MenuItem value="">All Statuses</MenuItem>
+              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="paid">Paid</MenuItem>
+              <MenuItem value="late">Late</MenuItem>
+              <MenuItem value="defaulted">Defaulted</MenuItem>
+              <MenuItem value="overdue">Overdue</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Type</InputLabel>
+            <Select
+              value={typeFilter}
+              onChange={(e) => handleTypeFilterChange(e.target.value)}
+              label="Type"
+            >
+              <MenuItem value="">All Types</MenuItem>
+              <MenuItem value="scheduled">Scheduled</MenuItem>
+              <MenuItem value="advance">Advance</MenuItem>
+              <MenuItem value="extra">Extra</MenuItem>
+            </Select>
+          </FormControl>
+
+          {(statusFilter || typeFilter) && (
+            <Button
+              size="small"
+              onClick={handleClearFilters}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                color: 'text.secondary'
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {payments.length === 0 ? (
@@ -467,48 +521,158 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
         </TableContainer>
       )}
 
-      {/* Pagination Controls */}
-      {totalCount > 0 && (
-        <Box sx={{ 
-          mt: 2, 
-          borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          pt: 2
-        }}>
-          <TablePagination
-            component="div"
-            count={totalCount}
-            page={page}
-            onPageChange={handlePageChange}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleRowsPerPageChange}
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            showFirstButton
-            showLastButton
+
+      {/* Extra Payment Dialog */}
+      <Dialog
+        open={extraPaymentDialogOpen}
+        onClose={handleCloseExtraPaymentDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Avatar
+              sx={{
+                bgcolor: alpha(theme.palette.success.main, 0.1),
+                color: 'success.main',
+                width: 40,
+                height: 40
+              }}
+            >
+              <AttachMoney />
+            </Avatar>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Record Prepayment
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Record a prepayment that exceeds the scheduled amount for this contract.
+          </Typography>
+
+          <TextField
+            fullWidth
+            label="Payment Amount"
+            type="number"
+            value={extraPaymentAmount}
+            onChange={(e) => setExtraPaymentAmount(e.target.value)}
+            placeholder="0.00"
+            InputProps={{
+              startAdornment: (
+                <Box sx={{ mr: 1, color: 'text.secondary' }}>
+                  <AttachMoney sx={{ fontSize: 20 }} />
+                </Box>
+              ),
+            }}
+            sx={{ mb: 3 }}
+            required
+            error={extraPaymentAmount !== '' && parseFloat(extraPaymentAmount) <= 0}
+            helperText={
+              extraPaymentAmount !== '' && parseFloat(extraPaymentAmount) <= 0
+                ? 'Amount must be greater than 0'
+                : ''
+            }
+          />
+
+          <TextField
+            fullWidth
+            label="Payment Date"
+            type="date"
+            value={extraPaymentDate}
+            onChange={(e) => setExtraPaymentDate(e.target.value)}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            sx={{ mb: 3 }}
+            required
+          />
+
+          <FormControl fullWidth sx={{ mb: 3 }} required>
+            <InputLabel>Payment Method</InputLabel>
+            <Select
+              value={extraPaymentMethod}
+              onChange={(e) => setExtraPaymentMethod(e.target.value)}
+              label="Payment Method"
+            >
+              <MenuItem value="cash">Cash</MenuItem>
+              <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
+              <MenuItem value="online_banking">Online Banking</MenuItem>
+              <MenuItem value="credit_card">Credit Card</MenuItem>
+              <MenuItem value="debit_card">Debit Card</MenuItem>
+              <MenuItem value="check">Check</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            fullWidth
+            label="Transaction Reference"
+            value={extraTransactionReference}
+            onChange={(e) => setExtraTransactionReference(e.target.value)}
+            placeholder="Optional transaction reference or confirmation number"
+            sx={{ mb: 3 }}
+            inputProps={{ maxLength: 100 }}
+          />
+
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel>Prepayment Option</InputLabel>
+            <Select
+              value={extraPrepaymentOption}
+              onChange={(e) => setExtraPrepaymentOption(e.target.value as 'reduce_term' | 'reduce_payment')}
+              label="Prepayment Option"
+            >
+              <MenuItem value="reduce_payment">Reduce Payment (keep same term, lower payments)</MenuItem>
+              <MenuItem value="reduce_term">Reduce Term (keep same payment, fewer months)</MenuItem>
+            </Select>
+          </FormControl>
+
+          <TextField
+            fullWidth
+            label="Notes"
+            value={extraNotes}
+            onChange={(e) => setExtraNotes(e.target.value)}
+            placeholder="Optional additional notes about the prepayment"
+            multiline
+            rows={3}
+            sx={{ mb: 2 }}
+            inputProps={{ maxLength: 500 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 2 }}>
+          <Button
+            onClick={handleCloseExtraPaymentDialog}
+            disabled={isCreatingPayment}
             sx={{
-              '& .MuiTablePagination-toolbar': {
-                px: 0,
-                minHeight: 52
-              },
-              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-                fontWeight: 500,
-                color: 'text.secondary'
-              },
-              '& .MuiTablePagination-select': {
-                fontWeight: 600
-              },
-              '& .MuiIconButton-root': {
-                borderRadius: 2,
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08)
-                },
-                '&.Mui-disabled': {
-                  opacity: 0.3
-                }
+              textTransform: 'none',
+              fontWeight: 600
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmitExtraPayment}
+            disabled={isCreatingPayment || !extraPaymentAmount || parseFloat(extraPaymentAmount) <= 0 || !extraPaymentMethod}
+            startIcon={isCreatingPayment ? <CircularProgress size={16} /> : <AttachMoney />}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              bgcolor: 'success.main',
+              '&:hover': {
+                bgcolor: 'success.dark'
               }
             }}
-          />
-        </Box>
-      )}
+          >
+            {isCreatingPayment ? 'Recording...' : 'Record Prepayment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

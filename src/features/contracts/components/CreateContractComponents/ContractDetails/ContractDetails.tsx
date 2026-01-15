@@ -100,7 +100,7 @@ export const ContractDetails: React.FC<ContractDetailsProps> = ({ isEdit = false
                 onChange={(newValue) => {
                   onChange(newValue ? newValue.format('YYYY-MM-DD') : '');
                 }}
-                minDate={dayjs()}
+                // minDate={dayjs()}
                 disabled={isEdit}
                 slotProps={{
                   textField: {

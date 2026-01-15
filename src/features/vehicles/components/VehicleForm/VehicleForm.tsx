@@ -260,13 +260,47 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         console.log("  📁 Files to upload:", files.length);
         console.log("  📋 Document metadata:", documentMetadata);
 
-        // Clean up vehicle data - remove empty/null licensePlate
+        // Clean up vehicle data - remove empty/null licensePlate and ensure numeric fields are numbers
         const cleanedData = { ...data };
         if (
           !cleanedData.licensePlate ||
           cleanedData.licensePlate.trim() === ""
         ) {
           delete cleanedData.licensePlate;
+        }
+
+        // Ensure numeric fields are proper numbers (not empty strings or invalid values)
+        if (cleanedData.currentValuation !== undefined && cleanedData.currentValuation !== null) {
+          const numValue = typeof cleanedData.currentValuation === 'string' 
+            ? parseFloat(cleanedData.currentValuation) 
+            : Number(cleanedData.currentValuation);
+          if (isNaN(numValue) || !isFinite(numValue) || numValue < 0) {
+            delete cleanedData.currentValuation;
+          } else {
+            cleanedData.currentValuation = numValue;
+          }
+        }
+
+        if (cleanedData.marketValue !== undefined && cleanedData.marketValue !== null) {
+          const numValue = typeof cleanedData.marketValue === 'string' 
+            ? parseFloat(cleanedData.marketValue) 
+            : Number(cleanedData.marketValue);
+          if (isNaN(numValue) || !isFinite(numValue) || numValue < 0) {
+            delete cleanedData.marketValue;
+          } else {
+            cleanedData.marketValue = numValue;
+          }
+        }
+
+        if (cleanedData.depreciatedValue !== undefined && cleanedData.depreciatedValue !== null) {
+          const numValue = typeof cleanedData.depreciatedValue === 'string' 
+            ? parseFloat(cleanedData.depreciatedValue) 
+            : Number(cleanedData.depreciatedValue);
+          if (isNaN(numValue) || !isFinite(numValue) || numValue < 0) {
+            delete cleanedData.depreciatedValue;
+          } else {
+            cleanedData.depreciatedValue = numValue;
+          }
         }
 
         // Submit vehicle data with files and document metadata

@@ -9,12 +9,12 @@ import {
 } from "../api/contractApi";
 import { useNotification } from "../../../shared/hooks/useNotification";
 import { usePendingDocuments } from "../../../shared/hooks/usePendingDocuments";
-import { EditPageLoadingState, EditPageErrorState } from "../../../shared/components";
-import { useContractDataLoader } from "../hooks/useContractDataLoader";
 import {
-  ContractType,
-  UpdateContractDto,
-} from "../types/contract.types";
+  EditPageLoadingState,
+  EditPageErrorState,
+} from "../../../shared/components";
+import { useContractDataLoader } from "../hooks/useContractDataLoader";
+import { ContractType, UpdateContractDto } from "../types/contract.types";
 
 export const EditContractPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,22 +22,18 @@ export const EditContractPage: React.FC = () => {
   const { showSuccess, showError } = useNotification();
 
   // API Queries
-  const {
-    data: contractsData,
-    isLoading: isLoadingContracts,
-  } = useGetContractsQuery(
-    { limit: 1000, offset: 0 },
-    { skip: !id }
-  );
+  const { data: contractsData, isLoading: isLoadingContracts } =
+    useGetContractsQuery({ limit: 1000, offset: 0 }, { skip: !id });
 
   const contract = contractsData?.contracts?.find((c) => c.id === id);
 
-  const { data: customerData, isLoading: isLoadingCustomer } = useGetCustomerQuery(
-    contract?.customerId || "",
-    { skip: !contract?.customerId }
-  );
+  const { data: customerData, isLoading: isLoadingCustomer } =
+    useGetCustomerQuery(contract?.customerId || "", {
+      skip: !contract?.customerId,
+    });
 
-  const [updateContract, { isLoading: isUpdating }] = useUpdateContractMutation();
+  const [updateContract, { isLoading: isUpdating }] =
+    useUpdateContractMutation();
 
   // Pending documents management
   const {
@@ -55,18 +51,14 @@ export const EditContractPage: React.FC = () => {
   });
 
   // Contract data loading hook
-  const {
-    initialData,
-    loadingData,
-    error,
-    loadContractData,
-  } = useContractDataLoader({
-    contractId: id,
-    contract,
-    customerData,
-    isLoadingCustomer,
-    setPendingDocumentIds,
-  });
+  const { initialData, loadingData, error, loadContractData } =
+    useContractDataLoader({
+      contractId: id,
+      contract,
+      customerData,
+      isLoadingCustomer,
+      setPendingDocumentIds,
+    });
 
   // Load contract data when dependencies are ready
   useEffect(() => {
@@ -77,7 +69,8 @@ export const EditContractPage: React.FC = () => {
   }, [loadContractData, contract, contractsData, isLoadingContracts]);
 
   // Check if contract was not found after loading completes
-  const contractNotFound = contractsData && !isLoadingContracts && !contract && id;
+  const contractNotFound =
+    contractsData && !isLoadingContracts && !contract && id;
 
   // ============================================================================
   // Handlers
@@ -116,12 +109,43 @@ export const EditContractPage: React.FC = () => {
         await commitPendingDocuments();
       }
 
+      // Debug: Log the form data to see what we're receiving
+      console.log("📝 Form data received in handleSubmit:", data);
+      console.log("🚗 vehicleIds from submitData:", data.vehicleIds);
+      console.log("🚗 selectedVehicles (legacy):", data.selectedVehicles);
+      console.log("📊 Initial data selectedVehicles:", initialData?.selectedVehicles);
+
       // Build update DTO with only editable contract fields
-      // Only contractNumber can be edited, other fields are readonly
       const updateData: UpdateContractDto = {
         id,
         contractNumber: data.contractNumber,
       };
+
+      // Get current vehicle IDs from form data
+      // ContractForm sends vehicleIds in submitData (vehicles that should remain assigned)
+      // Fallback to selectedVehicles for backward compatibility, then to initialData
+      const currentVehicleIds =
+        data.vehicleIds !== undefined
+          ? Array.isArray(data.vehicleIds)
+            ? data.vehicleIds
+            : []
+          : data.selectedVehicles !== undefined
+          ? Array.isArray(data.selectedVehicles)
+            ? data.selectedVehicles
+            : []
+          : initialData?.selectedVehicles || [];
+
+      // Always include vehicleIds array - empty array means remove all vehicles
+      // Backend handles both adding and removing in a single update operation
+      updateData.vehicleIds = currentVehicleIds;
+      console.log("✅ Including vehicleIds in update (vehicles to remain assigned):", updateData.vehicleIds);
+      console.log("📊 Initial vehicles:", initialData?.selectedVehicles || []);
+      console.log("📊 Current vehicles (will remain):", currentVehicleIds);
+      console.log("🔍 Comparison - Initial vs Current:", {
+        initial: initialData?.selectedVehicles || [],
+        current: currentVehicleIds,
+        changed: JSON.stringify(initialData?.selectedVehicles || []) !== JSON.stringify(currentVehicleIds)
+      });
 
       // Include loan details if contract is a loan
       if (data.type === ContractType.LOAN && data.loanDetails) {
@@ -134,7 +158,9 @@ export const EditContractPage: React.FC = () => {
             interestRate: data.loanDetails.interestRate || 0,
           };
         } else {
-          console.warn("⚠️ Loan details ID not found. Cannot update loan details.");
+          console.warn(
+            "⚠️ Loan details ID not found. Cannot update loan details."
+          );
         }
       }
 
@@ -149,9 +175,16 @@ export const EditContractPage: React.FC = () => {
             interestRate: data.leasingDetails.interestRate || 0,
           };
         } else {
-          console.warn("⚠️ Leasing details ID not found. Cannot update leasing details.");
+          console.warn(
+            "⚠️ Leasing details ID not found. Cannot update leasing details."
+          );
         }
       }
+
+      console.log(
+        "📤 Final update data being sent:",
+        JSON.stringify(updateData, null, 2)
+      );
 
       await updateContract({ id, data: updateData }).unwrap();
       showSuccess("Contract updated successfully!");

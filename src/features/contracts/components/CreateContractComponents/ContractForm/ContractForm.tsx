@@ -22,7 +22,6 @@ import {
   FormHelperText,
   InputAdornment,
   Chip,
-  Tooltip,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -31,7 +30,6 @@ import {
   Calculate,
   AttachMoney,
   TrendingUp,
-  Info,
 } from "@mui/icons-material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -97,9 +95,14 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   // Euribor rate state - Store as percentages (e.g., 3 for 3%, not 0.03)
   const [euriborRate, setEuriborRate] = useState<number>(0);
   const [marginRate, setMarginRate] = useState<number>(0);
+  const [euriborRateId, setEuriborRateId] = useState<string | null>(null);
+  const [euriborTenor, setEuriborTenor] = useState<string | null>(null);
   const [loadingEuribor, setLoadingEuribor] = useState<boolean>(false);
   const [euriborError, setEuriborError] = useState<string | null>(null);
   const [euriborDate, setEuriborDate] = useState<string | null>(null);
+  const [availableEuriborRates, setAvailableEuriborRates] = useState<any[]>([]);
+  const [loadingEuriborRates, setLoadingEuriborRates] =
+    useState<boolean>(false);
 
   const methods = useForm<ContractFormData>({
     defaultValues: {
@@ -126,6 +129,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       collaterals: [],
       endorserCollaterals: [],
       documents: [],
+      euriborRateId: undefined,
       terms: {
         insuranceRequired: true,
         penaltyRate: 0.05,
@@ -142,6 +146,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
     watch,
     setValue,
     trigger,
+    getValues,
     formState: { errors, isValid },
     handleSubmit,
   } = methods;
@@ -173,9 +178,42 @@ export const ContractForm: React.FC<ContractFormProps> = ({
     }
   }, [watchedData.type, isEdit, watchedData.contractNumber, setValue]);
 
-  // Fetch current 12M Euribor rate
+  // Fetch available 12M Euribor rates for selection
+  useEffect(() => {
+    const fetchAvailableEuriborRates = async () => {
+      setLoadingEuriborRates(true);
+      try {
+        const response = await euriborApi.getAll({
+          tenor: EuriborTenor.TWELVE_MONTHS,
+          isActive: true,
+          limit: 100, // Get enough rates to choose from
+        });
+        const rates = response.data || [];
+        setAvailableEuriborRates(rates);
+        console.log("📊 Available Euribor rates:", rates.length);
+      } catch (error) {
+        console.error("❌ Error fetching available Euribor rates:", error);
+      } finally {
+        setLoadingEuriborRates(false);
+      }
+    };
+
+    fetchAvailableEuriborRates();
+  }, []);
+
+  // Fetch and auto-select 12M Euribor rate based on contract date
   useEffect(() => {
     const fetchEuriborRate = async () => {
+      // Don't auto-fetch if user has already manually selected a rate
+      // Check if there's a valid rate ID that was manually set
+      if (euriborRateId) {
+        console.log(
+          "⏭️ Skipping auto-fetch - rate already selected:",
+          euriborRateId
+        );
+        return;
+      }
+
       setLoadingEuribor(true);
       setEuriborError(null);
 
@@ -203,30 +241,115 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           const percentageRate = rateData.rateValue * 100;
           setEuriborRate(percentageRate);
           setEuriborDate(rateData.rateDate);
+          // Store the Euribor rate ID and tenor
+          if (rateData.id) {
+            setEuriborRateId(rateData.id);
+            setValue("euriborRateId", rateData.id); // Also update form state
+
+            // Add the auto-fetched rate to available rates if it's not already there
+            setAvailableEuriborRates((prev) => {
+              const exists = prev.some((r) => r.id === rateData.id);
+              if (!exists && rateData.id) {
+                return [...prev, rateData];
+              }
+              return prev;
+            });
+          }
+          if (rateData.tenor) {
+            setEuriborTenor(rateData.tenor);
+          }
           console.log(
             "✅ Euribor rate fetched:",
             percentageRate,
             "% (from",
             rateData.rateValue,
             ") for date:",
-            rateData.rateDate
+            rateData.rateDate,
+            "ID:",
+            rateData.id,
+            "Tenor:",
+            rateData.tenor
           );
         } else {
           setEuriborError(
-            "No 12M Euribor rate available. Please set one in Euribor Rates Management."
+            "No 12M Euribor rate available. Please select one from the dropdown."
           );
           console.warn("⚠️ No 12M Euribor rate available");
         }
       } catch (error) {
         console.error("❌ Error fetching Euribor rate:", error);
-        setEuriborError("Failed to load Euribor rate");
+        setEuriborError(
+          "Failed to load Euribor rate. Please select one manually."
+        );
       } finally {
         setLoadingEuribor(false);
       }
     };
 
     fetchEuriborRate();
-  }, [watchedData.startDate]);
+  }, [watchedData.startDate, euriborRateId]);
+
+  // Handle manual Euribor rate selection
+  const handleEuriborRateChange = (selectedRateId: string) => {
+    console.log("🔄 handleEuriborRateChange called with:", selectedRateId);
+    console.log("🔄 Available rates:", availableEuriborRates.length);
+    console.log(
+      "🔄 Available rate IDs:",
+      availableEuriborRates.map((r) => r.id)
+    );
+
+    if (!selectedRateId || selectedRateId === "" || selectedRateId === "null") {
+      console.warn("⚠️ Empty or invalid rate ID selected");
+      setEuriborRateId(null);
+      setValue("euriborRateId", undefined);
+      setEuriborError("Please select a valid Euribor rate");
+      return;
+    }
+
+    const selectedRate = availableEuriborRates.find(
+      (rate) => rate.id === selectedRateId
+    );
+    console.log("🔄 Found rate:", selectedRate);
+
+    if (!selectedRate) {
+      console.error("❌ Rate not found for ID:", selectedRateId);
+      setEuriborError("Selected rate not found. Please try selecting again.");
+      return;
+    }
+
+    // Use the selectedRateId directly (from the parameter) instead of selectedRate.id
+    // to ensure we always use the ID that was actually selected
+    const rateId = selectedRateId;
+    const percentageRate = selectedRate.rateValue * 100;
+
+    console.log("🔄 Setting Euribor rate ID:", rateId);
+    console.log("🔄 Rate details:", {
+      id: rateId,
+      rateValue: selectedRate.rateValue,
+      percentageRate,
+      date: selectedRate.rateDate,
+      tenor: selectedRate.tenor,
+    });
+
+    // Update all state synchronously - both React state and form state
+    setEuriborRate(percentageRate);
+    setEuriborDate(selectedRate.rateDate);
+    setEuriborRateId(rateId); // Use the parameter directly
+    setValue("euriborRateId", rateId); // Also update form state
+    setEuriborTenor(selectedRate.tenor || EuriborTenor.TWELVE_MONTHS);
+    setEuriborError(null);
+
+    console.log(
+      "✅ Euribor rate selected and state updated:",
+      percentageRate,
+      "% (from",
+      selectedRate.rateValue,
+      ") for date:",
+      selectedRate.rateDate,
+      "ID:",
+      rateId
+    );
+  };
 
   // Update total interest rate when either euribor or margin changes
   useEffect(() => {
@@ -321,41 +444,90 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       try {
         setSubmitError("");
 
+        // Get the latest form values to ensure we have the most up-to-date data
+        const currentFormValues = getValues();
+        console.log("📋 Form submission - data parameter:", data);
+        console.log(
+          "📋 Form submission - currentFormValues (getValues):",
+          currentFormValues
+        );
+        console.log("🚗 data.selectedVehicles:", data.selectedVehicles);
+        console.log(
+          "🚗 currentFormValues.selectedVehicles:",
+          currentFormValues.selectedVehicles
+        );
+
+        // Use current form values if data parameter seems stale
+        // Always prefer currentFormValues to ensure we have the latest state
+        const formDataToUse = {
+          ...data,
+          selectedVehicles:
+            currentFormValues.selectedVehicles || data.selectedVehicles || [],
+          selectedVehicleData:
+            currentFormValues.selectedVehicleData ||
+            data.selectedVehicleData ||
+            [],
+        };
+
+        console.log(
+          "✅ Using formDataToUse.selectedVehicles:",
+          formDataToUse.selectedVehicles
+        );
+        console.log(
+          "✅ formDataToUse.selectedVehicleData length:",
+          formDataToUse.selectedVehicleData?.length
+        );
+
         // Debug logging
         console.log("🚀 Contract Submission Debug:");
-        console.log("  📋 Form Data:", data);
-        console.log("  📄 Documents Count:", data.documents?.length || 0);
+        console.log("  📋 Form Data:", formDataToUse);
+        console.log(
+          "  📄 Documents Count:",
+          formDataToUse.documents?.length || 0
+        );
         console.log(
           "  📤 Has Documents:",
-          data.documents && data.documents.length > 0
+          formDataToUse.documents && formDataToUse.documents.length > 0
         );
-        console.log("  💰 Guarantee Amount:", data.guaranteeForContract || 0);
+        console.log(
+          "  💰 Guarantee Amount:",
+          formDataToUse.guaranteeForContract || 0
+        );
         console.log(
           "  👤 Selected Endorsers:",
-          data.selectedEndorsers?.length || 0
+          formDataToUse.selectedEndorsers?.length || 0
         );
 
         // Build collaterals array from vehicle selection if marked as collateral
-        console.log("🔍 Building collaterals - vehicleAsCollateral:", data.vehicleAsCollateral);
-        console.log("🔍 Selected vehicle data:", data.selectedVehicleData);
-        
+        console.log(
+          "🔍 Building collaterals - vehicleAsCollateral:",
+          formDataToUse.vehicleAsCollateral
+        );
+        console.log(
+          "🔍 Selected vehicle data:",
+          formDataToUse.selectedVehicleData
+        );
+
         const collaterals =
-          data.vehicleAsCollateral &&
-          data.selectedVehicleData &&
-          data.selectedVehicleData.length > 0
-            ? data.selectedVehicleData.map((vehicle) => {
+          formDataToUse.vehicleAsCollateral &&
+          formDataToUse.selectedVehicleData &&
+          formDataToUse.selectedVehicleData.length > 0
+            ? (formDataToUse.selectedVehicleData || []).map((vehicle) => {
                 console.log("🚗 Vehicle for collateral:", {
                   id: vehicle.id,
                   licensePlate: vehicle.licensePlate,
                   make: vehicle.make,
                   model: vehicle.model,
                 });
-                
+
                 // Ensure license plate is not empty - this is required for collaterals
                 if (!vehicle.licensePlate) {
-                  console.error("❌ Vehicle missing license plate for collateral:", vehicle.id);
+                  console.error(
+                    "❌ Vehicle missing license plate for collateral:",
+                    vehicle.id
+                  );
                 }
-                
+
                 return {
                   type: "vehicle" as const,
                   description: `Vehicle collateral: ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
@@ -383,8 +555,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           expiryDate: string;
         }[] = [];
 
-        if (data.documents && data.documents.length > 0) {
-          data.documents.forEach((doc: any) => {
+        if (formDataToUse.documents && formDataToUse.documents.length > 0) {
+          formDataToUse.documents.forEach((doc: any) => {
             if (doc.file) {
               files.push(doc.file);
               documentMetadata.push({
@@ -405,20 +577,20 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         console.log("  📋 Document metadata:", documentMetadata);
 
         // Build base contract data
-        const baseContractData = {
-          type: data.type,
-          contractNumber: data.contractNumber,
-          customerId: data.customerId,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          totalAmount: data.totalAmount,
-          interestRate: data.loanDetails?.interestRate || 0,
-          vehicleIds: data.selectedVehicles || [],
+        const baseContractData: any = {
+          type: formDataToUse.type,
+          contractNumber: formDataToUse.contractNumber,
+          customerId: formDataToUse.customerId,
+          startDate: formDataToUse.startDate,
+          endDate: formDataToUse.endDate,
+          totalAmount: formDataToUse.totalAmount,
+          interestRate: formDataToUse.loanDetails?.interestRate || 0,
+          vehicleIds: formDataToUse.selectedVehicles || [],
           collaterals,
           endorserCollaterals:
-            data.selectedEndorsers?.map((endorserId) => {
+            formDataToUse.selectedEndorsers?.map((endorserId) => {
               const guaranteeAmount =
-                data.guaranteeForContract || data.totalAmount;
+                formDataToUse.guaranteeForContract || formDataToUse.totalAmount;
               return {
                 type: "personal_guarantee" as const,
                 description: `Personal guarantee by endorser ${endorserId}`,
@@ -427,13 +599,89 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 guaranteedAmount: guaranteeAmount,
                 guaranteeType: "personal_guarantee",
                 requiresNotarization: false,
-                guaranteeForContract: data.guaranteeForContract,
-                guaranteeExpirationDate: data.endDate,
-                legalDocumentReference: `GUARANTEE-${data.contractNumber}-${endorserId}`,
+                guaranteeForContract: formDataToUse.guaranteeForContract,
+                guaranteeExpirationDate: formDataToUse.endDate,
+                legalDocumentReference: `GUARANTEE-${formDataToUse.contractNumber}-${endorserId}`,
               };
             }) || [],
-          terms: data.terms || {},
+          terms: formDataToUse.terms || {},
         };
+
+        // Add Euribor-related fields
+        // euriborRateId is required - check both state and form data
+        const finalEuriborRateId = formDataToUse.euriborRateId || euriborRateId;
+
+        console.log("🔍 Validating Euribor rate ID before submission");
+        console.log("🔍 Current euriborRateId state:", euriborRateId);
+        console.log("🔍 Form data euriborRateId:", formDataToUse.euriborRateId);
+        console.log("🔍 Final euriborRateId to use:", finalEuriborRateId);
+        console.log("🔍 Available rates count:", availableEuriborRates.length);
+
+        // Check if euriborRateId is valid
+        const isValidRateId =
+          finalEuriborRateId &&
+          finalEuriborRateId !== "" &&
+          finalEuriborRateId !== null &&
+          finalEuriborRateId !== undefined &&
+          typeof finalEuriborRateId === "string";
+
+        if (!isValidRateId) {
+          console.error("❌ Euribor rate ID is missing or invalid!");
+          console.error("❌ State value:", euriborRateId);
+          console.error("❌ Form value:", formDataToUse.euriborRateId);
+          setSubmitError(
+            "Please select a Euribor rate from the dropdown above. The selected rate ID is missing."
+          );
+          return;
+        }
+
+        // Verify the rate exists in available rates (but don't fail if it was auto-selected)
+        // The rate might have been auto-fetched and not in the dropdown list
+        const rateExists = availableEuriborRates.some(
+          (rate) => rate.id === finalEuriborRateId
+        );
+        if (!rateExists && availableEuriborRates.length > 0) {
+          // Only warn if we have rates loaded but the selected one isn't there
+          // This could happen if the rate was auto-selected from a different endpoint
+          console.warn(
+            "⚠️ Selected rate ID not found in available rates list, but proceeding anyway"
+          );
+          console.warn("⚠️ Rate ID:", finalEuriborRateId);
+          console.warn(
+            "⚠️ This might be an auto-selected rate that's not in the dropdown list"
+          );
+          // Don't fail - the rate ID is valid, it just might not be in the filtered list
+        }
+
+        console.log("✅ Euribor rate ID validated:", finalEuriborRateId);
+        baseContractData.euriborRateId = finalEuriborRateId;
+
+        // Add margin as decimal (convert from percentage to decimal) - optional
+        if (marginRate && marginRate > 0) {
+          baseContractData.margin = marginRate / 100; // Convert from percentage (e.g., 4) to decimal (0.04)
+          console.log(
+            "✅ Margin added:",
+            baseContractData.margin,
+            "(from",
+            marginRate,
+            "%)"
+          );
+        } else {
+          console.log("ℹ️ Margin not provided or is 0");
+        }
+
+        // Add Euribor tenor if available - optional
+        if (euriborTenor) {
+          baseContractData.euriborTenor = euriborTenor;
+          console.log("✅ Euribor tenor added:", euriborTenor);
+        } else {
+          console.log("ℹ️ Euribor tenor not provided");
+        }
+
+        console.log(
+          "📋 baseContractData with Euribor fields:",
+          JSON.stringify(baseContractData, null, 2)
+        );
 
         // Build the submit data with files and document metadata
         const submitData: any = {
@@ -443,48 +691,63 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           documents: documentMetadata.length > 0 ? documentMetadata : undefined,
         };
 
+        console.log(
+          "📋 submitData after spread (before loanDetails):",
+          JSON.stringify(submitData, null, 2)
+        );
+
         console.log("  📤 Submitting contract with", files.length, "documents");
 
         // Add loan details if it's a loan contract
-        if (data.type === ContractType.LOAN && data.loanDetails) {
+        if (
+          formDataToUse.type === ContractType.LOAN &&
+          formDataToUse.loanDetails
+        ) {
           // Calculate total interest
           const totalInterest =
-            data.loanDetails.monthlyPayment * data.loanDetails.loanTermMonths -
-            data.totalAmount;
+            formDataToUse.loanDetails.monthlyPayment *
+              formDataToUse.loanDetails.loanTermMonths -
+            formDataToUse.totalAmount;
 
           submitData.loanDetails = {
-            type: data.type,
-            contractNumber: data.contractNumber,
-            customerId: data.customerId,
-            startDate: data.startDate,
-            endDate: data.endDate,
-            totalAmount: data.totalAmount,
-            interestRate: data.loanDetails.interestRate,
-            loanTermMonths: data.loanDetails.loanTermMonths,
-            monthlyPayment: data.loanDetails.monthlyPayment,
+            type: formDataToUse.type,
+            contractNumber: formDataToUse.contractNumber,
+            customerId: formDataToUse.customerId,
+            startDate: formDataToUse.startDate,
+            endDate: formDataToUse.endDate,
+            totalAmount: formDataToUse.totalAmount,
+            interestRate: formDataToUse.loanDetails.interestRate,
+            loanTermMonths: formDataToUse.loanDetails.loanTermMonths,
+            monthlyPayment: formDataToUse.loanDetails.monthlyPayment,
             totalInterest: Math.round(totalInterest * 100) / 100, // Round to 2 decimal places
-            processingFeePercentage: data.loanDetails.processingFeePercentage,
-            earlyRepaymentPenalty: data.loanDetails.earlyRepaymentPenalty,
+            processingFeePercentage:
+              formDataToUse.loanDetails.processingFeePercentage,
+            earlyRepaymentPenalty:
+              formDataToUse.loanDetails.earlyRepaymentPenalty,
             paymentScheduleType:
-              data.loanDetails.paymentScheduleType || "monthly_fixed",
+              formDataToUse.loanDetails.paymentScheduleType || "monthly_fixed",
           };
         }
 
         // Add leasing details if it's a leasing contract
-        if (data.type === ContractType.LEASING && data.leasingDetails) {
+        if (
+          formDataToUse.type === ContractType.LEASING &&
+          formDataToUse.leasingDetails
+        ) {
           submitData.leasingDetails = {
-            type: data.type,
-            contractNumber: data.contractNumber,
-            customerId: data.customerId,
-            startDate: data.startDate,
-            endDate: data.endDate,
-            totalAmount: data.totalAmount,
-            residualValue: data.leasingDetails.residualValue,
-            leaseTermMonths: data.leasingDetails.leaseTermMonths,
-            monthlyPayment: data.leasingDetails.monthlyPayment,
-            advancePayment: data.leasingDetails.advancePayment,
-            withPurchaseOption: data.leasingDetails.withPurchaseOption,
-            purchaseOptionPrice: data.leasingDetails.purchaseOptionPrice,
+            type: formDataToUse.type,
+            contractNumber: formDataToUse.contractNumber,
+            customerId: formDataToUse.customerId,
+            startDate: formDataToUse.startDate,
+            endDate: formDataToUse.endDate,
+            totalAmount: formDataToUse.totalAmount,
+            residualValue: formDataToUse.leasingDetails.residualValue,
+            leaseTermMonths: formDataToUse.leasingDetails.leaseTermMonths,
+            monthlyPayment: formDataToUse.leasingDetails.monthlyPayment,
+            advancePayment: formDataToUse.leasingDetails.advancePayment,
+            withPurchaseOption: formDataToUse.leasingDetails.withPurchaseOption,
+            purchaseOptionPrice:
+              formDataToUse.leasingDetails.purchaseOptionPrice,
           };
         }
 
@@ -493,6 +756,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           JSON.stringify(submitData, null, 2)
         );
         console.log("🚀 Final contract submission data:", submitData);
+        console.log("🔍 Euribor fields check in submitData:");
+        console.log("  - euriborRateId:", submitData.euriborRateId);
+        console.log("  - margin:", submitData.margin);
+        console.log("  - euriborTenor:", submitData.euriborTenor);
+        console.log("  - interestRate:", submitData.interestRate);
 
         await onSubmit(submitData);
       } catch (error) {
@@ -618,7 +886,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     },
                   },
                 }}
-                minDate={dayjs()}
+                // Allow past dates for contracts created retroactively
               />
             </Grid>
 
@@ -697,55 +965,95 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               </Typography>
             </Grid>
 
-            {/* Euribor Rate (Read-only) */}
+            {/* Euribor Rate (Selectable) */}
             <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="12M Euribor Rate"
-                value={loadingEuribor ? "Loading..." : euriborRate.toFixed(2)}
-                InputProps={{
-                  readOnly: true,
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <TrendingUp color="primary" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                      >
-                        %
-                        {euriborDate && (
-                          <Tooltip
-                            title={`Rate from ${dayjs(euriborDate).format(
-                              "MMM DD, YYYY"
-                            )}`}
-                          >
-                            <Info fontSize="small" color="action" />
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </InputAdornment>
-                  ),
-                }}
-                helperText={
-                  euriborError ||
-                  (euriborDate
-                    ? `Rate from ${dayjs(euriborDate).format("MMM DD, YYYY")}`
-                    : "12-month Euribor base rate")
-                }
-                error={!!euriborError}
-                sx={{
-                  "& .MuiInputBase-input": {
-                    color: "primary.main",
-                    fontWeight: 600,
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: (theme) => theme.palette.action.hover,
-                  },
-                }}
-              />
+              <FormControl fullWidth error={!!euriborError} required>
+                <InputLabel id="euribor-rate-label">
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <TrendingUp fontSize="small" />
+                    12M Euribor Rate
+                  </Box>
+                </InputLabel>
+                <Select
+                  labelId="euribor-rate-label"
+                  value={watchedData.euriborRateId || euriborRateId || ""}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    console.log(
+                      "📋 Select onChange - selected ID:",
+                      selectedId
+                    );
+                    handleEuriborRateChange(selectedId);
+                  }}
+                  label={
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
+                      <TrendingUp fontSize="small" />
+                      12M Euribor Rate
+                    </Box>
+                  }
+                  disabled={loadingEuriborRates || loadingEuribor}
+                  renderValue={(value) => {
+                    if (loadingEuribor || loadingEuriborRates) {
+                      return "Loading...";
+                    }
+                    if (!value || value === "") {
+                      return "Select Euribor Rate";
+                    }
+                    const selectedRate = availableEuriborRates.find(
+                      (r) => r.id === value
+                    );
+                    if (selectedRate) {
+                      return `${(selectedRate.rateValue * 100).toFixed(
+                        4
+                      )}% (${dayjs(selectedRate.rateDate).format(
+                        "MMM DD, YYYY"
+                      )})`;
+                    }
+                    return `${euriborRate.toFixed(2)}%`;
+                  }}
+                >
+                  {loadingEuriborRates ? (
+                    <MenuItem disabled value="">
+                      <CircularProgress size={16} sx={{ mr: 1 }} />
+                      Loading rates...
+                    </MenuItem>
+                  ) : availableEuriborRates.length === 0 ? (
+                    <MenuItem disabled value="">
+                      No Euribor rates available
+                    </MenuItem>
+                  ) : (
+                    availableEuriborRates.map((rate) => (
+                      <MenuItem key={rate.id} value={rate.id}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            width: "100%",
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {(rate.rateValue * 100).toFixed(4)}%
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {dayjs(rate.rateDate).format("MMM DD, YYYY")}
+                            {rate.rateSource && ` • ${rate.rateSource}`}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+                <FormHelperText>
+                  {euriborError ||
+                    (euriborDate
+                      ? `Selected rate from ${dayjs(euriborDate).format(
+                          "MMM DD, YYYY"
+                        )}`
+                      : "Select a 12-month Euribor rate")}
+                </FormHelperText>
+              </FormControl>
             </Grid>
 
             {/* Margin Rate (Editable) */}
@@ -1100,9 +1408,15 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             selectedVehicleData={watchedData.selectedVehicleData}
             isEditMode={isEdit}
             onVehicleSelect={(vehicleIds) => {
+              console.log(
+                "📝 ContractForm: Setting selectedVehicles to:",
+                vehicleIds
+              );
               setValue("selectedVehicles", vehicleIds, {
                 shouldValidate: true,
               });
+              // Trigger form state update to ensure it's reflected
+              trigger("selectedVehicles");
             }}
             onVehicleDataChange={(vehicleData) => {
               setValue("selectedVehicleData", vehicleData, {

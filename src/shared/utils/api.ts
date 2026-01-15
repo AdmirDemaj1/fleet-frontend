@@ -69,15 +69,16 @@ class ApiClient {
             return this.instance(originalRequest);
           } catch (refreshError) {
             console.error('❌ Token refresh failed:', refreshError);
-            // Refresh failed, redirect to login
-            this.handleAuthFailure();
+            // Don't logout on session expiration - just reject the request
+            // The user can continue working and retry the action
             return Promise.reject(refreshError);
           }
         }
 
-        // For other errors, just reject
+        // For other 401 errors, don't logout - just reject the request
+        // This allows the user to continue working even if session expires
         if (error.response?.status === 401) {
-          this.handleAuthFailure();
+          console.warn('⚠️ 401 Unauthorized - Request rejected but user remains logged in');
         }
         
         return Promise.reject(error);
@@ -121,8 +122,9 @@ class ApiClient {
         
         return accessToken;
       } catch (error) {
-        // Clear tokens on refresh failure
-        tokenStorage.clearAuth();
+        // Don't clear tokens on refresh failure - let user stay logged in
+        // They can retry the action or continue working
+        console.warn('⚠️ Token refresh failed, but keeping user logged in');
         throw error;
       } finally {
         this.isRefreshing = false;

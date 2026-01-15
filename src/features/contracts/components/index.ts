@@ -17,3 +17,4 @@ export { ContractPaymentSchedule } from "./ContractPaymentSchedule";
 export { ContractPayments } from "./ContractPayments";
 export { ContractQuickActions } from "./ContractQuickActions";
 export { ContractDocuments } from "./ContractDocuments";
+export { UpdateEuriborRateDialog } from "./UpdateEuriborRateDialog";

@@ -258,10 +258,14 @@ export const DocumentationStep: React.FC = () => {
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
                       }}
-                      inputProps={{ min: 0, max: 10000000 }}
+                      inputProps={{ min: 0, max: 10000000, step: '0.01' }}
                       error={!!errors.currentValuation}
                       helperText={errors.currentValuation?.message as string || 'Current assessed value'}
-                      value={field.value || ''}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                        field.onChange(isNaN(value as number) ? undefined : value);
+                      }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: 2
@@ -285,10 +289,14 @@ export const DocumentationStep: React.FC = () => {
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
                       }}
-                      inputProps={{ min: 0, max: 10000000 }}
+                      inputProps={{ min: 0, max: 10000000, step: '0.01' }}
                       error={!!errors.marketValue}
                       helperText={errors.marketValue?.message as string || 'Current market price'}
-                      value={field.value || ''}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                        field.onChange(isNaN(value as number) ? undefined : value);
+                      }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: 2
@@ -312,10 +320,14 @@ export const DocumentationStep: React.FC = () => {
                       InputProps={{
                         startAdornment: <InputAdornment position="start">$</InputAdornment>,
                       }}
-                      inputProps={{ min: 0, max: 10000000 }}
+                      inputProps={{ min: 0, max: 10000000, step: '0.01' }}
                       error={!!errors.depreciatedValue}
                       helperText={errors.depreciatedValue?.message as string || 'Book value after depreciation'}
-                      value={field.value || ''}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                        field.onChange(isNaN(value as number) ? undefined : value);
+                      }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: 2
