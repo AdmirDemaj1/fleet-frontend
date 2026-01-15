@@ -169,6 +169,8 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
           mileage: (vehicle as any).mileage,
           fuelType: (vehicle as any).fuelType,
           color: (vehicle as any).color,
+          // Ensure documents are preserved
+          documents: (vehicle as any).documents || vehicle.documents || [],
         })) as EnhancedVehicleSummary[],
     [vehiclesResponse]
   );
@@ -184,6 +186,15 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
     [allVehicles, state.selectedVehicles]
   );
 
+  // Combine available vehicles with selected vehicles (for edit mode where selected vehicles might not be in available list)
+  const autocompleteOptions = useMemo(() => {
+    const availableIds = new Set(availableVehicles.map(v => v.id));
+    const selectedNotInAvailable = state.selectedVehicles.filter(
+      sv => !availableIds.has(sv.id)
+    );
+    return [...availableVehicles, ...selectedNotInAvailable];
+  }, [availableVehicles, state.selectedVehicles]);
+
   // Check if a vehicle is complete (has license plate and required documents)
   const isVehicleComplete = useCallback(
     (vehicle: EnhancedVehicleSummary): boolean => {
@@ -191,12 +202,25 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
       if (!vehicle.licensePlate) return false;
 
       // Check required documents
-      const existingDocTypes =
-        (vehicle as any).documents?.map((d: any) => d.type) || [];
+      // Try multiple ways to access documents (API might return them in different formats)
+      const documents = (vehicle as any).documents || vehicle.documents || [];
+      const existingDocTypes = Array.isArray(documents)
+        ? documents.map((d: any) => d.type || d.category).filter(Boolean)
+        : [];
+      
+      console.log("🔍 Checking vehicle completeness:", {
+        vehicleId: vehicle.id,
+        licensePlate: vehicle.licensePlate,
+        documentsCount: documents.length,
+        documentTypes: existingDocTypes,
+        requiredTypes: REQUIRED_VEHICLE_DOCUMENT_TYPES,
+      });
+      
       const hasAllDocs = REQUIRED_VEHICLE_DOCUMENT_TYPES.every((type) =>
         existingDocTypes.includes(type)
       );
 
+      console.log("✅ Vehicle complete:", hasAllDocs, "for vehicle", vehicle.id);
       return hasAllDocs;
     },
     []
@@ -281,7 +305,65 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
 
   // Handle vehicle selection - check if complete first
   const handleVehicleSelect = useCallback(
-    (vehicles: EnhancedVehicleSummary[] | null) => {
+    (vehicles: EnhancedVehicleSummary[] | null, skipValidation = false) => {
+      // Helper function to update vehicles without validation
+      const updateVehiclesDirect = (
+        vehiclesToUpdate: EnhancedVehicleSummary[] | null
+      ) => {
+        if (vehiclesToUpdate && vehiclesToUpdate.length > 0) {
+          setState((prev) => ({
+            ...prev,
+            selectedVehicles: vehiclesToUpdate,
+            hasInteracted: true,
+          }));
+
+          const vehicleIds = vehiclesToUpdate.map((v) => v.id);
+          console.log(
+            "🔄 VehiclePicker: Updating form with vehicle IDs:",
+            vehicleIds
+          );
+          console.log(
+            "🔄 VehiclePicker: Vehicles being passed:",
+            vehiclesToUpdate.map((v) => ({
+              id: v.id,
+              make: v.make,
+              model: v.model,
+              licensePlate: v.licensePlate,
+            }))
+          );
+          onVehicleSelect(vehicleIds);
+          // Also pass the full vehicle data including documents
+          if (onVehicleDataChange) {
+            onVehicleDataChange(vehiclesToUpdate);
+          }
+        } else {
+          // Clearing selection
+          setState((prev) => ({
+            ...prev,
+            selectedVehicles: [],
+            hasInteracted: true,
+          }));
+          console.log("🔄 VehiclePicker: Clearing all vehicles (empty array)");
+          onVehicleSelect([]); // Empty array
+          if (onVehicleDataChange) {
+            onVehicleDataChange([]);
+          }
+        }
+      };
+
+      // If skipping validation (e.g., when removing vehicles), update directly
+      if (skipValidation) {
+        updateVehiclesDirect(vehicles);
+        return;
+      }
+
+      // In edit mode, skip validation when adding vehicles since they already exist with documents
+      if (isEditMode && vehicles && vehicles.length > 0) {
+        console.log("📝 Edit mode: Skipping vehicle completion validation");
+        updateVehiclesDirect(vehicles);
+        return;
+      }
+
       if (vehicles && vehicles.length > 0) {
         // Check if any vehicle is incomplete
         const incompleteVehicles = vehicles.filter(
@@ -300,32 +382,13 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         }
 
         // All vehicles are complete - proceed with selection
-        setState((prev) => ({
-          ...prev,
-          selectedVehicles: vehicles,
-          hasInteracted: true,
-        }));
-
-        const vehicleIds = vehicles.map((v) => v.id);
-        onVehicleSelect(vehicleIds);
-        // Also pass the full vehicle data including documents
-        if (onVehicleDataChange) {
-          onVehicleDataChange(vehicles);
-        }
+        updateVehiclesDirect(vehicles);
       } else {
         // Clearing selection
-        setState((prev) => ({
-          ...prev,
-          selectedVehicles: [],
-          hasInteracted: true,
-        }));
-        onVehicleSelect([]); // Empty array
-        if (onVehicleDataChange) {
-          onVehicleDataChange([]);
-        }
+        updateVehiclesDirect(null);
       }
     },
-    [onVehicleSelect, onVehicleDataChange, isVehicleComplete]
+    [onVehicleSelect, onVehicleDataChange, isVehicleComplete, isEditMode]
   );
 
   // Handle input change
@@ -636,9 +699,10 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
       {/* Vehicle Selection Autocomplete */}
       <Autocomplete
         multiple
-        options={availableVehicles}
+        options={autocompleteOptions}
         getOptionLabel={getVehicleDisplayName}
         value={state.selectedVehicles}
+        isOptionEqualToValue={(option, value) => option.id === value.id}
         onChange={(_event, value) => {
           handleVehicleSelect(value);
         }}
@@ -926,10 +990,12 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
                               state.selectedVehicles.filter(
                                 (v) => v.id !== vehicle.id
                               );
+                            // Skip validation when removing vehicles
                             handleVehicleSelect(
                               updatedVehicles.length > 0
                                 ? updatedVehicles
-                                : null
+                                : null,
+                              true // skipValidation = true
                             );
                           }}
                           sx={{

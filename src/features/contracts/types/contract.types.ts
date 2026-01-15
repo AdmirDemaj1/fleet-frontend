@@ -316,6 +316,9 @@ export interface UpdateContractDto {
   principalAmount?: number;
   remainingInterestAmount?: number;
   remainingPrincipalAmount?: number;
+
+  // Vehicle assignments
+  vehicleIds?: string[];
 }
 
 // Response types

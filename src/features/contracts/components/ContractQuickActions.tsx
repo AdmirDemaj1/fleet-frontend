@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Typography,
   Paper,
@@ -20,6 +20,8 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  Divider,
+  Link,
 } from "@mui/material";
 import {
   Person,
@@ -138,6 +140,14 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
     return dayjs(dateString).format("MMM DD, YYYY");
   };
 
+  // Debug: Log contract vehicles
+  useEffect(() => {
+    if (contract) {
+      console.log("Contract vehicles:", contract.vehicles);
+      console.log("Full contract:", contract);
+    }
+  }, [contract]);
+
   return (
     <Paper
       elevation={0}
@@ -172,26 +182,6 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
           }}
         >
           View Customer Profile
-        </Button>
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<DirectionsCar />}
-          onClick={() => navigate(`/contracts/${contractId}/vehicles`)}
-          sx={{
-            justifyContent: "flex-start",
-            borderRadius: 2,
-            py: 1.5,
-            textTransform: "none",
-            fontWeight: 600,
-            borderColor: alpha(theme.palette.divider, 0.3),
-            "&:hover": {
-              borderColor: "info.main",
-              bgcolor: alpha(theme.palette.info.main, 0.05),
-            },
-          }}
-        >
-          Vehicle Details
         </Button>
         <Button
           fullWidth
@@ -256,7 +246,9 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
         <Button
           fullWidth
           variant="outlined"
-          startIcon={isPreviewing ? <CircularProgress size={16} /> : <Visibility />}
+          startIcon={
+            isPreviewing ? <CircularProgress size={16} /> : <Visibility />
+          }
           onClick={handlePreviewAmortizationSchedule}
           disabled={isPreviewing || isExporting}
           sx={{
@@ -277,7 +269,9 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
         <Button
           fullWidth
           variant="outlined"
-          startIcon={isExporting ? <CircularProgress size={16} /> : <FileDownload />}
+          startIcon={
+            isExporting ? <CircularProgress size={16} /> : <FileDownload />
+          }
           onClick={handleExportAmortizationSchedule}
           disabled={isExporting || isPreviewing}
           sx={{
@@ -296,6 +290,124 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
           {isExporting ? "Exporting..." : "Export Latest Amortization Schedule"}
         </Button>
       </Stack>
+
+      {/* Contract Vehicles Section */}
+      {contract && (
+        <>
+          <Divider sx={{ my: 3 }} />
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            Contract Vehicles
+          </Typography>
+          {contract.vehicles && Array.isArray(contract.vehicles) && contract.vehicles.length > 0 ? (
+            <Stack spacing={1.5}>
+              {contract.vehicles.map((vehicle) => (
+              <Box
+                key={vehicle.id}
+                onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                  bgcolor: alpha(theme.palette.background.default, 0.5),
+                  cursor: "pointer",
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    borderColor: theme.palette.primary.main,
+                    bgcolor: alpha(theme.palette.primary.main, 0.05),
+                    transform: "translateX(4px)",
+                  },
+                }}
+              >
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <DirectionsCar
+                    sx={{
+                      color: theme.palette.primary.main,
+                      fontSize: 20,
+                    }}
+                  />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Link
+                      component="button"
+                      variant="body1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/vehicles/${vehicle.id}`);
+                      }}
+                      sx={{
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        color: theme.palette.text.primary,
+                        "&:hover": {
+                          color: theme.palette.primary.main,
+                        },
+                      }}
+                    >
+                      {vehicle.name}
+                    </Link>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ mt: 0.5 }}
+                      flexWrap="wrap"
+                    >
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: "0.75rem" }}
+                      >
+                        {vehicle.licensePlate}
+                      </Typography>
+                      {vehicle.year && (
+                        <>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontSize: "0.75rem" }}
+                          >
+                            •
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontSize: "0.75rem" }}
+                          >
+                            {vehicle.year}
+                          </Typography>
+                        </>
+                      )}
+                      {vehicle.status && (
+                        <>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontSize: "0.75rem" }}
+                          >
+                            •
+                          </Typography>
+                          <Chip
+                            label={vehicle.status}
+                            size="small"
+                            sx={{
+                              height: 18,
+                              fontSize: "0.65rem",
+                              fontWeight: 500,
+                            }}
+                          />
+                        </>
+                      )}
+                    </Stack>
+                  </Box>
+                </Stack>
+              </Box>
+              ))}
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              No vehicles assigned to this contract.
+            </Typography>
+          )}
+        </>
+      )}
 
       <UpdateEuriborRateDialog
         open={euriborDialogOpen}
@@ -331,7 +443,11 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
               Amortization Schedule Preview
             </Typography>
             {amortizationData?.data && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
                 Version {amortizationData.data.versionNumber}
                 {amortizationData.data.monthlyPaymentAmount &&
                   ` • Monthly Payment: ${formatCurrency(

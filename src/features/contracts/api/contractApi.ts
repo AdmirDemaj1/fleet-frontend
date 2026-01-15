@@ -166,6 +166,20 @@ export const contractApi = createApi({
     getContract: builder.query<ContractResponse, string>({
       query: (id) => `/contracts/${id}`,
       providesTags: (_result, _error, id) => [{ type: "Contract", id }],
+      transformResponse: (response: any) => {
+        // Handle different response structures
+        // Backend might return { data: {...} } or the contract directly
+        const contract = response?.data || response;
+        console.log("📋 Raw contract API response:", response);
+        console.log("📋 Contract vehicles from API:", contract?.vehicles);
+        
+        // Ensure vehicles are preserved
+        if (contract && !contract.vehicles && response?.vehicles) {
+          contract.vehicles = response.vehicles;
+        }
+        
+        return contract;
+      },
     }),
 
     updateContract: builder.mutation<any, { id: string; data: UpdateContractDto }>({
