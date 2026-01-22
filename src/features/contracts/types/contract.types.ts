@@ -169,6 +169,36 @@ export interface CreateContractDto {
   // Custom guarantee amount for contract
   guaranteeForContract?: number;
 
+  // Amortization schedules (parsed from Excel in frontend)
+  // Each amortization has headerData and scheduleOfPayments
+  amortizations?: Array<{
+    headerData: {
+      currency?: string;
+      creditAmount?: number;
+      interestRate?: number;
+      maturityYears?: number;
+      maturityMonths?: number;
+      monthlyMortgagePayments?: number;
+      disbursementCommission?: number;
+      commissionAmount?: number;
+      interest?: number;
+      principal?: number;
+      loanDate?: string;
+      loanAmount?: number;
+    };
+    scheduleOfPayments: Array<{
+      paymentNumber: number;
+      month: string;
+      beginningBalance: number;
+      monthlyInterestAmount: number;
+      principalRepayment: number;
+      monthlyMortgagePayment: number;
+      endingBalance: number;
+      paidAmount?: number | null;
+      paymentDate?: string | null;
+    }>;
+  }>;
+
   // Contract terms
   terms?: Record<string, any>;
 }
@@ -188,6 +218,8 @@ export interface CreateContractWithDocumentsDto
   files?: File[];
   // Document metadata (must match order of files)
   documents?: DocumentMetadata[];
+  // Amortization plan file (will be parsed in frontend and sent as amortizationScheduleEntries)
+  amortizationPlanFile?: File;
 }
 
 // Form data interface for the contract creation form
@@ -236,12 +268,16 @@ export interface ContractFormData {
   documents: any[]; // Will be ContractDocument[] when imported
   euriborRateId?: string; // Selected Euribor rate ID
   terms?: Record<string, any>;
+  amortizationPlanFile?: File; // Excel file for amortization plan (when start date is in the past)
 }
 
 // Update Euribor Rate DTO
 export interface UpdateEuriborRateDto {
   euriborRateId: string; // ID of the selected Euribor rate
   margin?: number;
+  effectiveDate?: string; // Date when the Euribor rate change takes effect (YYYY-MM-DD format)
+  activeFromPaymentNumber?: number; // Payment number from which the new rate becomes active
+  activeFromPaymentId?: string; // Payment ID from which the new rate becomes active
 }
 
 // Amortization Schedule Types
@@ -497,7 +533,9 @@ export interface EndorserPickerProps {
 export interface ContractFormProps {
   initialData?: Partial<ContractFormData>;
   onSubmit: (data: CreateContractDto) => Promise<void>;
+  onValidate?: (data: CreateContractDto) => Promise<void>; // Optional validation handler
   loading: boolean;
+  isValidating?: boolean; // Loading state for validation
   preSelectedCustomerId?: string;
   isEdit?: boolean;
   contractId?: string; // For edit mode - contract ID for document uploads

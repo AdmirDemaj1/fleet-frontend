@@ -82,7 +82,9 @@ const STEPS = [
 export const ContractForm: React.FC<ContractFormProps> = ({
   initialData,
   onSubmit,
+  onValidate,
   loading,
+  isValidating = false,
   preSelectedCustomerId,
   isEdit = false,
   contractId,
@@ -573,8 +575,26 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           });
         }
 
+        // Check if start date is in the past and validate amortization file
+        const isStartDateInPast =
+          formDataToUse.startDate &&
+          dayjs(formDataToUse.startDate).isBefore(dayjs(), "day");
+        const hasAmortizationFile = !!formDataToUse.amortizationPlanFile;
+
+        // Validate that amortization file is provided when start date is in the past
+        if (isStartDateInPast && !hasAmortizationFile) {
+          setSubmitError(
+            "Amortization plan Excel file is required when the contract start date is in the past. Please upload the file in the Contract Details step."
+          );
+          return;
+        }
+
         console.log("  📁 Files to upload:", files.length);
         console.log("  📋 Document metadata:", documentMetadata);
+        if (isStartDateInPast) {
+          console.log("  📊 Has amortization file:", hasAmortizationFile);
+          console.log("  📅 Start date in past:", isStartDateInPast);
+        }
 
         // Build base contract data
         const baseContractData: any = {
@@ -689,6 +709,12 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           // Add files and document metadata for the new multipart/form-data approach
           files: files.length > 0 ? files : undefined,
           documents: documentMetadata.length > 0 ? documentMetadata : undefined,
+          // Add amortization plan file if start date is in the past (will be uploaded separately first)
+          ...(isStartDateInPast &&
+            hasAmortizationFile &&
+            formDataToUse.amortizationPlanFile && {
+              amortizationPlanFile: formDataToUse.amortizationPlanFile,
+            }),
         };
 
         console.log(
@@ -917,6 +943,95 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 }}
               />
             </Grid>
+
+            {/* Amortization Plan File Upload (only when start date is in the past) */}
+            {watchedData.startDate &&
+              dayjs(watchedData.startDate).isBefore(dayjs(), "day") && (
+                <Grid item xs={12}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      border: "1px solid",
+                      borderColor: "info.main",
+                      bgcolor: "info.main" + "10",
+                      p: 2,
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      gutterBottom
+                      color="info.main"
+                      sx={{ fontWeight: 600, mb: 2 }}
+                    >
+                      Amortization Plan File (Required for past start dates)
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 2 }}
+                    >
+                      Upload an Excel file (.xlsx) containing the amortization
+                      schedule with columns: Month, Beginning Balance, Monthly
+                      Interest Amount, Principal Repayment, Monthly Mortgage
+                      Payment, Ending Balance
+                    </Typography>
+                    <input
+                      accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                      style={{ display: "none" }}
+                      id="amortization-plan-file-upload"
+                      type="file"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Validate file type
+                          const validTypes = [
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "application/vnd.ms-excel",
+                          ];
+                          const validExtensions = [".xlsx", ".xls"];
+                          const fileExtension =
+                            "." + file.name.split(".").pop()?.toLowerCase();
+
+                          if (
+                            validTypes.includes(file.type) ||
+                            validExtensions.includes(fileExtension)
+                          ) {
+                            setValue("amortizationPlanFile", file, {
+                              shouldValidate: true,
+                            });
+                          } else {
+                            alert(
+                              "Please upload a valid Excel file (.xlsx or .xls)"
+                            );
+                            e.target.value = "";
+                          }
+                        }
+                      }}
+                    />
+                    <label htmlFor="amortization-plan-file-upload">
+                      <Button
+                        variant="outlined"
+                        component="span"
+                        startIcon={<AttachMoney />}
+                        sx={{ mr: 2 }}
+                      >
+                        {watchedData.amortizationPlanFile
+                          ? "Change File"
+                          : "Upload Excel File"}
+                      </Button>
+                    </label>
+                    {watchedData.amortizationPlanFile && (
+                      <Typography
+                        variant="body2"
+                        color="success.main"
+                        sx={{ mt: 1 }}
+                      >
+                        ✓ {watchedData.amortizationPlanFile.name}
+                      </Typography>
+                    )}
+                  </Card>
+                </Grid>
+              )}
 
             {/* Total Amount */}
             <Grid item xs={12} md={6}>
@@ -2069,23 +2184,189 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             </Typography>
 
             {activeStep === STEPS.length - 1 ? (
-              <Button
-                startIcon={
-                  loading ? <CircularProgress size={20} /> : <CheckCircle />
-                }
-                onClick={handleSubmit(onFormSubmit)}
-                disabled={!isValid || loading || !canProceed()}
-                variant="contained"
-                color="primary"
-              >
-                {loading
-                  ? isEdit
-                    ? "Updating..."
-                    : "Creating..."
-                  : isEdit
-                  ? "Update Contract"
-                  : "Create Contract"}
-              </Button>
+              <Box sx={{ display: "flex", gap: 2 }}>
+                {/* Validate button - only show for migration scenarios (past date + amortization file) */}
+                {!isEdit &&
+                  onValidate &&
+                  watchedData.startDate &&
+                  dayjs(watchedData.startDate).isBefore(dayjs(), "day") &&
+                  watchedData.amortizationPlanFile && (
+                    <Button
+                      startIcon={
+                        isValidating ? (
+                          <CircularProgress size={20} />
+                        ) : (
+                          <CheckCircle />
+                        )
+                      }
+                      onClick={handleSubmit(async (data) => {
+                        try {
+                          const formDataToUse = {
+                            ...data,
+                            selectedVehicles:
+                              getValues("selectedVehicles") ||
+                              data.selectedVehicles ||
+                              [],
+                            selectedVehicleData:
+                              getValues("selectedVehicleData") ||
+                              data.selectedVehicleData ||
+                              [],
+                          };
+
+                          // Build contract data exactly like onFormSubmit does
+                          const vehicleIds = formDataToUse.selectedVehicles || [];
+                          const collaterals = (formDataToUse.selectedVehicleData || []).map((vehicle: any) => ({
+                            type: "vehicle" as const,
+                            description: `${vehicle.make} ${vehicle.model} ${vehicle.year}`,
+                            value: vehicle.purchasePrice || 0,
+                            active: true,
+                            make: vehicle.make || "",
+                            model: vehicle.model || "",
+                            year: vehicle.year || new Date().getFullYear(),
+                            licensePlate: vehicle.licensePlate || "",
+                            vinNumber: vehicle.vinNumber || "",
+                            color: vehicle.color || "",
+                            engineNumber: vehicle.engineNumber,
+                            registrationCertificate: vehicle.registrationCertificate,
+                            insurancePolicy: vehicle.insurancePolicy,
+                          }));
+
+                          const baseContractData: any = {
+                            type: formDataToUse.type,
+                            contractNumber: formDataToUse.contractNumber,
+                            customerId: formDataToUse.customerId,
+                            startDate: formDataToUse.startDate,
+                            endDate: formDataToUse.endDate,
+                            totalAmount: formDataToUse.totalAmount,
+                            interestRate: formDataToUse.loanDetails?.interestRate || 0,
+                            vehicleIds,
+                            collaterals,
+                            endorserCollaterals:
+                              formDataToUse.selectedEndorsers?.map((endorserId: string) => {
+                                const guaranteeAmount =
+                                  formDataToUse.guaranteeForContract || formDataToUse.totalAmount;
+                                return {
+                                  type: "personal_guarantee" as const,
+                                  description: `Personal guarantee by endorser ${endorserId}`,
+                                  value: guaranteeAmount,
+                                  endorserId: endorserId,
+                                  guaranteedAmount: guaranteeAmount,
+                                  guaranteeType: "personal_guarantee",
+                                  requiresNotarization: false,
+                                  guaranteeForContract: formDataToUse.guaranteeForContract,
+                                  guaranteeExpirationDate: formDataToUse.endDate,
+                                  legalDocumentReference: `GUARANTEE-${formDataToUse.contractNumber}-${endorserId}`,
+                                };
+                              }) || [],
+                            terms: formDataToUse.terms || {},
+                          };
+
+                          // Add Euribor-related fields
+                          const finalEuriborRateId = formDataToUse.euriborRateId || euriborRateId;
+                          baseContractData.euriborRateId = finalEuriborRateId;
+
+                          // Add margin as decimal (convert from percentage to decimal) - optional
+                          if (marginRate && marginRate > 0) {
+                            baseContractData.margin = marginRate / 100;
+                          }
+
+                          // Add Euribor tenor if available - optional
+                          if (euriborTenor) {
+                            baseContractData.euriborTenor = euriborTenor;
+                          }
+
+                          // Add loan details if it's a loan contract
+                          if (
+                            formDataToUse.type === ContractType.LOAN &&
+                            formDataToUse.loanDetails
+                          ) {
+                            const totalInterest =
+                              formDataToUse.loanDetails.monthlyPayment *
+                                formDataToUse.loanDetails.loanTermMonths -
+                              formDataToUse.totalAmount;
+
+                            baseContractData.loanDetails = {
+                              type: formDataToUse.type,
+                              contractNumber: formDataToUse.contractNumber,
+                              customerId: formDataToUse.customerId,
+                              startDate: formDataToUse.startDate,
+                              endDate: formDataToUse.endDate,
+                              totalAmount: formDataToUse.totalAmount,
+                              interestRate: formDataToUse.loanDetails.interestRate,
+                              loanTermMonths: formDataToUse.loanDetails.loanTermMonths,
+                              monthlyPayment: formDataToUse.loanDetails.monthlyPayment,
+                              totalInterest: Math.round(totalInterest * 100) / 100,
+                              processingFeePercentage:
+                                formDataToUse.loanDetails.processingFeePercentage,
+                              earlyRepaymentPenalty:
+                                formDataToUse.loanDetails.earlyRepaymentPenalty,
+                              paymentScheduleType:
+                                formDataToUse.loanDetails.paymentScheduleType,
+                            };
+                          }
+
+                          // Add leasing details if it's a leasing contract
+                          if (
+                            formDataToUse.type === ContractType.LEASING &&
+                            formDataToUse.leasingDetails
+                          ) {
+                            baseContractData.leasingDetails = {
+                              type: formDataToUse.type,
+                              contractNumber: formDataToUse.contractNumber,
+                              customerId: formDataToUse.customerId,
+                              startDate: formDataToUse.startDate,
+                              endDate: formDataToUse.endDate,
+                              totalAmount: formDataToUse.totalAmount,
+                              residualValue: formDataToUse.leasingDetails.residualValue,
+                              leaseTermMonths: formDataToUse.leasingDetails.leaseTermMonths,
+                              monthlyPayment: formDataToUse.leasingDetails.monthlyPayment,
+                              advancePayment: formDataToUse.leasingDetails.advancePayment,
+                              withPurchaseOption:
+                                formDataToUse.leasingDetails.withPurchaseOption,
+                              purchaseOptionPrice:
+                                formDataToUse.leasingDetails.purchaseOptionPrice,
+                            };
+                          }
+
+                          const contractData: any = {
+                            ...baseContractData,
+                            ...(formDataToUse.amortizationPlanFile && {
+                              amortizationPlanFile: formDataToUse.amortizationPlanFile,
+                            }),
+                          };
+
+                          await onValidate(contractData);
+                        } catch (error) {
+                          console.error("Validation error:", error);
+                        }
+                      })}
+                      disabled={
+                        !isValid || isValidating || loading || !canProceed()
+                      }
+                      variant="outlined"
+                      color="info"
+                    >
+                      {isValidating ? "Validating..." : "Validate"}
+                    </Button>
+                  )}
+                <Button
+                  startIcon={
+                    loading ? <CircularProgress size={20} /> : <CheckCircle />
+                  }
+                  onClick={handleSubmit(onFormSubmit)}
+                  disabled={!isValid || loading || !canProceed()}
+                  variant="contained"
+                  color="primary"
+                >
+                  {loading
+                    ? isEdit
+                      ? "Updating..."
+                      : "Creating..."
+                    : isEdit
+                    ? "Update Contract"
+                    : "Create Contract"}
+                </Button>
+              </Box>
             ) : (
               <Button
                 endIcon={<ArrowForward />}

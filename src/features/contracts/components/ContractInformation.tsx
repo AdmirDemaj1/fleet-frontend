@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -24,7 +24,7 @@ import {
   FiberManualRecord
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { customerApi } from '../../customers/api/customerApi';
+import { useGetCustomerQuery } from '../api/contractApi';
 import { ContractResponse } from '../types/contract.types';
 import { Grid } from '@mui/material';
 
@@ -39,27 +39,13 @@ export const ContractInformation: React.FC<ContractInformationProps> = ({
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const [customer, setCustomer] = useState<any>(null);
-  const [customerLoading, setCustomerLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const fetchCustomer = async () => {
-      try {
-        setCustomerLoading(true);
-        const customerData = await customerApi.getById(contract.customerId);
-        setCustomer(customerData);
-      } catch (error) {
-        console.error('Failed to fetch customer:', error);
-      } finally {
-        setCustomerLoading(false);
-      }
-    };
-
-    if (contract.customerId) {
-      fetchCustomer();
-    }
-  }, [contract.customerId]);
+  // Use RTK Query for customer data - benefits from caching across components
+  const { data: customer, isLoading: customerLoading } = useGetCustomerQuery(
+    contract.customerId,
+    { skip: !contract.customerId }
+  );
 
   const handleCustomerClick = () => {
     navigate(`/customers/${contract.customerId}`);
@@ -77,18 +63,13 @@ export const ContractInformation: React.FC<ContractInformationProps> = ({
 
   const getCustomerDisplayName = () => {
     if (!customer) return 'Loading...';
-    
-    const customerData = customer?.customer || customer;
-    if (customerData?.type === 'individual') {
-      return `${customerData?.firstName || ''} ${customerData?.lastName || ''}`.trim();
-    }
-    return customerData?.legalName || 'Business Customer';
+    // RTK Query transforms response to CustomerSummary with 'name' property
+    return customer.name || 'Customer';
   };
 
   const getCustomerIcon = () => {
     if (!customer) return Person;
-    const customerData = customer?.customer || customer;
-    return customerData?.type === 'individual' ? Person : Business;
+    return customer.type === 'individual' ? Person : Business;
   };
 
   const getStatusConfig = (status: string) => {

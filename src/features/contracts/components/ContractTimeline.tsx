@@ -34,15 +34,11 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
 
   // Fetch payment data for this contract - filter for scheduled payments only
   // Using getCurrentPaymentsByContract which supports type filter on the /current endpoint
-  const { data: allPayments = [] } = useGetCurrentPaymentsByContractQuery(
-    {
-      contractId: contract.id,
-      type: PaymentType.SCHEDULED, // Only get scheduled payments
-    },
-    {
-      refetchOnMountOrArgChange: true,
-    }
-  );
+  // RTK Query handles caching automatically - no need for refetchOnMountOrArgChange
+  const { data: allPayments = [] } = useGetCurrentPaymentsByContractQuery({
+    contractId: contract.id,
+    type: PaymentType.SCHEDULED, // Only get scheduled payments
+  });
 
   // Filter to only include scheduled payments with a paymentNumber
   // This is a strict filter to ensure we only show scheduled payments with payment numbers

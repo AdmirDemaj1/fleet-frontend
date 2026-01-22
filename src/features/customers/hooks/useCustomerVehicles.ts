@@ -1,53 +1,33 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { vehicleApi } from '../../vehicles/api/vehicleApi';
+import { useGetVehiclesByClientIdQuery } from '../../vehicles/api/vehicleRtkApi';
 import { Vehicle } from '../../vehicles/types/vehicleType';
-import { 
-  VehicleOrder, 
-  VehicleOrderBy, 
-  VehicleNotificationState, 
-  VehicleDialogStates, 
-  VehicleMenuState 
+import {
+  VehicleOrder,
+  VehicleOrderBy,
+  VehicleNotificationState,
+  VehicleDialogStates,
+  VehicleMenuState
 } from '../types/customerVehicles.types';
 import { filterVehicles, sortVehicles } from '../utils/vehicleUtils';
 import { DEFAULT_VEHICLES_ROWS_PER_PAGE } from '../constants/vehicleConstants';
 
-// Hook for managing vehicles data
+// Hook for managing vehicles data - now using RTK Query
 export const useCustomerVehicles = (customerId?: string) => {
   const { id: urlCustomerId } = useParams<{ id: string }>();
   const effectiveCustomerId = customerId || urlCustomerId;
-  
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchVehicles = useCallback(async () => {
-    if (!effectiveCustomerId) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const data = await vehicleApi.getVehiclesByClientId(effectiveCustomerId);
-      setVehicles(data);
-    } catch (error) {
-      console.error('Failed to fetch vehicles:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load vehicles';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [effectiveCustomerId]);
-
-  useEffect(() => {
-    fetchVehicles();
-  }, [fetchVehicles]);
+  // Use RTK Query for data fetching with automatic caching
+  const { data: vehicles = [], isLoading, error, refetch } = useGetVehiclesByClientIdQuery(
+    effectiveCustomerId!,
+    { skip: !effectiveCustomerId }
+  );
 
   return {
     vehicles,
-    loading,
-    error,
-    fetchVehicles,
+    loading: isLoading,
+    error: error ? (error as any)?.data?.message || 'Failed to load vehicles' : null,
+    fetchVehicles: refetch,
     customerId: effectiveCustomerId
   };
 };

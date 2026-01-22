@@ -8,6 +8,8 @@ import { auditApi } from '../features/logs/api/auditapi'; // Import auditApi
 import { contractApi } from '../features/contracts/api/contractApi'; // Import contractApi
 import { contractDocumentApi } from '../features/contracts/api/contractDocumentApi'; // Import contractDocumentApi
 import { vehicleDocumentApi } from '../features/vehicles/api/vehicleDocumentApi'; // Import vehicleDocumentApi
+import { vehicleRtkApi } from '../features/vehicles/api/vehicleRtkApi'; // Import vehicleRtkApi
+import { customerRtkApi } from '../features/customers/api/customerRtkApi'; // Import customerRtkApi
 import { paymentsApi } from '../features/invoices/api/paymentsApi'; // Import paymentsApi
 import { endorserApi } from '../features/endorsers/api/endorserApi'; // Import endorserApi
 import { approvalApi } from '../features/approvals/api/approvalApi'; // Import approvalApi
@@ -22,6 +24,8 @@ export const store = configureStore({
     [contractApi.reducerPath]: contractApi.reducer, // Add the contractApi reducer
     [contractDocumentApi.reducerPath]: contractDocumentApi.reducer, // Add the contractDocumentApi reducer
     [vehicleDocumentApi.reducerPath]: vehicleDocumentApi.reducer, // Add the vehicleDocumentApi reducer
+    [vehicleRtkApi.reducerPath]: vehicleRtkApi.reducer, // Add the vehicleRtkApi reducer
+    [customerRtkApi.reducerPath]: customerRtkApi.reducer, // Add the customerRtkApi reducer
     [paymentsApi.reducerPath]: paymentsApi.reducer, // Add the paymentsApi reducer
     [endorserApi.reducerPath]: endorserApi.reducer, // Add the endorserApi reducer
     [approvalApi.reducerPath]: approvalApi.reducer, // Add the approvalApi reducer
@@ -34,6 +38,8 @@ export const store = configureStore({
       .concat(paymentsApi.middleware) // Add the paymentsApi middleware
       .concat(endorserApi.middleware) // Add the endorserApi middleware
       .concat(vehicleDocumentApi.middleware) // Add the vehicleDocumentApi middleware
+      .concat(vehicleRtkApi.middleware) // Add the vehicleRtkApi middleware
+      .concat(customerRtkApi.middleware) // Add the customerRtkApi middleware
       .concat(approvalApi.middleware) // Add the approvalApi middleware
 });
 

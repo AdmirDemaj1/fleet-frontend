@@ -1,59 +1,19 @@
-import { useEffect, useCallback, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../../app/store';
-import { customerApi } from '../api/customerApi';
-import { setCustomers, setLoading, setError } from '../slices/customerSlice';
+import { useGetCustomersQuery } from '../api/customerRtkApi';
 
 export const useCustomers = () => {
-  const dispatch = useDispatch();
-  const { customers, loading, error, filters, totalCount } = useSelector(
-    (state: RootState) => state.customers
-  );
+  // Get filters from Redux state (managed by CustomersPage)
+  const { filters } = useSelector((state: RootState) => state.customers);
 
-  // Simple approach: track the last API call filters to prevent duplicates
-  const lastFiltersRef = useRef<string>('');
-
-  const fetchCustomers = useCallback(async () => {
-    // Create a unique key for current filters
-    const filtersKey = JSON.stringify(filters);
-    
-    // Skip if same filters as last call
-    if (filtersKey === lastFiltersRef.current) {
-      console.log('Same filters as last call, skipping API request');
-      return;
-    }
-
-    // Skip if already loading
-    if (loading) {
-      console.log('Already loading, skipping API call');
-      return;
-    }
-
-    lastFiltersRef.current = filtersKey;
-    
-    dispatch(setLoading(true));
-    try {
-      console.log('Fetching customers with filters:', filters);
-      const result = await customerApi.getAll(filters);
-      console.log('Received result:', result);
-      dispatch(setCustomers({ customers: result.data, total: result.total }));
-    } catch (err) {
-      console.error('Error fetching customers:', err);
-      dispatch(setError(err instanceof Error ? err.message : 'Failed to fetch customers'));
-    } finally {
-      dispatch(setLoading(false));
-    }
-  }, [dispatch, filters, loading]);
-
-  useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
+  // Use RTK Query for data fetching with automatic caching
+  const { data, isLoading, error, refetch } = useGetCustomersQuery(filters);
 
   return {
-    customers,
-    loading,
-    error,
-    totalCount,
-    refetch: fetchCustomers
+    customers: data?.customers || [],
+    loading: isLoading,
+    error: error ? (error as any)?.data?.message || 'Failed to fetch customers' : null,
+    totalCount: data?.total || 0,
+    refetch,
   };
 };

@@ -1,94 +1,73 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { customerApi } from '../api/customerApi';
+import { useGetCustomerContractsQuery } from '../api/customerRtkApi';
 import { ContractSummary, PaginationMeta } from '../types/customer.types';
-import { 
-  Order, 
-  OrderBy, 
-  NotificationState, 
-  DialogStates, 
-  MenuState 
+import {
+  Order,
+  OrderBy,
+  NotificationState,
+  DialogStates,
+  MenuState
 } from '../types/customerContracts.types';
 import { sortContracts } from '../utils/contractUtils';
 import { DEFAULT_ROWS_PER_PAGE } from '../constants/contractConstants';
 
-// Hook for managing contracts data with server-side pagination
+// Hook for managing contracts data with server-side pagination - now using RTK Query
 export const useContracts = (customerId?: string) => {
   const { id: urlCustomerId } = useParams<{ id: string }>();
   const effectiveCustomerId = customerId || urlCustomerId;
-  
-  const [contracts, setContracts] = useState<ContractSummary[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta>({
-    total: 0,
-    page: 1,
+
+  // Local state for pagination parameters
+  const [queryParams, setQueryParams] = useState({
     limit: DEFAULT_ROWS_PER_PAGE,
     offset: 0,
-    totalPages: 0,
-    hasNextPage: false,
-    hasPreviousPage: false
+    status: undefined as string | undefined,
+    type: undefined as string | undefined,
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  // Use RTK Query for data fetching with automatic caching
+  const { data, isLoading, error } = useGetCustomerContractsQuery(
+    {
+      customerId: effectiveCustomerId!,
+      ...queryParams,
+    },
+    { skip: !effectiveCustomerId }
+  );
+
+  const contracts = data?.data || [];
+  const meta: PaginationMeta = {
+    total: data?.meta?.total || 0,
+    page: data?.meta?.page || 1,
+    limit: data?.meta?.limit || DEFAULT_ROWS_PER_PAGE,
+    offset: queryParams.offset,
+    totalPages: Math.ceil((data?.meta?.total || 0) / (data?.meta?.limit || DEFAULT_ROWS_PER_PAGE)),
+    hasNextPage: (queryParams.offset + queryParams.limit) < (data?.meta?.total || 0),
+    hasPreviousPage: queryParams.offset > 0,
+  };
+
+  // Fetch contracts function for pagination changes
   const fetchContracts = useCallback(async (
-    offset = 0, 
+    offset = 0,
     limit = DEFAULT_ROWS_PER_PAGE,
     filters?: {
       search?: string;
       status?: string;
       type?: string;
-      dateRange?: string;
-      amountRange?: string;
     }
   ) => {
-    if (!effectiveCustomerId) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Create params object with pagination and optional filters
-      const params = { 
-        limit, 
-        offset,
-        ...(filters?.search && { search: filters.search }),
-        ...(filters?.status && { status: filters.status }),
-        ...(filters?.type && { type: filters.type }),
-        ...(filters?.dateRange && { dateRange: filters.dateRange }),
-        ...(filters?.amountRange && { amountRange: filters.amountRange }),
-      };
-      
-      const response = await customerApi.getContracts(effectiveCustomerId, params);
-      setContracts(response.data);
-      setMeta(response.meta);
-    } catch (error) {
-      console.error('Failed to fetch contracts:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load contracts';
-      setError(errorMessage);
-      setContracts([]);
-      setMeta({
-        total: 0,
-        page: 1,
-        limit: DEFAULT_ROWS_PER_PAGE,
-        offset: 0,
-        totalPages: 0,
-        hasNextPage: false,
-        hasPreviousPage: false
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [effectiveCustomerId]);
-
-  useEffect(() => {
-    fetchContracts();
-  }, [fetchContracts]);
+    setQueryParams({
+      limit,
+      offset,
+      status: filters?.status,
+      type: filters?.type,
+    });
+  }, []);
 
   return {
     contracts,
     meta,
-    loading,
-    error,
+    loading: isLoading,
+    error: error ? (error as any)?.data?.message || 'Failed to load contracts' : null,
     fetchContracts,
     customerId: effectiveCustomerId
   };

@@ -139,6 +139,8 @@ export const contractApi = createApi({
           ...(data.euriborRateId && { euriborRateId: data.euriborRateId }),
           ...(data.margin !== undefined && { margin: Number(data.margin) || 0 }),
           ...(data.euriborTenor && { euriborTenor: data.euriborTenor }),
+          // Add amortizations if provided (parsed from Excel in frontend)
+          ...(data.amortizations && { amortizations: data.amortizations }),
         };
 
         console.log('🚀 Creating contract (JSON):', JSON.stringify(jsonData, null, 2));
@@ -146,6 +148,7 @@ export const contractApi = createApi({
         console.log('  - euriborRateId:', jsonData.euriborRateId);
         console.log('  - margin:', jsonData.margin);
         console.log('  - euriborTenor:', jsonData.euriborTenor);
+        console.log('  - amortizations:', jsonData.amortizations?.length || 0, 'amortization(s)');
 
         return {
           url: "/contracts/with-dependencies",
@@ -584,6 +587,104 @@ export const contractApi = createApi({
         return response;
       },
     }),
+
+    // Upload amortization plan data as JSON (parsed from Excel in frontend)
+    uploadAmortizationPlanJson: builder.mutation<
+      { 
+        id: string; 
+        scheduleEntries: number;
+        message: string;
+      },
+      { 
+        scheduleEntries: Array<{
+          paymentNumber: number;
+          month: string;
+          beginningBalance: number;
+          monthlyInterestAmount: number;
+          principalRepayment: number;
+          monthlyMortgagePayment: number;
+          endingBalance: number;
+          paidAmount?: number | null;
+          paymentDate?: string | null;
+        }>;
+        fileName?: string;
+      }
+    >({
+      query: (data) => {
+        console.log("📊 Uploading amortization plan JSON data:", {
+          entries: data.scheduleEntries.length,
+          fileName: data.fileName,
+        });
+
+        return {
+          url: "/amortization-plans/upload-json",
+          method: "POST",
+          body: {
+            scheduleEntries: data.scheduleEntries,
+            ...(data.fileName && { fileName: data.fileName }),
+          },
+        };
+      },
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Amortization plan JSON upload failed:", response);
+        return response;
+      },
+    }),
+
+    // Validate migration data
+    validateMigration: builder.mutation<
+      {
+        valid: boolean;
+        errors: string[];
+        warnings: string[];
+        summary?: {
+          contractNumber: string;
+          amortizationVersions: number;
+          totalPayments: number;
+          paidPayments: number;
+        };
+      },
+      CreateContractDto
+    >({
+      query: (migrationData) => {
+        console.log("🔍 Validating migration data:", migrationData.contractNumber);
+        return {
+          url: "/contracts/migrate/validate",
+          method: "POST",
+          body: migrationData,
+        };
+      },
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Migration validation failed:", response);
+        return response;
+      },
+    }),
+
+    // Migrate contract with amortizations
+    migrateContract: builder.mutation<
+      {
+        success: boolean;
+        contract?: ContractResponse;
+        warnings: string[];
+        errors?: string[];
+        message: string;
+      },
+      CreateContractDto
+    >({
+      query: (migrationData) => {
+        console.log("🚀 Migrating contract with amortizations:", migrationData.contractNumber);
+        return {
+          url: "/contracts/migrate/with-amortizations",
+          method: "POST",
+          body: migrationData,
+        };
+      },
+      invalidatesTags: ["Contract", "Vehicle"],
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Contract migration failed:", response);
+        return response;
+      },
+    }),
   }),
 });
 
@@ -603,4 +704,7 @@ export const {
   useUpdateEuriborRateMutation,
   useGetAmortizationScheduleQuery,
   useExportAmortizationScheduleMutation,
+  useUploadAmortizationPlanJsonMutation,
+  useValidateMigrationMutation,
+  useMigrateContractMutation,
 } = contractApi;

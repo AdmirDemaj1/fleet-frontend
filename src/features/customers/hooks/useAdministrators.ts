@@ -30,8 +30,7 @@ export const useAdministrators = () => {
 
   return {
     administrators,
-    loading,
-    refetch: fetchAdministrators,
+    loading: loading,
+    fetch,
   };
 };
-
