@@ -114,6 +114,8 @@ export interface CreatePrepaymentDto {
   transactionReference?: string;
   notes?: string;
   prepaymentOption?: 'reduce_term' | 'reduce_payment';
+  startingFromPaymentNumber?: number; // Payment number from which the prepayment should start
+  startingFromPaymentId?: string; // Payment ID from which the prepayment should start
 }
 
 export interface PaymentFilters {

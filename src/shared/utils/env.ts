@@ -40,11 +40,11 @@ export const getEnvConfig = (): EnvConfig => {
     console.log("🚀 ~ url it should be pulling:", apiUrl)
   } else if (isProduction) {
     
-    apiUrl = 'https://fleet-credit-system-oxtz.vercel.app/';
+    apiUrl = 'https://fleet-credit-system-production.up.railway.app/';
     console.log("🚀 ~ url it should be pulling:", apiUrl)
   } else {
     // Fallback for other modes (like preview)
-    apiUrl = import.meta.env.VITE_API_URL || 'https://fleet-credit-system-oxtz.vercel.app/';
+    apiUrl = import.meta.env.VITE_API_URL || 'https://fleet-credit-system-production.up.railway.app/';
   }
 
   return {

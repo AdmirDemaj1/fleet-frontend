@@ -23,12 +23,16 @@ import {
 import {
   TrendingUp,
   Percent,
+  CalendarToday,
 } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useUpdateEuriborRateMutation } from '../api/contractApi';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import { euriborApi } from '../../euribor/api/euriborApi';
 import { EuriborTenor } from '../../euribor/types/euribor.types';
 import { EuriborRate } from '../../euribor/types/euribor.types';
+import { useGetCurrentPaymentsByContractQuery } from '../../invoices/api/paymentsApi';
+import { PaymentType, Payment, PaymentStatus } from '../../invoices/types/invoice.types';
 import dayjs from 'dayjs';
 
 interface UpdateEuriborRateDialogProps {
@@ -53,9 +57,36 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
   const [availableEuriborRates, setAvailableEuriborRates] = useState<EuriborRate[]>([]);
   const [loadingEuriborRates, setLoadingEuriborRates] = useState<boolean>(false);
   const [margin, setMargin] = useState<string>('');
-  const [errors, setErrors] = useState<{ euriborRate?: string; margin?: string }>({});
+  const [effectiveDate, setEffectiveDate] = useState<dayjs.Dayjs | null>(null);
+  const [selectedPaymentNumber, setSelectedPaymentNumber] = useState<number | null>(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [closestPayments, setClosestPayments] = useState<{ previous: Payment | null; next: Payment | null }>({ previous: null, next: null });
+  const [errors, setErrors] = useState<{ euriborRate?: string; margin?: string; effectiveDate?: string; paymentNumber?: string }>({});
 
   const [updateEuriborRate, { isLoading }] = useUpdateEuriborRateMutation();
+
+  // Fetch scheduled payments for the contract when date is selected
+  // Only fetch when dialog is open and date is selected - RTK Query handles caching
+  const { data: allPayments = [], isLoading: isLoadingPayments } = useGetCurrentPaymentsByContractQuery(
+    {
+      contractId,
+      type: PaymentType.SCHEDULED,
+    },
+    {
+      skip: !effectiveDate || !open,
+    }
+  );
+
+  // Filter payments to only include those with payment numbers and are unpaid
+  const scheduledPayments = React.useMemo(() => {
+    return (allPayments as Payment[]).filter(
+      (payment: Payment) =>
+        payment.paymentNumber !== null &&
+        payment.paymentNumber !== undefined &&
+        typeof payment.paymentNumber === 'number' &&
+        payment.status !== PaymentStatus.PAID // Only include unpaid payments
+    ) as Payment[];
+  }, [allPayments]);
 
   // Fetch available Euribor rates when dialog opens
   useEffect(() => {
@@ -88,12 +119,76 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
     if (open) {
       setSelectedEuriborRateId('');
       setMargin(currentMargin?.toString() || '');
+      setEffectiveDate(null);
+      setSelectedPaymentNumber(null);
+      setSelectedPaymentId(null);
+      setClosestPayments({ previous: null, next: null });
       setErrors({});
     }
   }, [open, currentMargin]);
 
+  // Find closest payments when date is selected
+  useEffect(() => {
+    if (effectiveDate && scheduledPayments.length > 0) {
+      const selectedDate = effectiveDate.startOf('day');
+      
+      let previousPayment: Payment | null = null;
+      let nextPayment: Payment | null = null;
+      let previousDiff = Infinity;
+      let nextDiff = Infinity;
+
+      scheduledPayments.forEach((payment) => {
+        // Use dueDate for comparison (paymentDate might not be set for scheduled payments)
+        const paymentDate = dayjs(payment.dueDate).startOf('day');
+        const diff = paymentDate.diff(selectedDate, 'days');
+        
+        if (diff < 0 && Math.abs(diff) < previousDiff) {
+          // This is a previous payment closer to the selected date
+          previousPayment = payment;
+          previousDiff = Math.abs(diff);
+        } else if (diff >= 0 && diff < nextDiff) {
+          // This is a next payment closer to the selected date
+          nextPayment = payment;
+          nextDiff = diff;
+        }
+      });
+
+      setClosestPayments({ previous: previousPayment, next: nextPayment });
+      
+      // Auto-select the next payment if available, otherwise previous
+      if (nextPayment && 'paymentNumber' in nextPayment) {
+        const nextPaymentTyped = nextPayment as Payment;
+        const nextPaymentNumber = nextPaymentTyped.paymentNumber;
+        if (typeof nextPaymentNumber === 'number') {
+          setSelectedPaymentNumber(nextPaymentNumber);
+          setSelectedPaymentId(nextPaymentTyped.id);
+        } else {
+          setSelectedPaymentNumber(null);
+          setSelectedPaymentId(null);
+        }
+      } else if (previousPayment && 'paymentNumber' in previousPayment) {
+        const previousPaymentTyped = previousPayment as Payment;
+        const previousPaymentNumber = previousPaymentTyped.paymentNumber;
+        if (typeof previousPaymentNumber === 'number') {
+          setSelectedPaymentNumber(previousPaymentNumber);
+          setSelectedPaymentId(previousPaymentTyped.id);
+        } else {
+          setSelectedPaymentNumber(null);
+          setSelectedPaymentId(null);
+        }
+      } else {
+        setSelectedPaymentNumber(null);
+        setSelectedPaymentId(null);
+      }
+    } else {
+      setClosestPayments({ previous: null, next: null });
+      setSelectedPaymentNumber(null);
+      setSelectedPaymentId(null);
+    }
+  }, [effectiveDate, scheduledPayments]);
+
   const validateForm = (): boolean => {
-    const newErrors: { euriborRate?: string; margin?: string } = {};
+    const newErrors: { euriborRate?: string; margin?: string; effectiveDate?: string } = {};
 
     // Validate Euribor rate selection
     if (!selectedEuriborRateId || selectedEuriborRateId.trim() === '') {
@@ -104,6 +199,9 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
         newErrors.euriborRate = 'Selected rate not found';
       }
     }
+
+    // Validate effective date (optional - future dates are allowed)
+    // No validation needed for future dates
 
     // Validate margin (optional)
     if (margin && margin.trim() !== '') {
@@ -138,6 +236,19 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
         euriborRateId: selectedEuriborRateId, // Send the rate ID instead of the rate value
       };
 
+      // Include effective date if provided
+      if (effectiveDate) {
+        updateData.effectiveDate = effectiveDate.format('YYYY-MM-DD');
+      }
+
+      // Include selected payment number and ID if provided
+      if (selectedPaymentNumber !== null) {
+        updateData.activeFromPaymentNumber = selectedPaymentNumber;
+      }
+      if (selectedPaymentId !== null) {
+        updateData.activeFromPaymentId = selectedPaymentId;
+      }
+
       // Only include margin if provided
       if (margin && margin.trim() !== '') {
         let marginValue = parseFloat(margin);
@@ -151,6 +262,9 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
       console.log('🔄 Updating Euribor rate with:', {
         euriborRateId: updateData.euriborRateId,
         margin: updateData.margin,
+        effectiveDate: updateData.effectiveDate,
+        activeFromPaymentNumber: updateData.activeFromPaymentNumber,
+        activeFromPaymentId: updateData.activeFromPaymentId,
         selectedRateValue: selectedRate.rateValue,
         selectedRateDate: selectedRate.rateDate,
       });
@@ -175,12 +289,23 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
   const handleClose = () => {
     setSelectedEuriborRateId('');
     setMargin('');
+    setEffectiveDate(null);
+    setSelectedPaymentNumber(null);
+    setSelectedPaymentId(null);
+    setClosestPayments({ previous: null, next: null });
     setErrors({});
     onClose();
   };
 
   const selectedRate = availableEuriborRates.find(r => r.id === selectedEuriborRateId);
-  const isFormValid = selectedEuriborRateId && !errors.euriborRate && !errors.margin;
+  const isFormValid = selectedEuriborRateId && !errors.euriborRate && !errors.margin && !errors.effectiveDate && !errors.paymentNumber;
+  
+  // Format payment for display
+  const formatPayment = (payment: Payment) => {
+    const dateStr = dayjs(payment.dueDate).format('MMM DD, YYYY');
+    const amount = typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount;
+    return `Payment #${payment.paymentNumber} - ${dateStr} (${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)})`;
+  };
 
   return (
     <Dialog
@@ -296,6 +421,117 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
                 : 'Select a 12-month Euribor rate to apply')}
           </FormHelperText>
         </FormControl>
+
+        <DatePicker
+          label="Effective Date (Optional)"
+          value={effectiveDate}
+          onChange={(newDate) => {
+            setEffectiveDate(newDate);
+            setSelectedPaymentNumber(null);
+            setSelectedPaymentId(null);
+            if (errors.effectiveDate) {
+              setErrors({ ...errors, effectiveDate: undefined });
+            }
+          }}
+          slotProps={{
+            textField: {
+              fullWidth: true,
+              error: !!errors.effectiveDate,
+              helperText: errors.effectiveDate || 'Select when the Euribor rate change should take effect. Leave empty to apply immediately.',
+              InputProps: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <CalendarToday sx={{ fontSize: 20, color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              },
+            },
+          }}
+          sx={{ mb: 3 }}
+        />
+
+        {/* Payment Selection - Show when date is selected */}
+        {effectiveDate && (
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 600, color: 'text.primary' }}>
+              Active from payment...
+            </Typography>
+            {isLoadingPayments ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
+                <CircularProgress size={16} />
+                <Typography variant="body2" color="text.secondary">
+                  Loading payment schedule...
+                </Typography>
+              </Box>
+            ) : closestPayments.previous || closestPayments.next ? (
+              <FormControl fullWidth error={!!errors.paymentNumber}>
+                <Select
+                  value={selectedPaymentNumber || ''}
+                  onChange={(e) => {
+                    const paymentNumber = e.target.value as number;
+                    setSelectedPaymentNumber(paymentNumber);
+                    // Find and set the payment ID
+                    let payment: Payment | null = null;
+                    if (closestPayments.previous && closestPayments.previous.paymentNumber === paymentNumber) {
+                      payment = closestPayments.previous;
+                    } else if (closestPayments.next && closestPayments.next.paymentNumber === paymentNumber) {
+                      payment = closestPayments.next;
+                    }
+                    setSelectedPaymentId(payment?.id || null);
+                    if (errors.paymentNumber) {
+                      setErrors({ ...errors, paymentNumber: undefined });
+                    }
+                  }}
+                  displayEmpty
+                  renderValue={(value) => {
+                    if (!value) return 'Select a payment';
+                    let payment: Payment | null = null;
+                    if (closestPayments.previous && closestPayments.previous.paymentNumber === value) {
+                      payment = closestPayments.previous;
+                    } else if (closestPayments.next && closestPayments.next.paymentNumber === value) {
+                      payment = closestPayments.next;
+                    }
+                    return payment ? formatPayment(payment) : `Payment #${value}`;
+                  }}
+                >
+                  {closestPayments.previous && (
+                    <MenuItem value={closestPayments.previous.paymentNumber!}>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {formatPayment(closestPayments.previous)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Previous payment
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  )}
+                  {closestPayments.next && (
+                    <MenuItem value={closestPayments.next.paymentNumber!}>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {formatPayment(closestPayments.next)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Next payment
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  )}
+                </Select>
+                <FormHelperText>
+                  {errors.paymentNumber || 'Select which payment the new rate should become active from'}
+                </FormHelperText>
+              </FormControl>
+            ) : (
+              <Alert severity="info" sx={{ py: 1 }}>
+                <Typography variant="body2">
+                  No payment schedule available for this contract.
+                </Typography>
+              </Alert>
+            )}
+          </Box>
+        )}
 
         <TextField
           fullWidth

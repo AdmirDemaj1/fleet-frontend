@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -42,6 +42,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useGetCurrentPaymentsByContractQuery, useCreatePrepaymentMutation } from '../../invoices/api/paymentsApi';
+import { Payment, PaymentStatus, PaymentType } from '../../invoices/types/invoice.types';
 import { format } from 'date-fns';
 import { useNotification } from '../../../shared/hooks/useNotification';
 
@@ -66,22 +67,37 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
   const [extraTransactionReference, setExtraTransactionReference] = useState<string>('');
   const [extraNotes, setExtraNotes] = useState<string>('');
   const [extraPrepaymentOption, setExtraPrepaymentOption] = useState<'reduce_term' | 'reduce_payment'>('reduce_payment');
+  const [startingFromPaymentNumber, setStartingFromPaymentNumber] = useState<number | null>(null);
+  const [startingFromPaymentId, setStartingFromPaymentId] = useState<string | null>(null);
   const [createPrepayment, { isLoading: isCreatingPayment }] = useCreatePrepaymentMutation();
 
   // Fetch current payments for the contract with filters
-  const { data: payments = [], isLoading, error } = useGetCurrentPaymentsByContractQuery(
-    {
-      contractId,
-      ...(statusFilter && { status: statusFilter as any }),
-      ...(typeFilter && { type: typeFilter as any }),
-    },
-    {
-      // Force refetch when contractId or filters change
-      refetchOnMountOrArgChange: true
-    }
-  );
+  // RTK Query automatically handles caching and refetching when args change
+  const { data: payments = [], isLoading, error } = useGetCurrentPaymentsByContractQuery({
+    contractId,
+    ...(statusFilter && { status: statusFilter as any }),
+    ...(typeFilter && { type: typeFilter as any }),
+  });
 
   const totalCount = payments.length;
+
+  // Find conflicting unpaid payment when prepayment date is selected
+  const conflictingPayment = useMemo(() => {
+    if (!extraPaymentDate || !extraPaymentDialogOpen) return null;
+    
+    const selectedDate = format(new Date(extraPaymentDate), 'yyyy-MM-dd');
+    
+    // Find unpaid scheduled payments that match the prepayment date
+    const conflict = payments.find((payment: Payment) => {
+      const paymentDueDate = format(new Date(payment.dueDate), 'yyyy-MM-dd');
+      const isUnpaid = payment.status !== PaymentStatus.PAID;
+      const isScheduled = payment.type === PaymentType.SCHEDULED;
+      
+      return paymentDueDate === selectedDate && isUnpaid && isScheduled;
+    });
+    
+    return conflict || null;
+  }, [extraPaymentDate, payments, extraPaymentDialogOpen]);
 
   const formatCurrency = (amount: string | number): string => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -172,6 +188,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
     setExtraTransactionReference('');
     setExtraNotes('');
     setExtraPrepaymentOption('reduce_payment');
+    setStartingFromPaymentNumber(null);
+    setStartingFromPaymentId(null);
   };
 
   const handleCloseExtraPaymentDialog = () => {
@@ -182,6 +200,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
     setExtraTransactionReference('');
     setExtraNotes('');
     setExtraPrepaymentOption('reduce_payment');
+    setStartingFromPaymentNumber(null);
+    setStartingFromPaymentId(null);
   };
 
   const handleSubmitExtraPayment = async () => {
@@ -204,6 +224,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
         ...(extraTransactionReference && { transactionReference: extraTransactionReference }),
         ...(extraNotes && { notes: extraNotes }),
         prepaymentOption: extraPrepaymentOption,
+        ...(startingFromPaymentNumber !== null && { startingFromPaymentNumber }),
+        ...(startingFromPaymentId !== null && { startingFromPaymentId }),
       };
 
       const response = await createPrepayment(prepaymentData).unwrap();
@@ -585,13 +607,74 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
             label="Payment Date"
             type="date"
             value={extraPaymentDate}
-            onChange={(e) => setExtraPaymentDate(e.target.value)}
+            onChange={(e) => {
+              setExtraPaymentDate(e.target.value);
+              setStartingFromPaymentNumber(null); // Reset starting payment when date changes
+              setStartingFromPaymentId(null);
+            }}
             InputLabelProps={{
               shrink: true,
             }}
             sx={{ mb: 3 }}
             required
           />
+
+          {/* Conflict Warning */}
+          {conflictingPayment && (
+            <Alert 
+              severity="warning" 
+              sx={{ mb: 3 }}
+              icon={<Warning />}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                Date Conflict Detected
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                The selected date ({formatDate(conflictingPayment.dueDate)}) conflicts with an existing unpaid payment:
+              </Typography>
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.warning.main, 0.1), borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Payment #{conflictingPayment.paymentNumber || 'N/A'} - {formatCurrency(conflictingPayment.amount)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Due Date: {formatDate(conflictingPayment.dueDate)} | Status: {conflictingPayment.status}
+                </Typography>
+              </Box>
+              <FormControl fullWidth>
+                <InputLabel id="affect-payment-label">Affect the payment from the prepayment?</InputLabel>
+                <Select
+                  labelId="affect-payment-label"
+                  value={startingFromPaymentNumber !== null ? startingFromPaymentNumber : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value !== '') {
+                      setStartingFromPaymentNumber(Number(value));
+                      setStartingFromPaymentId(conflictingPayment.id);
+                    } else {
+                      setStartingFromPaymentNumber(null);
+                      setStartingFromPaymentId(null);
+                    }
+                  }}
+                  label="Affect the payment from the prepayment?"
+                  displayEmpty
+                >
+                  <MenuItem value="">
+                    <em>Don't affect any payment</em>
+                  </MenuItem>
+                  {conflictingPayment.paymentNumber && (
+                    <MenuItem value={conflictingPayment.paymentNumber}>
+                      Affect Payment #{conflictingPayment.paymentNumber}
+                    </MenuItem>
+                  )}
+                </Select>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {startingFromPaymentNumber !== null 
+                    ? `The prepayment will be applied starting from Payment #${startingFromPaymentNumber}`
+                    : 'The prepayment will be recorded independently'}
+                </Typography>
+              </FormControl>
+            </Alert>
+          )}
 
           <FormControl fullWidth sx={{ mb: 3 }} required>
             <InputLabel>Payment Method</InputLabel>

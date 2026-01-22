@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Box, Typography, Container, Alert } from "@mui/material";
 import { ContractForm } from "../components";
 import {
-  useGetContractsQuery,
+  useGetContractQuery,
   useUpdateContractMutation,
   useGetCustomerQuery,
 } from "../api/contractApi";
@@ -21,11 +21,9 @@ export const EditContractPage: React.FC = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
 
-  // API Queries
-  const { data: contractsData, isLoading: isLoadingContracts } =
-    useGetContractsQuery({ limit: 1000, offset: 0 }, { skip: !id });
-
-  const contract = contractsData?.contracts?.find((c) => c.id === id);
+  // API Queries - Use direct contract query instead of loading all contracts
+  const { data: contract, isLoading: isLoadingContract } =
+    useGetContractQuery(id!, { skip: !id });
 
   const { data: customerData, isLoading: isLoadingCustomer } =
     useGetCustomerQuery(contract?.customerId || "", {
@@ -62,15 +60,14 @@ export const EditContractPage: React.FC = () => {
 
   // Load contract data when dependencies are ready
   useEffect(() => {
-    // Only load if contract is available or contracts query is done
-    if (contract || (contractsData && !isLoadingContracts)) {
+    // Only load if contract is available
+    if (contract || !isLoadingContract) {
       loadContractData();
     }
-  }, [loadContractData, contract, contractsData, isLoadingContracts]);
+  }, [loadContractData, contract, isLoadingContract]);
 
   // Check if contract was not found after loading completes
-  const contractNotFound =
-    contractsData && !isLoadingContracts && !contract && id;
+  const contractNotFound = !isLoadingContract && !contract && id;
 
   // ============================================================================
   // Handlers
@@ -203,7 +200,7 @@ export const EditContractPage: React.FC = () => {
   // Render
   // ============================================================================
 
-  if (loadingData || isLoadingContracts || isLoadingCustomer) {
+  if (loadingData || isLoadingContract || isLoadingCustomer) {
     return <EditPageLoadingState message="Loading contract data..." />;
   }
 

@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { 
-  Typography, 
-  Box, 
-  Alert, 
-  Button, 
+import {
+  Typography,
+  Box,
+  Alert,
+  Button,
   Paper
 } from '@mui/material';
-import { 
-  Add, 
-  Refresh, 
+import {
+  Add,
+  Refresh,
   Download,
   DirectionsCar,
   Build,
@@ -20,17 +20,22 @@ import { VehicleList } from '../components/VehicleList/VehicleList';
 import { VehicleFilters } from '../components/VehicleList/VehicleListFilters';
 import { useVehicles } from '../hooks/useVehicles';
 import { setFilters } from '../slices/vehicleSlice';
-import { vehicleApi } from '../api/vehicleApi';
-import { VehicleQueryParams, VehicleStatistics, VehicleStatus } from '../types/vehicleType';
+import { useGetVehicleStatisticsQuery, useDeleteVehicleMutation } from '../api/vehicleRtkApi';
+import { VehicleQueryParams, VehicleStatus } from '../types/vehicleType';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
 
 // Export as named export
 export const VehiclesPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { vehicles, loading, error, totalCount } = useVehicles();
-  
-  const [stats, setStats] = useState<VehicleStatistics | null>(null);
+  const { vehicles, loading, error, totalCount, refetch: refetchVehicles } = useVehicles();
+
+  // Use RTK Query for statistics - automatic caching and refetching
+  const { data: stats, refetch: refetchStats } = useGetVehicleStatisticsQuery();
+
+  // Use RTK Query mutation for delete
+  const [deleteVehicle] = useDeleteVehicleMutation();
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Pagination state
@@ -84,24 +89,10 @@ export const VehiclesPage: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [debouncedSearchTerm, statusFilter, legalOwnerFilter, makeFilter, modelFilter, yearFilter, isLiquidAssetFilter, page, rowsPerPage, dispatch]);
 
-  const fetchStats = async () => {
-    try {
-      const statistics = await vehicleApi.getVehicleStatistics();
-      setStats(statistics);
-    } catch (err) {
-      console.error('Error fetching vehicle statistics:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await fetchStats();
-      // The vehicles will be refetched automatically through the hook
+      await Promise.all([refetchStats(), refetchVehicles()]);
     } finally {
       setIsRefreshing(false);
     }
@@ -138,9 +129,9 @@ export const VehiclesPage: React.FC = () => {
   const handleDeleteVehicle = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this vehicle?')) {
       try {
-        await vehicleApi.deleteVehicle(id);
-        // The vehicles will be refetched automatically through the hook
-        
+        await deleteVehicle(id).unwrap();
+        // RTK Query automatically invalidates cache and refetches
+
         // If we deleted the last item on the current page and we're not on the first page,
         // go back to the previous page
         if (vehicles.length === 1 && page > 0) {
