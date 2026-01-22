@@ -10,10 +10,8 @@ import {
 import { Add } from '@mui/icons-material';
 import { CustomerList } from '../components/CustomerList';
 import { CustomerListFilters } from '../components/CustomerList/CustomerListFilters';
-import { AdministratorsTable } from '../components/AdministratorsTable';
 import { useCustomers } from '../hooks/useCustomers';
 import { useDeleteCustomer } from '../hooks/useDeleteCustomer';
-import { useAdministrators } from '../hooks/useAdministrators';
 import { setFilters } from '../slices/customerSlice';
 import { CustomerType } from '../types/customer.types';
 import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
@@ -24,7 +22,6 @@ export const CustomersPage: React.FC = () => {
   const dispatch = useDispatch();
   const { customers, loading, totalCount } = useCustomers();
   const { deleteCustomer } = useDeleteCustomer();
-  const { administrators, loading: loadingAdministrators } = useAdministrators();
   
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -35,8 +32,6 @@ export const CustomersPage: React.FC = () => {
   const [hasCollaterals, setHasCollaterals] = useState<boolean | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
-  const [administratorDeleteDialogOpen, setAdministratorDeleteDialogOpen] = useState(false);
-  const [administratorToDelete, setAdministratorToDelete] = useState<string | null>(null);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -111,19 +106,6 @@ export const CustomersPage: React.FC = () => {
     setPage(0);
   };
 
-  const handleAdministratorDelete = (id: string) => {
-    setAdministratorToDelete(id);
-    setAdministratorDeleteDialogOpen(true);
-  };
-
-  const confirmAdministratorDelete = async () => {
-    if (administratorToDelete) {
-      await deleteCustomer(administratorToDelete, CustomerType.ADMINISTRATOR);
-      setAdministratorDeleteDialogOpen(false);
-      setAdministratorToDelete(null);
-    }
-  };
-
   return (
     <Box>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -162,33 +144,12 @@ export const CustomersPage: React.FC = () => {
         onDelete={handleDelete}
       />
 
-      <Divider sx={{ my: 4 }} />
-
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
-          Administrators
-        </Typography>
-        <AdministratorsTable
-          administrators={administrators}
-          loading={loadingAdministrators}
-          onDelete={handleAdministratorDelete}
-        />
-      </Box>
-
       <ConfirmDialog
         open={deleteDialogOpen}
         title="Delete Customer"
         message="Are you sure you want to delete this customer? This action cannot be undone."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteDialogOpen(false)}
-      />
-
-      <ConfirmDialog
-        open={administratorDeleteDialogOpen}
-        title="Delete Administrator"
-        message="Are you sure you want to delete this administrator? This action cannot be undone."
-        onConfirm={confirmAdministratorDelete}
-        onCancel={() => setAdministratorDeleteDialogOpen(false)}
       />
     </Box>
   );

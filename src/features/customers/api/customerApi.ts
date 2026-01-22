@@ -13,6 +13,26 @@ import {
 } from "../types/customer.types";
 import { CustomerLog } from "../types/customerLogs.types";
 
+const extractPaginated = <T,>(
+  responseData: any
+): { data: T[]; total: number } => {
+  if (
+    responseData &&
+    typeof responseData === "object" &&
+    "data" in responseData &&
+    "meta" in responseData
+  ) {
+    return {
+      data: (responseData as PaginatedResponse<T>).data || [],
+      total: (responseData as PaginatedResponse<T>).meta?.total || 0,
+    };
+  }
+  if (Array.isArray(responseData)) {
+    return { data: responseData as T[], total: responseData.length };
+  }
+  return { data: [], total: 0 };
+};
+
 export const customerApi = {
   getAll: async (
     filters?: CustomerFilters
@@ -44,27 +64,9 @@ export const customerApi = {
 
       // The API returns a paginated response with data and meta fields
       const responseData = response.data;
-      
-      // Handle the response structure
-      let customersArray: Customer[];
-      let total: number;
-
-      if (responseData && typeof responseData === 'object' && 'data' in responseData && 'meta' in responseData) {
-        // Expected paginated response structure
-        customersArray = responseData.data || [];
-        total = responseData.meta?.total || 0;
-        console.log("Using paginated response structure - Total from meta:", total);
-      } else if (Array.isArray(responseData)) {
-        // Fallback: API returns array directly (backward compatibility)
-        customersArray = responseData;
-        total = customersArray.length;
-        console.log("Using array response structure - Total from array length:", total);
-      } else {
-        // Unexpected structure
-        console.warn("Unexpected response structure:", responseData);
-        customersArray = [];
-        total = 0;
-      }
+      const { data: customersArray, total } = extractPaginated<Customer>(
+        responseData
+      );
 
       const processedCustomers = customersArray.map((customer) => ({
         ...customer,
@@ -95,30 +97,17 @@ export const customerApi = {
 
   // Get administrator by ID
   getAdministratorById: async (id: string): Promise<CustomerDetailed> => {
-    const response = await api.get<CustomerDetailed>(
-      `/administrators/${id}`
-    );
+    // Backend no longer supports /administrators/:id
+    // Treat administrators as customers (admin routes remain in FE)
+    const response = await api.get<CustomerDetailed>(`/customers/${id}`);
     return response.data;
   },
 
   create: async (data: CreateCustomerDto | any): Promise<Customer> => {
     console.log("API create called with data:", data);
     try {
-      // Check if this is an administrator by checking for administrator-specific fields
-      // (since type property is not sent for administrators)
-      const isAdministrator = !!(
-        data.companyName && 
-        data.administratorName && 
-        data.administratorId && 
-        data.administratorPosition &&
-        !data.individualDetails &&
-        !data.businessDetails
-      );
-      const endpoint = isAdministrator ? API_ENDPOINTS.ADMINISTRATORS : API_ENDPOINTS.CUSTOMERS;
-      
-      console.log(`Using endpoint: ${endpoint} (isAdministrator: ${isAdministrator})`);
-      
-      const response = await api.post<any>(endpoint, data);
+      // Administrators are no longer created via a separate endpoint.
+      const response = await api.post<any>(API_ENDPOINTS.CUSTOMERS, data);
       console.log("API create response:", response.data);
       
       // Handle wrapped response - API returns { data: Customer, message: string, ... }
@@ -143,10 +132,8 @@ export const customerApi = {
 
   // Update administrator
   updateAdministrator: async (id: string, data: any): Promise<Customer> => {
-    const response = await api.put<Customer>(
-      `/administrators/${id}`,
-      data
-    );
+    // Administrators are customers now
+    const response = await api.put<Customer>(`/customers/${id}`, data);
     return response.data;
   },
 
@@ -295,11 +282,6 @@ export const customerApi = {
     return response.data;
   },
 
-  getAdministrators: async (): Promise<Administrator[]> => {
-    const response = await api.get<Administrator[]>('/administrators');
-    return response.data;
-  },
-
   // Get business customers that use an administrator
   getAdministratorBusinessCustomers: async (administratorId: string): Promise<{
     administratorId: string;
@@ -310,7 +292,26 @@ export const customerApi = {
       administratorId: string;
       businessCustomerIds: string[];
       count: number;
-    }>(`/administrators/${administratorId}/business-customers`);
+    }>(`/customers/administrators/${administratorId}/business-customers`);
+    return response.data;
+  },
+
+  /**
+   * New endpoint: businesses where a given customer is referenced as administrator.
+   * GET /customers/:id/admin-businesses
+   */
+  getAdminBusinesses: async (
+    customerId: string
+  ): Promise<{
+    administratorCustomerId: string;
+    businesses: Array<{ id: string; legalName: string; nuisNipt: string }>;
+    count: number;
+  }> => {
+    const response = await api.get<{
+      administratorCustomerId: string;
+      businesses: Array<{ id: string; legalName: string; nuisNipt: string }>;
+      count: number;
+    }>(`/customers/${customerId}/admin-businesses`);
     return response.data;
   },
 

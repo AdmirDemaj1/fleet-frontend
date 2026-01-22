@@ -1,21 +1,24 @@
 import { useState, useEffect } from 'react';
 import { customerApi } from '../api/customerApi';
-import { Administrator } from '../types/customer.types';
+import { Customer } from '../types/customer.types';
 import { useNotification } from '../../../shared/hooks/useNotification';
 
 export const useAdministrators = () => {
-  const [administrators, setAdministrators] = useState<Administrator[]>([]);
+  // NOTE: "Administrator" is no longer a separate entity in the backend.
+  // For business customer creation, administrators can be ANY existing customer.
+  const [administrators, setAdministrators] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const { showNotification } = useNotification();
 
   const fetchAdministrators = async () => {
     setLoading(true);
     try {
-      const data = await customerApi.getAdministrators();
+      // Fetch a large page of customers for the picker
+      const { data } = await customerApi.getAll({ limit: 1000, offset: 0 });
       setAdministrators(data);
     } catch (error) {
       console.error('Failed to fetch administrators:', error);
-      showNotification('Failed to load administrators', 'error');
+      showNotification('Failed to load customers', 'error');
     } finally {
       setLoading(false);
     }

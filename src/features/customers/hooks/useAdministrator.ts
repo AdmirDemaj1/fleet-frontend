@@ -25,8 +25,8 @@ export const useAdministrator = (id: string) => {
       dispatch(setLoading(true));
 
       try {
-        // Always use administrators endpoint for administrators
-        const administrator = await customerApi.getAdministratorById(id);
+        // Administrators are customers now; use customer endpoint
+        const administrator = await customerApi.getById(id);
         console.log("useAdministrator: Administrator fetched successfully:", administrator);
         dispatch(setSelectedCustomer(administrator));
         dispatch(setLoading(false));

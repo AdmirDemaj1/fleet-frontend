@@ -14,15 +14,15 @@ import {
 } from "@mui/material";
 import { SupervisorAccount, Search, Email, Phone } from "@mui/icons-material";
 import { useAdministrators } from "../../hooks/useAdministrators";
-import { Administrator } from "../../types/customer.types";
+import { Customer, CustomerType } from "../../types/customer.types";
 
 interface AdministratorOption {
   id: string;
-  companyName: string;
-  administratorName: string;
+  displayName: string;
+  type: CustomerType;
+  identifier?: string;
   email: string;
   phone: string;
-  nuisNipt: string;
 }
 
 interface AdministratorPickerProps {
@@ -39,15 +39,35 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
   const theme = useTheme();
   const { administrators, loading } = useAdministrators();
 
-  // Transform administrators to options
+  const getCustomerDisplayName = (customer: Customer): string => {
+    if (customer.type === CustomerType.INDIVIDUAL) {
+      const name = `${customer.firstName || ""} ${customer.lastName || ""}`.trim();
+      return name || "Individual customer";
+    }
+    if (customer.type === CustomerType.BUSINESS) {
+      return customer.legalName || "Business customer";
+    }
+    // Backward compatibility for any legacy administrator-shaped customers
+    const anyCustomer = customer as any;
+    return anyCustomer.companyName || anyCustomer.administratorName || "Customer";
+  };
+
+  const getCustomerIdentifier = (customer: Customer): string | undefined => {
+    if (customer.type === CustomerType.INDIVIDUAL) return customer.idNumber || undefined;
+    if (customer.type === CustomerType.BUSINESS) return customer.nuisNipt || undefined;
+    const anyCustomer = customer as any;
+    return anyCustomer.nuisNipt || anyCustomer.administratorId || undefined;
+  };
+
+  // Transform customers to options
   const administratorOptions = useMemo<AdministratorOption[]>(() => {
-    return administrators.map((admin: Administrator) => ({
-      id: admin.id,
-      companyName: admin.companyName || "Unknown Company",
-      administratorName: admin.administratorName || "Unknown",
-      email: admin.email || "",
-      phone: admin.phone || "",
-      nuisNipt: admin.nuisNipt || "",
+    return administrators.map((customer: Customer) => ({
+      id: customer.id,
+      displayName: getCustomerDisplayName(customer),
+      type: customer.type,
+      identifier: getCustomerIdentifier(customer),
+      email: customer.email || "",
+      phone: customer.phone || "",
     }));
   }, [administrators]);
 
@@ -81,8 +101,8 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
         Select Administrators (Optional)
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Link this business to one or more administrator accounts for management
-        access
+        Administrators can be any existing customer. Select one or more customers
+        to link to this business.
       </Typography>
 
       <Autocomplete
@@ -92,13 +112,29 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
         value={selectedAdministrators}
         onChange={handleChange}
         loading={loading}
-        getOptionLabel={(option) => option.companyName}
+        getOptionLabel={(option) => option.displayName}
         isOptionEqualToValue={(option, value) => option.id === value.id}
+        filterOptions={(options, state) => {
+          const q = state.inputValue.trim().toLowerCase();
+          if (!q) return options;
+          return options.filter((o) => {
+            const haystack = [
+              o.displayName,
+              o.identifier || "",
+              o.email || "",
+              o.phone || "",
+              o.type || "",
+            ]
+              .join(" ")
+              .toLowerCase();
+            return haystack.includes(q);
+          });
+        }}
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Search Administrators"
-            placeholder="Type to search by company name or NUIS/NIPT..."
+            label="Search Customers"
+            placeholder="Type to search by name, NUIS/ID, email, phone..."
             error={!!error}
             helperText={error}
             InputProps={{
@@ -149,7 +185,7 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
                   sx={{ mr: 1, color: theme.palette.warning.main }}
                 />
                 <Typography variant="subtitle2" fontWeight={600}>
-                  {option.companyName}
+                  {option.displayName}
                 </Typography>
               </Box>
               <Typography
@@ -157,7 +193,8 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
                 color="text.secondary"
                 sx={{ display: "block", ml: 3 }}
               >
-                Admin: {option.administratorName} • NUIS: {option.nuisNipt}
+                Type: {option.type}
+                {option.identifier ? ` • ID: ${option.identifier}` : ""}
               </Typography>
               <Box sx={{ display: "flex", gap: 1, ml: 3, mt: 0.5 }}>
                 {option.email && (
@@ -189,7 +226,7 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
             <Chip
               {...getTagProps({ index })}
               key={option.id}
-              label={option.companyName}
+              label={option.displayName}
               icon={<SupervisorAccount />}
               color="warning"
               variant="outlined"
@@ -217,13 +254,13 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
             <Box sx={{ py: 2, textAlign: "center" }}>
               <CircularProgress size={24} />
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Loading administrators...
+                Loading customers...
               </Typography>
             </Box>
           ) : (
             <Box sx={{ py: 2, textAlign: "center" }}>
               <Typography variant="body2" color="text.secondary">
-                No administrators available. Create an administrator first.
+                No customers available.
               </Typography>
             </Box>
           )
@@ -272,7 +309,7 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
                         }}
                       />
                       <Typography variant="subtitle2" fontWeight={600}>
-                        {admin.companyName}
+                        {admin.displayName}
                       </Typography>
                     </Box>
                     <Typography
@@ -280,14 +317,14 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
                       color="text.secondary"
                       sx={{ display: "block", mb: 0.5 }}
                     >
-                      Administrator: {admin.administratorName}
+                      Type: {admin.type}
                     </Typography>
                     <Typography
                       variant="caption"
                       color="text.secondary"
                       sx={{ display: "block", mb: 0.5 }}
                     >
-                      NUIS/NIPT: {admin.nuisNipt}
+                      {admin.identifier ? `ID: ${admin.identifier}` : "ID: —"}
                     </Typography>
                     <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
                       {admin.email && (

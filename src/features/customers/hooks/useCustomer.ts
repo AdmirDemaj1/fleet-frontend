@@ -17,9 +17,6 @@ export const useCustomer = (id: string, customerType?: CustomerType) => {
     (state: RootState) => state.customers
   );
 
-  // Check if we're viewing an administrator based on the URL path
-  const isAdministratorRoute = location.pathname.includes('/administrators/');
-
   useEffect(() => {
     const fetchCustomer = async () => {
       if (!id) {
@@ -27,14 +24,12 @@ export const useCustomer = (id: string, customerType?: CustomerType) => {
         return;
       }
 
-      console.log("useCustomer: Fetching customer with ID:", id, "isAdministratorRoute:", isAdministratorRoute);
+      console.log("useCustomer: Fetching customer with ID:", id);
       dispatch(setLoading(true));
 
       try {
-        // Use administrators endpoint if we're on an administrator route
-        const customer = isAdministratorRoute 
-          ? await customerApi.getAdministratorById(id)
-          : await customerApi.getById(id);
+        // Administrators are customers now; use customer endpoint
+        const customer = await customerApi.getById(id);
         console.log("useCustomer: Customer fetched successfully:", customer);
         dispatch(setSelectedCustomer(customer));
         dispatch(setLoading(false));
