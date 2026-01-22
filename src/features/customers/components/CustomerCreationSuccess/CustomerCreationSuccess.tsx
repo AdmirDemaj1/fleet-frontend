@@ -65,10 +65,8 @@ export const CustomerCreationSuccess: React.FC<
   const customerType = detectCustomerType();
 
   const handleGoToCustomer = () => {
-    // Administrators go to administrators route, others go to customers
-    const basePath =
-      customerType === "administrator" ? "administrators" : "customers";
-    navigate(`/${basePath}/${customer.id}`);
+    // Administrators are customers now; always navigate to customer account
+    navigate(`/customers/${customer.id}`);
   };
 
   const handleCreateAnother = () => {

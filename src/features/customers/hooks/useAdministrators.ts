@@ -1,12 +1,36 @@
-import { useGetAdministratorsQuery } from '../api/customerRtkApi';
+import { useState, useEffect } from 'react';
+import { customerApi } from '../api/customerApi';
+import { Customer } from '../types/customer.types';
+import { useNotification } from '../../../shared/hooks/useNotification';
 
 export const useAdministrators = () => {
-  // Use RTK Query for data fetching with automatic caching
-  const { data: administrators = [], isLoading, refetch } = useGetAdministratorsQuery();
+  // NOTE: "Administrator" is no longer a separate entity in the backend.
+  // For business customer creation, administrators can be ANY existing customer.
+  const [administrators, setAdministrators] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { showNotification } = useNotification();
+
+  const fetchAdministrators = async () => {
+    setLoading(true);
+    try {
+      // Fetch a large page of customers for the picker
+      const { data } = await customerApi.getAll({ limit: 1000, offset: 0 });
+      setAdministrators(data);
+    } catch (error) {
+      console.error('Failed to fetch administrators:', error);
+      showNotification('Failed to load customers', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdministrators();
+  }, []);
 
   return {
     administrators,
-    loading: isLoading,
-    refetch,
+    loading: loading,
+    fetch,
   };
 };

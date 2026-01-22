@@ -39,8 +39,8 @@ export const useAdministratorDataLoader = ({
       setLoading(true);
       setError(null);
 
-      // Fetch administrator details using administrators endpoint
-      const administrator = await customerApi.getAdministratorById(administratorId);
+      // Administrators are customers now; use customer endpoint
+      const administrator = await customerApi.getById(administratorId);
       console.log("Fetched administrator:", administrator);
 
       // Fetch active documents

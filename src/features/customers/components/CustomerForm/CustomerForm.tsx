@@ -559,6 +559,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           <CustomerTypeStep
             customerType={customerType}
             onCustomerTypeChange={setCustomerType}
+            // Create Customer should not allow selecting administrator.
+            // Edit Administrator flows can opt-in so the current value stays representable.
+            includeAdministratorOption={isEdit && customerType === CustomerType.ADMINISTRATOR}
           />
         );
       case 1:

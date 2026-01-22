@@ -124,13 +124,7 @@ export const AdministratorsPage: React.FC = () => {
         }}
       >
         <Typography variant="h4">Administrators</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => navigate("/customers/new")}
-        >
-          Add Administrator
-        </Button>
+        {/* Administrator creation removed; administrators are derived from customers now */}
       </Box>
 
       <CustomerListFilters

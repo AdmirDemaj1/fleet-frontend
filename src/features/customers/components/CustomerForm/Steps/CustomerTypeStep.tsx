@@ -16,11 +16,17 @@ import { CustomerType } from '../../../types/customer.types';
 interface CustomerTypeStepProps {
   customerType: CustomerType;
   onCustomerTypeChange: (type: CustomerType) => void;
+  /**
+   * Create Customer should NOT allow selecting administrator.
+   * Edit Administrator flows can opt in to show it.
+   */
+  includeAdministratorOption?: boolean;
 }
 
 export const CustomerTypeStep: React.FC<CustomerTypeStepProps> = ({
   customerType,
-  onCustomerTypeChange
+  onCustomerTypeChange,
+  includeAdministratorOption = false,
 }) => {
   const theme = useTheme();
 
@@ -161,107 +167,111 @@ export const CustomerTypeStep: React.FC<CustomerTypeStepProps> = ({
         </Grid>
       </Grid>
 
-      {/* Divider */}
-      <Box my={4}>
-        <Divider>
-          <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
-            Or select a secondary option
-          </Typography>
-        </Divider>
-      </Box>
+      {includeAdministratorOption && (
+        <>
+          {/* Divider */}
+          <Box my={4}>
+            <Divider>
+              <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
+                Or select a secondary option
+              </Typography>
+            </Divider>
+          </Box>
 
-      {/* Secondary Customer Type Selection */}
-      <Grid container spacing={3} justifyContent="center">
-        <Grid item xs={12} md={10} lg={6}>
-          <ToggleButtonGroup
-            value={customerType}
-            exclusive
-            onChange={handleTypeChange}
-            aria-label="secondary customer type selection"
-            sx={{
-              width: '100%',
-              '& .MuiToggleButton-root': {
-                flex: 1,
-                py: 3,
-                px: 2,
-                borderRadius: 2,
-                textTransform: 'none',
-                border: `2px solid ${alpha(theme.palette.divider, 0.15)}`,
-                bgcolor: alpha(theme.palette.grey[100], 0.3),
-                '&:hover': {
-                  borderColor: alpha(theme.palette.info.main, 0.3),
-                  bgcolor: alpha(theme.palette.info.main, 0.02),
-                },
-                '&.Mui-selected': {
-                  bgcolor: alpha(theme.palette.info.main, 0.08),
-                  borderColor: theme.palette.info.main,
-                  color: theme.palette.info.main,
-                  '&:hover': {
-                    bgcolor: alpha(theme.palette.info.main, 0.12),
+          {/* Secondary Customer Type Selection */}
+          <Grid container spacing={3} justifyContent="center">
+            <Grid item xs={12} md={10} lg={6}>
+              <ToggleButtonGroup
+                value={customerType}
+                exclusive
+                onChange={handleTypeChange}
+                aria-label="secondary customer type selection"
+                sx={{
+                  width: '100%',
+                  '& .MuiToggleButton-root': {
+                    flex: 1,
+                    py: 3,
+                    px: 2,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    border: `2px solid ${alpha(theme.palette.divider, 0.15)}`,
+                    bgcolor: alpha(theme.palette.grey[100], 0.3),
+                    '&:hover': {
+                      borderColor: alpha(theme.palette.info.main, 0.3),
+                      bgcolor: alpha(theme.palette.info.main, 0.02),
+                    },
+                    '&.Mui-selected': {
+                      bgcolor: alpha(theme.palette.info.main, 0.08),
+                      borderColor: theme.palette.info.main,
+                      color: theme.palette.info.main,
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.info.main, 0.12),
+                      }
+                    }
                   }
-                }
-              }
-            }}
-          >
-            {secondaryCustomerTypeOptions.map((option) => {
-              const IconComponent = option.icon;
-              const isSelected = customerType === option.value;
-              
-              return (
-                <ToggleButton
-                  key={option.value}
-                  value={option.value}
-                  aria-label={option.label}
-                >
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    gap: 1.5,
-                    minHeight: 100
-                  }}>
-                    <Box sx={{ 
-                      p: 1.5, 
-                      borderRadius: '50%',
-                      bgcolor: isSelected 
-                        ? alpha(theme.palette.info.main, 0.1)
-                        : alpha(theme.palette.action.selected, 0.05),
-                      transition: 'all 0.2s ease'
-                    }}>
-                      <IconComponent sx={{ 
-                        fontSize: 32,
-                        color: isSelected 
-                          ? theme.palette.info.main 
-                          : theme.palette.text.secondary
-                      }} />
-                    </Box>
-                    
-                    <Box textAlign="center">
-                      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                        {option.label}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 250, fontSize: '0.85rem' }}>
-                        {option.description}
-                      </Typography>
-                      
-                      {isSelected && (
-                        <Box mt={1}>
-                          <Chip 
-                            label="Selected" 
-                            color="info" 
-                            size="small"
-                            sx={{ borderRadius: 1 }}
-                          />
+                }}
+              >
+                {secondaryCustomerTypeOptions.map((option) => {
+                  const IconComponent = option.icon;
+                  const isSelected = customerType === option.value;
+                  
+                  return (
+                    <ToggleButton
+                      key={option.value}
+                      value={option.value}
+                      aria-label={option.label}
+                    >
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        gap: 1.5,
+                        minHeight: 100
+                      }}>
+                        <Box sx={{ 
+                          p: 1.5, 
+                          borderRadius: '50%',
+                          bgcolor: isSelected 
+                            ? alpha(theme.palette.info.main, 0.1)
+                            : alpha(theme.palette.action.selected, 0.05),
+                          transition: 'all 0.2s ease'
+                        }}>
+                          <IconComponent sx={{ 
+                            fontSize: 32,
+                            color: isSelected 
+                              ? theme.palette.info.main 
+                              : theme.palette.text.secondary
+                          }} />
                         </Box>
-                      )}
-                    </Box>
-                  </Box>
-                </ToggleButton>
-              );
-            })}
-          </ToggleButtonGroup>
-        </Grid>
-      </Grid>
+                        
+                        <Box textAlign="center">
+                          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                            {option.label}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 250, fontSize: '0.85rem' }}>
+                            {option.description}
+                          </Typography>
+                          
+                          {isSelected && (
+                            <Box mt={1}>
+                              <Chip 
+                                label="Selected" 
+                                color="info" 
+                                size="small"
+                                sx={{ borderRadius: 1 }}
+                              />
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
+                    </ToggleButton>
+                  );
+                })}
+              </ToggleButtonGroup>
+            </Grid>
+          </Grid>
+        </>
+      )}
 
       {/* Selected Type Summary */}
       {customerType && (
