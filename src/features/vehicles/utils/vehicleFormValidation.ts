@@ -67,13 +67,12 @@ export const createVehicleValidationSchema = () => {
       .oneOf(Object.values(VehicleStatus), 'Invalid status selected'),
 
     // Details - Optional but validated when provided
-    // COMMENTED OUT - Backend validation error
-    // mileage: yup
-    //   .number()
-    //   .nullable()
-    //   .min(0, 'Mileage cannot be negative')
-    //   .max(999999, 'Mileage seems unrealistic (max: 999,999 km)')
-    //   .integer('Mileage must be a whole number'),
+    currentMileage: yup
+      .number()
+      .nullable()
+      .min(0, 'Kilometers cannot be negative')
+      .max(999999, 'Kilometers seems unrealistic (max: 999,999 km)')
+      .integer('Kilometers must be a whole number'),
     
     fuelType: yup
       .string()
@@ -212,7 +211,7 @@ export const createVehicleValidationSchema = () => {
 export const STEP_FIELDS = {
   BASIC_INFO: ['licensePlate', 'vin', 'make', 'model', 'year', 'color', 'status'] as const,
   // Removed commented out fields: 'mileage', 'transmission', 'condition', 'purchasePrice'
-  DETAILS: ['fuelType', 'legalOwner', 'isLiquidAsset', 'purchaseDate'] as const,
+  DETAILS: ['currentMileage', 'fuelType', 'legalOwner', 'isLiquidAsset', 'purchaseDate'] as const,
   // Removed commented out fields: 'registrationDate', 'registrationExpiryDate', 'insuranceProvider', 'insurancePolicyNumber', 'insuranceExpiryDate'
   DOCUMENTATION: ['currentValuation', 'marketValue', 'depreciatedValue'] as const,
   DOCUMENTS: [] as const, // Documents are handled separately

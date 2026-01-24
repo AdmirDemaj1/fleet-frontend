@@ -48,7 +48,7 @@ export const EuriborRateForm: React.FC<EuriborRateFormProps> = ({
 }) => {
   // Separate state for rate value display to handle input properly
   const [rateValueDisplay, setRateValueDisplay] = useState<string>(
-    initialData?.rateValue ? initialData.rateValue.toString() : ''
+    initialData?.rateValue !== undefined ? initialData.rateValue.toString() : ''
   );
 
   const methods = useForm<CreateEuriborRateDto>({
@@ -221,12 +221,13 @@ export const EuriborRateForm: React.FC<EuriborRateFormProps> = ({
                     error={!!errors.rateValue}
                     helperText={
                       errors.rateValue?.message || 
-                      `Decimal format (e.g., 0.0375 for 3.75%). Preview: ${formatRateAsPercentage(watchedData.rateValue || 0)}`
+                      `Decimal format (e.g., -0.0010 for -0.10%). Preview: ${formatRateAsPercentage(watchedData.rateValue || 0)}`
                     }
                     InputProps={{
                       inputProps: {
                         inputMode: 'decimal',
-                        pattern: '[0-9]*\\.?[0-9]*'
+                        // allow negative decimals like "-0.0012"
+                        pattern: '-?[0-9]*\\.?[0-9]*'
                       },
                       endAdornment: (
                         <InputAdornment position="end">

@@ -30,11 +30,23 @@ interface CustomerFormData {
   individualDetails?: CreateIndividualCustomerDto;
   businessDetails?: CreateBusinessCustomerDto;
   administratorDetails?: CreateAdministratorCustomerDto;
-  administratorDocuments?: Array<{
+  individualDocuments?: Array<{
     type: string;
-    file: File;
+    file?: File;
     expiryDate: string;
     title: string;
+    documentId?: string;
+    fileName?: string;
+    status?: string;
+  }>;
+  administratorDocuments?: Array<{
+    type: string;
+    file?: File;
+    expiryDate: string;
+    title: string;
+    documentId?: string;
+    fileName?: string;
+    status?: string;
   }>;
 }
 import {
@@ -62,12 +74,33 @@ const ADMINISTRATOR_STEP_CONFIG = [
     description: "Review and confirm",
   },
 ] as const;
+
+// Individual customer step configuration (adds a Documents step for ID card)
+const INDIVIDUAL_STEP_CONFIG = [
+  {
+    label: "Customer Type",
+    description: "Select individual customer type",
+  },
+  {
+    label: "Customer Details",
+    description: "Enter individual customer information",
+  },
+  {
+    label: "Documents",
+    description: "Upload customer ID card",
+  },
+  {
+    label: "Review",
+    description: "Review and confirm",
+  },
+] as const;
 import {
   CustomerTypeStep,
   IndividualDetailsStep,
   BusinessDetailsStep,
   AdministratorDetailsStep,
   AdministratorDocumentsStep,
+  IndividualDocumentsStep,
 } from "./Steps";
 
 interface CustomerFormProps {
@@ -80,6 +113,15 @@ interface CustomerFormProps {
       documentId?: string;
       fileName?: string;
     }>;
+    individualDocuments?: Array<{
+      type: string;
+      file?: File;
+      expiryDate: string;
+      title: string;
+      documentId?: string;
+      fileName?: string;
+      status?: string;
+    }>;
   };
   onSubmit: (data: CreateCustomerDto) => Promise<void>;
   loading: boolean;
@@ -88,6 +130,7 @@ interface CustomerFormProps {
   steps: string[];
   isEdit?: boolean;
   administratorId?: string; // Administrator ID for edit mode
+  customerId?: string; // Customer ID for edit mode (individual documents)
   onPendingDocumentIdsChange?: (ids: string[]) => void; // Callback to track pending document IDs
   onCancel?: () => void; // Cancel handler for edit mode
 }
@@ -109,6 +152,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   onStepChange,
   isEdit = false,
   administratorId,
+  customerId,
   onPendingDocumentIdsChange,
   onCancel,
 }) => {
@@ -141,6 +185,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               additionalNotes: "",
             }
           : undefined,
+      individualDocuments: customerType === CustomerType.INDIVIDUAL ? [] : undefined,
       businessDetails:
         customerType === CustomerType.BUSINESS
           ? {
@@ -205,6 +250,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       // TODO: Why setting these to undefined
       setValue("businessDetails", undefined);
       setValue("administratorDetails", undefined);
+      setValue("administratorDocuments", undefined);
       if (!currentFormData.individualDetails) {
         setValue("individualDetails", {
           type: CustomerType.INDIVIDUAL,
@@ -220,9 +266,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           additionalNotes: "",
         });
       }
+      if (!currentFormData.individualDocuments) {
+        setValue("individualDocuments", []);
+      }
     } else if (customerType === CustomerType.BUSINESS) {
       setValue("individualDetails", undefined);
       setValue("administratorDetails", undefined);
+      setValue("administratorDocuments", undefined);
+      setValue("individualDocuments", undefined);
       if (!currentFormData.businessDetails) {
         setValue("businessDetails", {
           type: CustomerType.BUSINESS,
@@ -241,6 +292,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     } else if (customerType === CustomerType.ADMINISTRATOR) {
       setValue("individualDetails", undefined);
       setValue("businessDetails", undefined);
+      setValue("individualDocuments", undefined);
       if (!currentFormData.administratorDetails) {
         setValue("administratorDetails", {
           type: CustomerType.ADMINISTRATOR,
@@ -278,10 +330,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             ? STEP_FIELDS.BUSINESS_DETAILS
             : STEP_FIELDS.ADMINISTRATOR_DETAILS;
         case 2:
-          // Documents step for administrators, Review step for others
-          return customerType === CustomerType.ADMINISTRATOR ? [] : [];
+          // Documents step for administrators and individuals, Review step for business
+          return [];
         case 3:
-          return []; // Review step (only for administrators)
+          return []; // Review step (administrators + individuals)
         default:
           return [];
       }
@@ -302,6 +354,15 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             ? REQUIRED_FIELDS.BUSINESS_DETAILS
             : REQUIRED_FIELDS.ADMINISTRATOR_DETAILS;
         case 2:
+          // Documents step for individuals - require ID card
+          if (customerType === CustomerType.INDIVIDUAL) {
+            const documents = getValues("individualDocuments") || [];
+            const uploadedTypes = documents.map((doc: any) => doc?.type);
+            const hasRequired = ["customer_id_card"].every((type) =>
+              uploadedTypes.includes(type)
+            );
+            return hasRequired ? [] : ["individualDocuments"];
+          }
           // Documents step for administrators - check if required documents are uploaded
           if (customerType === CustomerType.ADMINISTRATOR) {
             const documents = getValues("administratorDocuments") || [];
@@ -313,7 +374,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           }
           return [];
         case 3:
-          return []; // Review step (only for administrators)
+          return []; // Review step (administrators + individuals)
         default:
           return [];
       }
@@ -332,6 +393,16 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       const uploadedTypes = documents.map((doc: any) => doc?.type);
       const hasRequiredDocuments = ["business_administrator_id_card"].every(
         (type) => uploadedTypes.includes(type)
+      );
+      return hasRequiredDocuments;
+    }
+
+    // Special validation for documents step (step 2 for individuals)
+    if (activeStep === 2 && customerType === CustomerType.INDIVIDUAL) {
+      const documents = getValues("individualDocuments") || [];
+      const uploadedTypes = documents.map((doc: any) => doc?.type);
+      const hasRequiredDocuments = ["customer_id_card"].every((type) =>
+        uploadedTypes.includes(type)
       );
       return hasRequiredDocuments;
     }
@@ -421,7 +492,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             additionalNotes:
               data.administratorDetails.additionalNotes || undefined,
             // Include documents for upload after creation
-            administratorDocuments: data.administratorDocuments || [],
+            administratorDocuments: (data.administratorDocuments || []).filter(
+              (d: any) => !!d?.file
+            ),
           };
         } else {
           // For individual and business, keep the wrapper structure
@@ -439,6 +512,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                     data.individualDetails.additionalNotes || undefined,
                 }
               : undefined,
+            // Include documents for upload after creation (individuals)
+            individualDocuments: (data.individualDocuments || []).filter(
+              (d: any) => !!d?.file
+            ),
             businessDetails: data.businessDetails
               ? {
                   type: data.businessDetails.type,
@@ -501,6 +578,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 ...initialData.individualDetails,
               }
             : undefined,
+        individualDocuments:
+          customerType === CustomerType.INDIVIDUAL
+            ? (initialData as any)?.individualDocuments || []
+            : undefined,
         businessDetails:
           customerType === CustomerType.BUSINESS
             ? {
@@ -548,7 +629,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
   // Get total steps based on customer type
   const getTotalSteps = useCallback(() => {
-    return customerType === CustomerType.ADMINISTRATOR ? 4 : 3;
+    if (customerType === CustomerType.ADMINISTRATOR) return 4;
+    if (customerType === CustomerType.INDIVIDUAL) return 4;
+    return 3; // business
   }, [customerType]);
 
   // Step content renderer
@@ -573,11 +656,19 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           <AdministratorDetailsStep />
         );
       case 2:
-        // Documents step for administrators, Review step for others
+        // Documents step for administrators and individuals; Review for business
         if (customerType === CustomerType.ADMINISTRATOR) {
           return (
             <AdministratorDocumentsStep
               administratorId={administratorId}
+              onPendingDocumentIdsChange={onPendingDocumentIdsChange}
+            />
+          );
+        }
+        if (customerType === CustomerType.INDIVIDUAL) {
+          return (
+            <IndividualDocumentsStep
+              customerId={customerId}
               onPendingDocumentIdsChange={onPendingDocumentIdsChange}
             />
           );
@@ -606,105 +697,30 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               }}
             >
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                Customer Type:{" "}
-                {customerType === CustomerType.INDIVIDUAL
-                  ? "Individual"
-                  : customerType === CustomerType.BUSINESS
-                  ? "Business"
-                  : "Administrator"}
+                Customer Type: Business
               </Typography>
 
-              {customerType === CustomerType.INDIVIDUAL &&
-                getValues("individualDetails") && (
-                  <>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Name:</strong>{" "}
-                      {getValues("individualDetails.firstName")}{" "}
-                      {getValues("individualDetails.lastName")}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Email:</strong>{" "}
-                      {getValues("individualDetails.email")}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Phone:</strong>{" "}
-                      {getValues("individualDetails.phone")}
-                    </Typography>
-                  </>
-                )}
-
-              {customerType === CustomerType.BUSINESS &&
-                getValues("businessDetails") && (
-                  <>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Business:</strong>{" "}
-                      {getValues("businessDetails.legalName")}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>NUIS/NIPT:</strong>{" "}
-                      {getValues("businessDetails.nuisNipt")}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Email:</strong>{" "}
-                      {getValues("businessDetails.email")}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Phone:</strong>{" "}
-                      {getValues("businessDetails.phone")}
-                    </Typography>
-                  </>
-                )}
-
-              {(customerType === CustomerType.INDIVIDUAL ||
-                customerType === CustomerType.BUSINESS) && (
+              {getValues("businessDetails") && (
                 <>
-                  {customerType === CustomerType.INDIVIDUAL &&
-                    getValues("individualDetails") && (
-                      <>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>Name:</strong>{" "}
-                          {getValues("individualDetails.firstName")}{" "}
-                          {getValues("individualDetails.lastName")}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>Email:</strong>{" "}
-                          {getValues("individualDetails.email")}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Phone:</strong>{" "}
-                          {getValues("individualDetails.phone")}
-                        </Typography>
-                      </>
-                    )}
-
-                  {customerType === CustomerType.BUSINESS &&
-                    getValues("businessDetails") && (
-                      <>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>Business:</strong>{" "}
-                          {getValues("businessDetails.legalName")}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>NUIS/NIPT:</strong>{" "}
-                          {getValues("businessDetails.nuisNipt")}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>Email:</strong>{" "}
-                          {getValues("businessDetails.email")}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Phone:</strong>{" "}
-                          {getValues("businessDetails.phone")}
-                        </Typography>
-                      </>
-                    )}
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Business:</strong> {getValues("businessDetails.legalName")}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>NUIS/NIPT:</strong> {getValues("businessDetails.nuisNipt")}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Email:</strong> {getValues("businessDetails.email")}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Phone:</strong> {getValues("businessDetails.phone")}
+                  </Typography>
                 </>
               )}
             </Box>
           </Box>
         );
       case 3:
-        // Review step for administrators only
+        // Review step for administrators + individuals
         if (customerType === CustomerType.ADMINISTRATOR) {
           return (
             <Box sx={{ py: 4, textAlign: "center" }}>
@@ -756,6 +772,53 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                         <Typography variant="body2" sx={{ mt: 2 }}>
                           <strong>Documents:</strong>{" "}
                           {getValues("administratorDocuments")!.length} uploaded
+                        </Typography>
+                      )}
+                  </>
+                )}
+              </Box>
+            </Box>
+          );
+        }
+        if (customerType === CustomerType.INDIVIDUAL) {
+          return (
+            <Box sx={{ py: 4, textAlign: "center" }}>
+              <Typography variant="h5" gutterBottom fontWeight={600}>
+                Review & Confirm
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                Please review your information and click save to create the
+                customer
+              </Typography>
+              <Box
+                sx={{
+                  p: 3,
+                  bgcolor: (theme) => theme.palette.grey[50],
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: "divider",
+                  maxWidth: 600,
+                  mx: "auto",
+                  textAlign: "left",
+                }}
+              >
+                {getValues("individualDetails") && (
+                  <>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Name:</strong> {getValues("individualDetails.firstName")}{" "}
+                      {getValues("individualDetails.lastName")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Email:</strong> {getValues("individualDetails.email")}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Phone:</strong> {getValues("individualDetails.phone")}
+                    </Typography>
+                    {getValues("individualDocuments") &&
+                      Array.isArray(getValues("individualDocuments")) &&
+                      getValues("individualDocuments")!.length > 0 && (
+                        <Typography variant="body2" sx={{ mt: 2 }}>
+                          <strong>Documents:</strong> {getValues("individualDocuments")!.length} uploaded
                         </Typography>
                       )}
                   </>
@@ -821,6 +884,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             <Stepper activeStep={activeStep} alternativeLabel>
               {(customerType === CustomerType.ADMINISTRATOR
                 ? ADMINISTRATOR_STEP_CONFIG
+                : customerType === CustomerType.INDIVIDUAL
+                ? INDIVIDUAL_STEP_CONFIG
                 : STEP_CONFIG
               ).map((stepConfig: any, index: number) => (
                 <Step key={stepConfig.label}>

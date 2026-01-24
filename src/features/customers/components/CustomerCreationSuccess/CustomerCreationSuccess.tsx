@@ -9,6 +9,7 @@ import {
   Divider,
   CircularProgress,
   Chip,
+  Alert,
 } from "@mui/material";
 import {
   CheckCircle,
@@ -17,20 +18,38 @@ import {
   Business,
   AdminPanelSettings,
   ArrowForward,
+  Replay,
+  DeleteForever,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { Customer } from "../../types/customer.types";
+import { DocumentUploadState } from "../../hooks/useCreateCustomerWithDocument";
 
 interface CustomerCreationSuccessProps {
   customer: Customer;
   onDownloadDocument: () => void;
   isDownloading: boolean;
+  uploadState?: DocumentUploadState;
+  onRetryFailedUploads?: () => void;
+  isUploadingDocuments?: boolean;
+  onRollback?: () => void;
+  isRollingBack?: boolean;
   onReset?: () => void;
 }
 
 export const CustomerCreationSuccess: React.FC<
   CustomerCreationSuccessProps
-> = ({ customer, onDownloadDocument, isDownloading, onReset }) => {
+> = ({
+  customer,
+  onDownloadDocument,
+  isDownloading,
+  uploadState,
+  onRetryFailedUploads,
+  isUploadingDocuments,
+  onRollback,
+  isRollingBack,
+  onReset,
+}) => {
   const navigate = useNavigate();
 
   // Detect customer type from the data structure since API may not always return 'type' field
@@ -178,6 +197,23 @@ export const CustomerCreationSuccess: React.FC<
 
           <Divider sx={{ my: 3 }} />
 
+          {/* Document upload status (partial success handling) */}
+          {uploadState && uploadState.status !== "none" && (
+            <Box sx={{ mb: 3 }}>
+              {uploadState.status === "success" ? (
+                <Alert severity="success">
+                  Documents uploaded: {uploadState.uploaded}/{uploadState.total}
+                </Alert>
+              ) : (
+                <Alert severity="warning">
+                  Customer created, but documents uploaded: {uploadState.uploaded}/
+                  {uploadState.total}. Failed: {uploadState.failed}. You can retry
+                  failed uploads or rollback.
+                </Alert>
+              )}
+            </Box>
+          )}
+
           {/* Customer Info */}
           <Box sx={{ mb: 4 }}>
             <Box
@@ -221,6 +257,51 @@ export const CustomerCreationSuccess: React.FC<
           </Typography>
 
           <Stack spacing={2}>
+            {/* Retry failed document uploads */}
+            {uploadState &&
+              (uploadState.status === "partial" || uploadState.status === "failed") &&
+              onRetryFailedUploads && (
+                <Button
+                  variant="outlined"
+                  size="large"
+                  startIcon={
+                    isUploadingDocuments ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      <Replay />
+                    )
+                  }
+                  onClick={onRetryFailedUploads}
+                  disabled={!!isUploadingDocuments || !!isRollingBack}
+                  sx={{ py: 1.5, fontSize: "1rem", fontWeight: 600 }}
+                >
+                  {isUploadingDocuments ? "Retrying Uploads..." : "Retry Failed Uploads"}
+                </Button>
+              )}
+
+            {/* Rollback (delete) customer if uploads failed */}
+            {uploadState &&
+              (uploadState.status === "partial" || uploadState.status === "failed") &&
+              onRollback && (
+                <Button
+                  variant="contained"
+                  color="error"
+                  size="large"
+                  startIcon={
+                    isRollingBack ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      <DeleteForever />
+                    )
+                  }
+                  onClick={onRollback}
+                  disabled={!!isRollingBack || !!isUploadingDocuments}
+                  sx={{ py: 1.5, fontSize: "1rem", fontWeight: 600 }}
+                >
+                  {isRollingBack ? "Rolling Back..." : "Rollback (Delete Customer)"}
+                </Button>
+              )}
+
             {/* Download Registration Document */}
             <Button
               variant="contained"
@@ -233,7 +314,7 @@ export const CustomerCreationSuccess: React.FC<
                 )
               }
               onClick={onDownloadDocument}
-              disabled={isDownloading}
+              disabled={isDownloading || !!isUploadingDocuments || !!isRollingBack}
               sx={{
                 py: 1.5,
                 fontSize: "1rem",

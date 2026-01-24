@@ -59,10 +59,10 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
   };
 
   const hasExpiringDocuments =
-    isExpiringSoon(vehicle.insuranceExpiryDate) ||
-    isExpiringSoon(vehicle.registrationExpiryDate) ||
-    isExpired(vehicle.insuranceExpiryDate) ||
-    isExpired(vehicle.registrationExpiryDate);
+    isExpiringSoon(vehicle.tplExpiryDate) ||
+    isExpiringSoon(vehicle.registrationExpiry) ||
+    isExpired(vehicle.tplExpiryDate) ||
+    isExpired(vehicle.registrationExpiry);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -70,8 +70,8 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
       {hasExpiringDocuments && (
         <Alert
           severity={
-            isExpired(vehicle.insuranceExpiryDate) ||
-            isExpired(vehicle.registrationExpiryDate)
+            isExpired(vehicle.tplExpiryDate) ||
+            isExpired(vehicle.registrationExpiry)
               ? "error"
               : "warning"
           }
@@ -84,43 +84,38 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
           }}
         >
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-            {isExpired(vehicle.insuranceExpiryDate) ||
-            isExpired(vehicle.registrationExpiryDate)
+            {isExpired(vehicle.tplExpiryDate) ||
+            isExpired(vehicle.registrationExpiry)
               ? "Expired Documents"
               : "Documents Expiring Soon"}
           </Typography>
           <List dense sx={{ mt: 1 }}>
-            {(isExpiringSoon(vehicle.insuranceExpiryDate) ||
-              isExpired(vehicle.insuranceExpiryDate)) && (
+            {(isExpiringSoon(vehicle.tplExpiryDate) ||
+              isExpired(vehicle.tplExpiryDate)) && (
               <ListItem sx={{ pl: 0 }}>
                 <ListItemText
-                  primary={`Insurance ${
-                    isExpired(vehicle.insuranceExpiryDate)
-                      ? "expired"
-                      : "expires"
+                  primary={`TPL Insurance ${
+                    isExpired(vehicle.tplExpiryDate) ? "expired" : "expires"
                   } on ${
-                    vehicle.insuranceExpiryDate
-                      ? format(
-                          new Date(vehicle.insuranceExpiryDate),
-                          "MMMM dd, yyyy"
-                        )
+                    vehicle.tplExpiryDate
+                      ? format(new Date(vehicle.tplExpiryDate), "MMMM dd, yyyy")
                       : ""
                   }`}
                 />
               </ListItem>
             )}
-            {(isExpiringSoon(vehicle.registrationExpiryDate) ||
-              isExpired(vehicle.registrationExpiryDate)) && (
+            {(isExpiringSoon(vehicle.registrationExpiry) ||
+              isExpired(vehicle.registrationExpiry)) && (
               <ListItem sx={{ pl: 0 }}>
                 <ListItemText
                   primary={`Registration ${
-                    isExpired(vehicle.registrationExpiryDate)
+                    isExpired(vehicle.registrationExpiry)
                       ? "expired"
                       : "expires"
                   } on ${
-                    vehicle.registrationExpiryDate
+                    vehicle.registrationExpiry
                       ? format(
-                          new Date(vehicle.registrationExpiryDate),
+                          new Date(vehicle.registrationExpiry),
                           "MMMM dd, yyyy"
                         )
                       : ""
@@ -275,21 +270,24 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                   </Grid>
                 )}
 
-                {vehicle.mileage && (
-                  <Grid item xs={6}>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      Mileage
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      {new Intl.NumberFormat("en-US").format(vehicle.mileage)}{" "}
-                      miles
-                    </Typography>
-                  </Grid>
-                )}
+                {vehicle.currentMileage !== undefined &&
+                  vehicle.currentMileage !== null && (
+                    <Grid item xs={6}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        Kilometers
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {new Intl.NumberFormat("en-US").format(
+                          vehicle.currentMileage
+                        )}{" "}
+                        km
+                      </Typography>
+                    </Grid>
+                  )}
               </Grid>
             </CardContent>
           </Card>
@@ -449,19 +447,19 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                   </Grid>
                 )}
 
-                {vehicle.insuranceExpiryDate && (
+                {vehicle.tplExpiryDate && (
                   <Grid item xs={6}>
                     <Typography
                       variant="body2"
                       color="text.secondary"
                       gutterBottom
                     >
-                      Insurance Expiry
+                      TPL Expiry
                     </Typography>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      {isExpired(vehicle.insuranceExpiryDate) ? (
+                      {isExpired(vehicle.tplExpiryDate) ? (
                         <ErrorIcon sx={{ fontSize: 16, color: "error.main" }} />
-                      ) : isExpiringSoon(vehicle.insuranceExpiryDate) ? (
+                      ) : isExpiringSoon(vehicle.tplExpiryDate) ? (
                         <Warning sx={{ fontSize: 16, color: "warning.main" }} />
                       ) : (
                         <CheckCircle
@@ -472,15 +470,15 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                         variant="body1"
                         sx={{
                           fontWeight: 500,
-                          color: isExpired(vehicle.insuranceExpiryDate)
+                          color: isExpired(vehicle.tplExpiryDate)
                             ? "error.main"
-                            : isExpiringSoon(vehicle.insuranceExpiryDate)
+                            : isExpiringSoon(vehicle.tplExpiryDate)
                             ? "warning.main"
                             : "text.primary",
                         }}
                       >
                         {format(
-                          new Date(vehicle.insuranceExpiryDate),
+                          new Date(vehicle.tplExpiryDate),
                           "MMM dd, yyyy"
                         )}
                       </Typography>
@@ -488,7 +486,7 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                   </Grid>
                 )}
 
-                {vehicle.registrationExpiryDate && (
+                {vehicle.registrationExpiry && (
                   <Grid item xs={6}>
                     <Typography
                       variant="body2"
@@ -498,9 +496,9 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                       Registration Expiry
                     </Typography>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      {isExpired(vehicle.registrationExpiryDate) ? (
+                      {isExpired(vehicle.registrationExpiry) ? (
                         <ErrorIcon sx={{ fontSize: 16, color: "error.main" }} />
-                      ) : isExpiringSoon(vehicle.registrationExpiryDate) ? (
+                      ) : isExpiringSoon(vehicle.registrationExpiry) ? (
                         <Warning sx={{ fontSize: 16, color: "warning.main" }} />
                       ) : (
                         <CheckCircle
@@ -511,15 +509,15 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                         variant="body1"
                         sx={{
                           fontWeight: 500,
-                          color: isExpired(vehicle.registrationExpiryDate)
+                          color: isExpired(vehicle.registrationExpiry)
                             ? "error.main"
-                            : isExpiringSoon(vehicle.registrationExpiryDate)
+                            : isExpiringSoon(vehicle.registrationExpiry)
                             ? "warning.main"
                             : "text.primary",
                         }}
                       >
                         {format(
-                          new Date(vehicle.registrationExpiryDate),
+                          new Date(vehicle.registrationExpiry),
                           "MMM dd, yyyy"
                         )}
                       </Typography>
@@ -588,24 +586,6 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                     </Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
                       {format(new Date(vehicle.purchaseDate), "MMM dd, yyyy")}
-                    </Typography>
-                  </Grid>
-                )}
-
-                {vehicle.registrationDate && (
-                  <Grid item xs={6}>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      Registration Date
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      {format(
-                        new Date(vehicle.registrationDate),
-                        "MMM dd, yyyy"
-                      )}
                     </Typography>
                   </Grid>
                 )}

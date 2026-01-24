@@ -1,10 +1,18 @@
 import React, { useState } from "react";
-import { Box, Typography, Container } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Container,
+  Alert,
+  Button,
+  Stack,
+} from "@mui/material";
 import { ContractForm } from "../components";
 import {
   useCreateContractWithDependenciesMutation,
   useValidateMigrationMutation,
   useMigrateContractMutation,
+  useDeleteContractMutation,
 } from "../api/contractApi";
 import {
   useUploadDocumentMutation,
@@ -14,8 +22,25 @@ import { CreateContractWithDocumentsDto } from "../types/contract.types";
 import { useNotification } from "../../../shared/hooks/useNotification";
 import { parseAmortizationExcel } from "../utils/parseAmortizationExcel";
 import dayjs from "dayjs";
+import { useNavigate } from "react-router-dom";
+
+type UploadFailure = {
+  key: string;
+  fileName: string;
+  message: string;
+  index: number;
+};
+
+type DocumentUploadState = {
+  status: "none" | "success" | "partial" | "failed";
+  total: number;
+  uploaded: number;
+  failed: number;
+  failures: UploadFailure[];
+};
 
 export const CreateContractPage: React.FC = () => {
+  const navigate = useNavigate();
   const [createContract, { isLoading: isCreating }] =
     useCreateContractWithDependenciesMutation();
   const [validateMigration, { isLoading: isValidating }] =
@@ -23,8 +48,206 @@ export const CreateContractPage: React.FC = () => {
   const [migrateContract, { isLoading: isMigrating }] =
     useMigrateContractMutation();
   const [uploadDocument] = useUploadDocumentMutation();
+  const [deleteContract] = useDeleteContractMutation();
   const { showSuccess, showError, showInfo } = useNotification();
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
+  const [isRollingBack, setIsRollingBack] = useState(false);
+  const [createdContractId, setCreatedContractId] = useState<string | null>(
+    null
+  );
+  const [uploadState, setUploadState] = useState<DocumentUploadState>({
+    status: "none",
+    total: 0,
+    uploaded: 0,
+    failed: 0,
+    failures: [],
+  });
+  const [lastUpload, setLastUpload] = useState<{
+    contractId: string;
+    customerId: string;
+    files: File[];
+    documentMetadata?: Array<{
+      type?: string;
+      title?: string;
+      description?: string;
+      expiryDate?: string;
+    }>;
+  } | null>(null);
+
+  const failureKey = (file: File, meta: any) =>
+    `${meta?.type || "other"}:${meta?.title || file.name}:${file.name}`;
+
+  const uploadContractDocuments = async (params: {
+    contractId: string;
+    customerId: string;
+    files: File[];
+    documentMetadata?: Array<{
+      type?: string;
+      title?: string;
+      description?: string;
+      expiryDate?: string;
+    }>;
+    onlyKeys?: Set<string>;
+  }): Promise<DocumentUploadState> => {
+    const { contractId, customerId, files, documentMetadata, onlyKeys } =
+      params;
+    if (!files || files.length === 0 || !contractId) {
+      return { status: "none", total: 0, uploaded: 0, failed: 0, failures: [] };
+    }
+
+    let uploaded = 0;
+    let failed = 0;
+    const failures: UploadFailure[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const metadata = documentMetadata?.[i];
+      const key = failureKey(file, metadata);
+      if (onlyKeys && !onlyKeys.has(key)) continue;
+
+      try {
+        const docType =
+          (metadata?.type as ContractDocumentType) ||
+          ContractDocumentType.OTHER;
+
+        await uploadDocument({
+          file,
+          data: {
+            type: docType,
+            title: metadata?.title || file.name,
+            description: metadata?.description || "",
+            expiryDate:
+              metadata?.expiryDate ||
+              new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                .toISOString()
+                .split("T")[0],
+            contractId,
+            customerId,
+          },
+        }).unwrap();
+        uploaded++;
+      } catch (e: any) {
+        failed++;
+        failures.push({
+          key,
+          index: i,
+          fileName: file.name,
+          message: e?.data?.message || e?.message || "Upload failed",
+        });
+      }
+    }
+
+    const total = onlyKeys ? uploaded + failed : files.length;
+    const status: DocumentUploadState["status"] =
+      total === 0
+        ? "none"
+        : failed === 0
+        ? "success"
+        : uploaded === 0
+        ? "failed"
+        : "partial";
+
+    return { status, total, uploaded, failed, failures };
+  };
+
+  const retryFailedUploads = async () => {
+    if (!lastUpload) {
+      showError("Nothing to retry.");
+      return;
+    }
+    if (uploadState.failures.length === 0) {
+      showSuccess("All documents are already uploaded.");
+      return;
+    }
+
+    const onlyKeys = new Set(uploadState.failures.map((f) => f.key));
+    setIsUploadingDocs(true);
+    try {
+      const retryState = await uploadContractDocuments({
+        ...lastUpload,
+        onlyKeys,
+      });
+
+      // remaining failures = those retried that still failed
+      const stillFailing = new Map<string, UploadFailure>();
+      for (const f of retryState.failures) stillFailing.set(f.key, f);
+
+      const remainingFailures = uploadState.failures
+        .filter((f) => onlyKeys.has(f.key))
+        .map((f) => stillFailing.get(f.key) || null)
+        .filter(Boolean) as UploadFailure[];
+
+      const total = uploadState.total;
+      const uploaded = Math.min(
+        total,
+        uploadState.uploaded + retryState.uploaded
+      );
+      const failed = Math.max(0, total - uploaded);
+      const status: DocumentUploadState["status"] =
+        total === 0
+          ? "none"
+          : remainingFailures.length === 0 && failed === 0
+          ? "success"
+          : uploaded === 0
+          ? "failed"
+          : "partial";
+
+      const nextState: DocumentUploadState = {
+        status,
+        total,
+        uploaded,
+        failed,
+        failures: remainingFailures,
+      };
+      setUploadState(nextState);
+
+      if (nextState.status === "success") {
+        showSuccess("All documents uploaded successfully.");
+      } else {
+        showError(
+          `${nextState.failed} document(s) are still failing. You can retry again or upload later from the contract page.`
+        );
+      }
+    } finally {
+      setIsUploadingDocs(false);
+    }
+  };
+
+  const rollbackContract = async () => {
+    if (!createdContractId) {
+      showError("No contract to rollback.");
+      return;
+    }
+    setIsRollingBack(true);
+    try {
+      const res: any = await deleteContract(createdContractId).unwrap();
+      if (res?.requiresApproval) {
+        showError(
+          res?.message ||
+            "Rollback requested, but deletion requires approval. Check approvals."
+        );
+        return;
+      }
+      showSuccess(
+        res?.message || "Contract rolled back (deleted) successfully."
+      );
+      setCreatedContractId(null);
+      setLastUpload(null);
+      setUploadState({
+        status: "none",
+        total: 0,
+        uploaded: 0,
+        failed: 0,
+        failures: [],
+      });
+    } catch (e: any) {
+      showError(
+        e?.data?.message || e?.message || "Failed to rollback contract."
+      );
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
 
   const handleValidate = async (data: CreateContractWithDocumentsDto) => {
     try {
@@ -155,6 +378,15 @@ export const CreateContractPage: React.FC = () => {
       console.log("📋 CreateContractPage received data:", data);
       console.log("📁 Files in data:", data.files);
       console.log("📄 Documents in data:", data.documents);
+      setCreatedContractId(null);
+      setLastUpload(null);
+      setUploadState({
+        status: "none",
+        total: 0,
+        uploaded: 0,
+        failed: 0,
+        failures: [],
+      });
 
       // Extract files, document metadata, and amortization file before sending
       const {
@@ -382,63 +614,34 @@ export const CreateContractPage: React.FC = () => {
 
       // Step 2: Upload documents if any
       if (files && files.length > 0 && contractId) {
-        console.log("✅ Entering document upload block");
+        setCreatedContractId(contractId);
+        setLastUpload({
+          contractId,
+          customerId: contractData.customerId,
+          files,
+          documentMetadata,
+        });
         setIsUploadingDocs(true);
         showInfo(`Uploading ${files.length} document(s)...`);
-
-        let uploadedCount = 0;
-        let failedCount = 0;
-
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const metadata = documentMetadata?.[i];
-
-          try {
-            console.log(
-              `Uploading document ${i + 1}/${files.length}: ${file.name}`
-            );
-
-            // Map the document type to ContractDocumentType enum
-            const docType =
-              (metadata?.type as ContractDocumentType) ||
-              ContractDocumentType.OTHER;
-
-            await uploadDocument({
-              file,
-              data: {
-                type: docType,
-                title: metadata?.title || file.name,
-                description: metadata?.description || "",
-                expiryDate:
-                  metadata?.expiryDate ||
-                  new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-                    .toISOString()
-                    .split("T")[0],
-                contractId,
-                customerId: contractData.customerId,
-              },
-            }).unwrap();
-            uploadedCount++;
-            console.log(`✅ Document ${i + 1} uploaded successfully`);
-          } catch (uploadError) {
-            console.error(
-              `❌ Failed to upload document ${file.name}:`,
-              uploadError
-            );
-            failedCount++;
-          }
-        }
-
+        const state = await uploadContractDocuments({
+          contractId,
+          customerId: contractData.customerId,
+          files,
+          documentMetadata,
+        });
+        setUploadState(state);
         setIsUploadingDocs(false);
 
-        if (failedCount > 0) {
+        if (state.status === "partial" || state.status === "failed") {
           showError(
-            `Contract created but ${failedCount} document(s) failed to upload.`
+            `Contract created, but ${state.failed} document(s) failed to upload. You can retry uploads or rollback.`
+          );
+        } else if (state.status === "success") {
+          showSuccess(
+            `Contract created successfully with ${state.uploaded} document(s)!`
           );
         } else {
-          showSuccess(
-            `Contract created successfully with ${uploadedCount} document(s)!`
-          );
+          showSuccess("Contract created successfully!");
         }
       } else {
         // No documents to upload
@@ -466,6 +669,51 @@ export const CreateContractPage: React.FC = () => {
         <Typography variant="h4" gutterBottom>
           Create New Contract
         </Typography>
+
+        {createdContractId && uploadState.status !== "none" && (
+          <Box sx={{ mb: 2 }}>
+            {uploadState.status === "success" ? (
+              <Alert severity="success">
+                Documents uploaded: {uploadState.uploaded}/{uploadState.total}
+              </Alert>
+            ) : (
+              <Alert severity="warning">
+                Contract created, but documents uploaded: {uploadState.uploaded}
+                /{uploadState.total}. Failed: {uploadState.failed}.
+              </Alert>
+            )}
+            <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
+              <Button
+                variant="outlined"
+                onClick={() => navigate(`/contracts/${createdContractId}`)}
+                disabled={isUploadingDocs || isRollingBack}
+              >
+                Go to Contract
+              </Button>
+              {(uploadState.status === "partial" ||
+                uploadState.status === "failed") && (
+                <>
+                  <Button
+                    variant="outlined"
+                    onClick={retryFailedUploads}
+                    disabled={isUploadingDocs || isRollingBack}
+                  >
+                    Retry Failed Uploads
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={rollbackContract}
+                    disabled={isUploadingDocs || isRollingBack}
+                  >
+                    Rollback (Delete Contract)
+                  </Button>
+                </>
+              )}
+            </Stack>
+          </Box>
+        )}
+
         <ContractForm
           onSubmit={handleSubmit}
           onValidate={handleValidate}

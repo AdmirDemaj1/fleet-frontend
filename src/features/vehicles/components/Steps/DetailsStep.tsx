@@ -11,7 +11,8 @@ import {
   FormHelperText,
   FormControlLabel,
   Checkbox,
-  Box
+  Box,
+  InputAdornment
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Controller, useFormContext } from 'react-hook-form';
@@ -118,24 +119,23 @@ export const DetailsStep: React.FC = () => {
           </Typography>
         </Grid>
         
-        {/* COMMENTED OUT - Backend validation error */}
-        {/* <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={6}>
           <Controller
-            name="mileage"
+            name="currentMileage"
             control={control}
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Mileage"
+                label="Kilometers (km)"
                 type="number"
                 fullWidth
                 InputProps={{
                   endAdornment: <InputAdornment position="end">km</InputAdornment>,
                 }}
                 inputProps={{ min: 0, max: 999999 }}
-                error={!!errors.mileage}
-                helperText={errors.mileage?.message as string || 'Current odometer reading in kilometers'}
-                value={field.value || ''}
+                error={!!errors.currentMileage}
+                helperText={(errors.currentMileage?.message as string) || 'Current odometer reading in kilometers'}
+                value={field.value ?? ''}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2
@@ -144,7 +144,7 @@ export const DetailsStep: React.FC = () => {
               />
             )}
           />
-        </Grid> */}
+        </Grid>
         
         <Grid item xs={12} sm={6}>
           <Controller

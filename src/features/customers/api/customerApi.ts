@@ -352,4 +352,36 @@ export const customerApi = {
     console.log('✅ Document uploaded successfully:', response.data);
     return response.data;
   },
+
+  // Upload customer document (e.g. individual ID card)
+  uploadCustomerDocument: async (
+    customerId: string,
+    file: File,
+    documentType: string,
+    expiryDate: string,
+    title?: string
+  ): Promise<any> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", documentType);
+    formData.append("title", title || file.name);
+    formData.append("expiryDate", expiryDate);
+    formData.append("customerId", customerId);
+
+    console.log("📄 Uploading customer document:", {
+      customerId,
+      documentType,
+      fileName: file.name,
+      expiryDate,
+    });
+
+    const response = await api.post(`/documents/upload`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    console.log("✅ Customer document uploaded successfully:", response.data);
+    return response.data;
+  },
 };

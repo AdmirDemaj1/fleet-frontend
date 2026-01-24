@@ -56,6 +56,22 @@ export const documentApi = {
     }
   },
 
+  // Get document preview as a Blob (authenticated) - use this for in-app preview
+  previewDocument: async (documentId: string): Promise<Blob> => {
+    try {
+      const response = await api.get(`/documents/${documentId}/preview`, {
+        responseType: "blob",
+        headers: {
+          Accept: "*/*",
+        },
+      });
+      return response.data as Blob;
+    } catch (error) {
+      console.error("Error previewing document:", error);
+      throw error;
+    }
+  },
+
   // Download document
   downloadDocument: async (documentId: string): Promise<Blob> => {
     try {

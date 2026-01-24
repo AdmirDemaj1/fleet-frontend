@@ -51,7 +51,7 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
 
   const formatMileage = (mileage: number | undefined): string => {
     if (!mileage) return 'N/A';
-    return new Intl.NumberFormat('en-US').format(mileage) + ' miles';
+    return new Intl.NumberFormat('en-US').format(mileage) + ' km';
   };
 
   const getStatusConfig = (status: VehicleStatus) => {
@@ -223,7 +223,7 @@ export const VehicleSidebar: React.FC<VehicleSidebarProps> = ({ vehicle }) => {
               {formatMileage(vehicle.currentMileage)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Mileage
+              Kilometers
             </Typography>
           </Box>
         </Box>

@@ -207,6 +207,25 @@ export const contractApi = createApi({
       },
     }),
 
+    // Delete contract (may require approval depending on backend rules)
+    deleteContract: builder.mutation<
+      { requiresApproval?: boolean; approvalRequestId?: string; message?: string } | any,
+      string
+    >({
+      query: (id) => ({
+        url: `/contracts/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        { type: "Contract", id },
+        "Contract",
+      ],
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Contract delete failed:", response);
+        return response;
+      },
+    }),
+
     getContracts: builder.query<
       { contracts: ContractResponse[]; totalCount: number },
       {
@@ -692,6 +711,7 @@ export const {
   useCreateContractMutation,
   useCreateContractWithDependenciesMutation,
   useUpdateContractMutation,
+  useDeleteContractMutation,
   useGetContractQuery,
   useGetContractsQuery,
   useGetCustomersQuery,

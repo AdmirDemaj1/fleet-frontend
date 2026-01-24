@@ -9,9 +9,14 @@ export const CreateCustomerPage: React.FC = () => {
   const { 
     createCustomer, 
     downloadRegistrationDocument,
+    retryFailedUploads,
+    rollbackCustomer,
     loading, 
     customer,
     isDownloading,
+    uploadState,
+    isUploadingDocuments,
+    isRollingBack,
     reset
   } = useCreateCustomerWithDocument();
   const [activeStep, setActiveStep] = useState(0);
@@ -52,6 +57,11 @@ export const CreateCustomerPage: React.FC = () => {
             customer={customer}
             onDownloadDocument={handleDownloadDocument}
             isDownloading={isDownloading}
+            uploadState={uploadState}
+            onRetryFailedUploads={retryFailedUploads}
+            isUploadingDocuments={isUploadingDocuments}
+            onRollback={rollbackCustomer}
+            isRollingBack={isRollingBack}
             onReset={handleReset}
           />
         </Box>
