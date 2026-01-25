@@ -513,7 +513,7 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
                         {formatCurrency(entry.endingBalance)}
                       </TableCell>
                       <TableCell align="right">
-                        {entry.paidAmount
+                        {entry.paidAmount !== undefined && entry.paidAmount !== null
                           ? formatCurrency(entry.paidAmount)
                           : "-"}
                       </TableCell>
@@ -528,7 +528,38 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
                             }
                           />
                         ) : (
-                          "-"
+                          (() => {
+                            const due = Number(entry.monthlyMortgagePayment) || 0;
+                            const paid = Number(entry.paidAmount) || 0;
+                            if (paid > 0 && paid < due) {
+                              return (
+                                <Chip
+                                  label="Partially Paid"
+                                  size="small"
+                                  color="info"
+                                  variant="outlined"
+                                />
+                              );
+                            }
+                            if (paid >= due && due > 0) {
+                              return (
+                                <Chip
+                                  label="Paid"
+                                  size="small"
+                                  color="success"
+                                  variant="outlined"
+                                />
+                              );
+                            }
+                            return (
+                              <Chip
+                                label="Pending"
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                              />
+                            );
+                          })()
                         )}
                       </TableCell>
                     </TableRow>

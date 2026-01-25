@@ -11,7 +11,6 @@ import {
 } from '@mui/material';
 import {
   ArrowBack,
-  Edit,
   CheckCircle,
   Receipt,
   Schedule,
@@ -21,7 +20,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Payment } from '../types/invoice.types';
+import { Payment, PaymentStatus } from '../types/invoice.types';
 import { MarkPaymentPaidModal } from './MarkPaymentPaidModal';
 
 interface PaymentHeaderProps {
@@ -50,10 +49,6 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
     navigate('/payments');
   };
 
-  const handleEdit = () => {
-    navigate(`/payments/${payment.id}/edit`);
-  };
-
   const formatCurrency = (amount: string | number): string => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
@@ -62,6 +57,15 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
       minimumFractionDigits: 2,
     }).format(numAmount);
   };
+
+  const toNumber = (v: unknown): number => {
+    const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const totalAmount = toNumber(payment.amount);
+  const paidAmount = toNumber((payment as any).paidAmount);
+  const remainingDue = Math.max(0, totalAmount - paidAmount);
 
   const handleGenerateReceipt = () => {
     console.log('Generate receipt for:', payment.id);
@@ -97,6 +101,15 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
           bgcolor: alpha(theme.palette.error.main, 0.1),
           textColor: theme.palette.error.main,
           icon: ErrorIcon
+        };
+      case 'partially_paid':
+      case 'partial':
+        return {
+          label: 'Partially Paid',
+          color: theme.palette.info.main,
+          bgcolor: alpha(theme.palette.info.main, 0.1),
+          textColor: theme.palette.info.main,
+          icon: Schedule
         };
       case 'scheduled':
         return {
@@ -192,6 +205,14 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
             <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main, mb: 1 }}>
               {formatCurrency(payment.amount)}
             </Typography>
+            {(payment.status === PaymentStatus.PARTIALLY_PAID ||
+              payment.status === PaymentStatus.PARTIAL) && (
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Paid: {formatCurrency(paidAmount)} • Remaining: {formatCurrency(remainingDue)}
+                </Typography>
+              </Box>
+            )}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Chip
                 icon={<StatusIcon />}
@@ -264,29 +285,6 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
             }}
           >
             Receipt
-          </Button>
-          
-          <Button
-            variant="outlined"
-            size="large"
-            startIcon={<Edit />}
-            onClick={handleEdit}
-            sx={{
-              borderColor: alpha(theme.palette.text.secondary, 0.3),
-              color: theme.palette.text.secondary,
-              fontWeight: 600,
-              px: 3,
-              py: 1.5,
-              borderRadius: 2,
-              '&:hover': {
-                borderColor: theme.palette.text.primary,
-                color: theme.palette.text.primary,
-                transform: 'translateY(-1px)'
-              },
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Edit
           </Button>
         </Box>
       </Box>

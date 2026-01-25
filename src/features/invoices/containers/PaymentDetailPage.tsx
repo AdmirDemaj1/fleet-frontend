@@ -22,7 +22,7 @@ const PaymentDetailPage: React.FC = () => {
     error
   } = useGetPaymentByIdQuery(id!);
 
-  const { markAsPaid, markAsPaidWithCredit, isLoading: isMarkingPayment } = useMarkPaymentAsPaid();
+  const { markAsPaid, markAsPaidWithCredit, applyPayment, isLoading: isMarkingPayment } = useMarkPaymentAsPaid();
 
   const handleMarkAsPaid = async (data: {
     paymentDate: string;
@@ -31,12 +31,27 @@ const PaymentDetailPage: React.FC = () => {
     transactionReference?: string;
     notes?: string;
     overpaymentOption?: 'credit' | 'upcoming_payments';
+    getFromCredit?: boolean;
+    creditAmount?: number;
   }) => {
     if (!payment) return;
 
     try {
-      const paymentAmount = Number(payment.amount);
-      const isOverpayment = data.actualAmountReceived > paymentAmount;
+      const toCents = (v: unknown): number => {
+        const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
+        if (!Number.isFinite(n)) return 0;
+        return Math.round(n * 100);
+      };
+
+      const totalCents = toCents(payment.amount);
+      const paidCents = toCents((payment as any).paidAmount || 0);
+      const dueCents = Math.max(0, totalCents - paidCents); // remaining due
+      const receivedCents = toCents(data.actualAmountReceived);
+
+      const isOverpayment = receivedCents > dueCents;
+      const isUnderpayment = receivedCents < dueCents;
+      const isAlreadyPartiallyPaid =
+        String((payment as any).status) === 'partially_paid' || paidCents > 0;
 
       if (isOverpayment) {
         // Handle overpayment case
@@ -47,9 +62,19 @@ const PaymentDetailPage: React.FC = () => {
           paymentMethod: data.paymentMethod,
           transactionReference: data.transactionReference,
           notes: data.notes,
-          actualAmountReceived: data.actualAmountReceived,
+          actualAmountReceived: receivedCents / 100,
           applyCreditBalance: data.overpaymentOption === 'credit',
           updateFuturePayments,
+        });
+      } else if (isUnderpayment || (isAlreadyPartiallyPaid && receivedCents === dueCents)) {
+        // Handle partial payment case (and completion of a partially paid payment)
+        await applyPayment(payment.id, {
+          paymentDate: data.paymentDate,
+          paymentMethod: data.paymentMethod,
+          amountReceived: receivedCents / 100,
+          getFromCredit: !!data.getFromCredit,
+          creditAmount: data.getFromCredit ? data.creditAmount : undefined,
+          notes: data.notes,
         });
       } else {
         // Handle normal payment case

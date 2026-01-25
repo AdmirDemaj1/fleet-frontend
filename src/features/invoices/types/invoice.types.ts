@@ -3,6 +3,7 @@ export enum PaymentStatus {
   PAID = 'paid',
   OVERDUE = 'overdue',
   PARTIAL = 'partial',
+  PARTIALLY_PAID = 'partially_paid',
   CANCELLED = 'cancelled',
   REFUNDED = 'refunded'
 }
@@ -47,10 +48,15 @@ export interface Payment {
   createdAt: Date | string;
   appliedAmount?: number | string;
   creditedAmount?: number | string;
+  paidAmount?: number | string;
+  paidInterestAmount?: number | string;
+  paidPrincipalAmount?: number | string;
   principalAmount?: number | string;
   interestAmount?: number | string;
+  remainingBalance?: number | string;
   paymentNumber?: number | null;
   recalculationHistory?: RecalculationHistoryEntry[];
+  originalAmount?: number | string | null;
 }
 
 export interface PaymentWithCreditResponse extends Payment {
@@ -95,6 +101,15 @@ export interface MarkPaymentPaidWithCreditDto extends MarkPaymentPaidDto {
   applyCreditBalance?: boolean;
   updateFuturePayments?: boolean;
   overpaymentAmount?: number;
+}
+
+export interface ApplyPaymentDto {
+  paymentDate: string; // YYYY-MM-DD
+  paymentMethod: string;
+  amountReceived: number;
+  getFromCredit: boolean;
+  creditAmount?: number; // optional: amount to take from credit (defaults to remaining if omitted)
+  notes?: string;
 }
 
 export interface RegisterPaymentDto {

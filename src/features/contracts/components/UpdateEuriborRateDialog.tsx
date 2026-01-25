@@ -35,6 +35,8 @@ import { useGetCurrentPaymentsByContractQuery } from '../../invoices/api/payment
 import { PaymentType, Payment, PaymentStatus } from '../../invoices/types/invoice.types';
 import dayjs from 'dayjs';
 
+const EMPTY_PAYMENTS: Payment[] = [];
+
 interface UpdateEuriborRateDialogProps {
   open: boolean;
   onClose: () => void;
@@ -67,7 +69,7 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
 
   // Fetch scheduled payments for the contract when date is selected
   // Only fetch when dialog is open and date is selected - RTK Query handles caching
-  const { data: allPayments = [], isLoading: isLoadingPayments } = useGetCurrentPaymentsByContractQuery(
+  const { data: paymentsData, isLoading: isLoadingPayments } = useGetCurrentPaymentsByContractQuery(
     {
       contractId,
       type: PaymentType.SCHEDULED,
@@ -76,6 +78,7 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
       skip: !effectiveDate || !open,
     }
   );
+  const allPayments = (paymentsData as Payment[] | undefined) ?? EMPTY_PAYMENTS;
 
   // Filter payments to only include those with payment numbers and are unpaid
   const scheduledPayments = React.useMemo(() => {

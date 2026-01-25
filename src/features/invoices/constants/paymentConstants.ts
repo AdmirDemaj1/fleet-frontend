@@ -43,6 +43,13 @@ export const PAYMENT_STATUS_CONFIG = {
     icon: AttachMoney,
     textColor: 'info.dark'
   },
+  [PaymentStatus.PARTIALLY_PAID]: {
+    label: 'Partially Paid',
+    color: 'info.main',
+    bgcolor: 'info.light',
+    icon: AttachMoney,
+    textColor: 'info.dark'
+  },
   [PaymentStatus.CANCELLED]: {
     label: 'Cancelled',
     color: 'grey.main',
@@ -150,6 +157,7 @@ export const PAYMENT_FILTER_OPTIONS = {
     { value: PaymentStatus.PAID, label: 'Paid' },
     { value: PaymentStatus.OVERDUE, label: 'Overdue' },
     { value: PaymentStatus.PARTIAL, label: 'Partial' },
+    { value: PaymentStatus.PARTIALLY_PAID, label: 'Partially Paid' },
     { value: PaymentStatus.CANCELLED, label: 'Cancelled' },
     { value: PaymentStatus.REFUNDED, label: 'Refunded' }
   ],

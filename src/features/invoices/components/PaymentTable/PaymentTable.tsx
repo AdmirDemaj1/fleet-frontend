@@ -162,6 +162,11 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
     }).format(numericAmount);
   };
 
+  const toNumber = (v: unknown): number => {
+    const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
+    return Number.isFinite(n) ? n : 0;
+  };
+
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return format(dateObj, 'MMM dd, yyyy');
@@ -216,6 +221,16 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
     const overdue = isOverdue(payment);
     const daysPastDue = overdue ? getDaysPastDue(payment.dueDate) : 0;
 
+    const totalAmount = toNumber(payment.amount);
+    const paidAmount = toNumber((payment as any).paidAmount);
+    const remainingDue = Math.max(0, totalAmount - paidAmount);
+    const paidInterestAmount = toNumber((payment as any).paidInterestAmount);
+    const paidPrincipalAmount = toNumber((payment as any).paidPrincipalAmount);
+    const isPartiallyPaid =
+      payment.status === PaymentStatus.PARTIALLY_PAID ||
+      payment.status === PaymentStatus.PARTIAL ||
+      paidAmount > 0;
+
     return (
       <TableRow
         key={payment.id}
@@ -238,18 +253,25 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {formatCurrency(payment.amount)}
           </Typography>
-          {payment.appliedAmount && parseFloat(String(payment.appliedAmount)) !== parseFloat(String(payment.amount)) && (
-            <Typography variant="caption" color="text.secondary">
-              Applied: {formatCurrency(payment.appliedAmount)}
+          {isPartiallyPaid && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              Paid: {formatCurrency(paidAmount)} • Remaining: {formatCurrency(remainingDue)}
             </Typography>
           )}
         </TableCell>
 
         <TableCell>
           {payment.principalAmount ? (
-            <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.main' }}>
-              {formatCurrency(payment.principalAmount)}
-            </Typography>
+            <>
+              <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.main' }}>
+                {formatCurrency(payment.principalAmount)}
+              </Typography>
+              {isPartiallyPaid && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Paid: {formatCurrency(paidPrincipalAmount)}
+                </Typography>
+              )}
+            </>
           ) : (
             <Typography variant="body2" color="text.secondary">
               N/A
@@ -259,9 +281,16 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
 
         <TableCell>
           {payment.interestAmount ? (
-            <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
-              {formatCurrency(payment.interestAmount)}
-            </Typography>
+            <>
+              <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+                {formatCurrency(payment.interestAmount)}
+              </Typography>
+              {isPartiallyPaid && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Paid: {formatCurrency(paidInterestAmount)}
+                </Typography>
+              )}
+            </>
           ) : (
             <Typography variant="body2" color="text.secondary">
               N/A

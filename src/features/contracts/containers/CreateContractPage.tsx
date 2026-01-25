@@ -23,6 +23,7 @@ import { useNotification } from "../../../shared/hooks/useNotification";
 import { parseAmortizationExcel } from "../utils/parseAmortizationExcel";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
+import { documentApi } from "../../../shared/api/documentApi";
 
 type UploadFailure = {
   key: string;
@@ -55,6 +56,13 @@ export const CreateContractPage: React.FC = () => {
   const [createdContractId, setCreatedContractId] = useState<string | null>(
     null
   );
+  const [createdContractNumber, setCreatedContractNumber] = useState<string | null>(
+    null
+  );
+  const [contractAgreementDocumentId, setContractAgreementDocumentId] = useState<
+    string | null
+  >(null);
+  const [isAgreementBusy, setIsAgreementBusy] = useState(false);
   const [uploadState, setUploadState] = useState<DocumentUploadState>({
     status: "none",
     total: 0,
@@ -232,6 +240,8 @@ export const CreateContractPage: React.FC = () => {
         res?.message || "Contract rolled back (deleted) successfully."
       );
       setCreatedContractId(null);
+      setCreatedContractNumber(null);
+      setContractAgreementDocumentId(null);
       setLastUpload(null);
       setUploadState({
         status: "none",
@@ -246,6 +256,43 @@ export const CreateContractPage: React.FC = () => {
       );
     } finally {
       setIsRollingBack(false);
+    }
+  };
+
+  const previewAgreement = async () => {
+    if (!contractAgreementDocumentId) return;
+    setIsAgreementBusy(true);
+    try {
+      const blob = await documentApi.previewDocument(contractAgreementDocumentId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      // Revoke after a short delay to allow the new tab to load
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e: any) {
+      showError(e?.data?.message || e?.message || "Failed to preview contract agreement.");
+    } finally {
+      setIsAgreementBusy(false);
+    }
+  };
+
+  const downloadAgreement = async () => {
+    if (!contractAgreementDocumentId) return;
+    setIsAgreementBusy(true);
+    try {
+      const blob = await documentApi.downloadDocument(contractAgreementDocumentId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const name = createdContractNumber || createdContractId || "contract";
+      a.download = `Contract_Agreement_${name}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      showError(e?.data?.message || e?.message || "Failed to download contract agreement.");
+    } finally {
+      setIsAgreementBusy(false);
     }
   };
 
@@ -379,6 +426,8 @@ export const CreateContractPage: React.FC = () => {
       console.log("📁 Files in data:", data.files);
       console.log("📄 Documents in data:", data.documents);
       setCreatedContractId(null);
+      setCreatedContractNumber(null);
+      setContractAgreementDocumentId(null);
       setLastUpload(null);
       setUploadState({
         status: "none",
@@ -598,6 +647,16 @@ export const CreateContractPage: React.FC = () => {
           response?.data?.id ||
           response?.contract?.id ||
           response?.id;
+
+      const contractNumber =
+        response?.data?.contract?.contractNumber ||
+        response?.contract?.contractNumber ||
+        null;
+      const agreementId =
+        response?.data?.contractAgreementDocumentId ||
+        response?.contractAgreementDocumentId ||
+        null;
+
       console.log("📋 Full response:", response);
       console.log("📋 response.data:", response?.data);
       console.log("📋 response.data.contract:", response?.data?.contract);
@@ -612,9 +671,14 @@ export const CreateContractPage: React.FC = () => {
         !!contractId
       );
 
+      if (contractId) {
+        setCreatedContractId(contractId);
+        setCreatedContractNumber(contractNumber);
+        setContractAgreementDocumentId(agreementId);
+      }
+
       // Step 2: Upload documents if any
       if (files && files.length > 0 && contractId) {
-        setCreatedContractId(contractId);
         setLastUpload({
           contractId,
           customerId: contractData.customerId,
@@ -670,8 +734,18 @@ export const CreateContractPage: React.FC = () => {
           Create New Contract
         </Typography>
 
-        {createdContractId && uploadState.status !== "none" && (
+        {createdContractId && (uploadState.status !== "none" || !!contractAgreementDocumentId) && (
           <Box sx={{ mb: 2 }}>
+            {contractAgreementDocumentId ? (
+              <Alert severity="success" sx={{ mb: 1 }}>
+                Contract agreement generated successfully.
+              </Alert>
+            ) : (
+              <Alert severity="info" sx={{ mb: 1 }}>
+                Contract agreement was not generated.
+              </Alert>
+            )}
+
             {uploadState.status === "success" ? (
               <Alert severity="success">
                 Documents uploaded: {uploadState.uploaded}/{uploadState.total}
@@ -690,6 +764,24 @@ export const CreateContractPage: React.FC = () => {
               >
                 Go to Contract
               </Button>
+              {contractAgreementDocumentId && (
+                <>
+                  <Button
+                    variant="outlined"
+                    onClick={previewAgreement}
+                    disabled={isUploadingDocs || isRollingBack || isAgreementBusy}
+                  >
+                    Preview Agreement
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={downloadAgreement}
+                    disabled={isUploadingDocs || isRollingBack || isAgreementBusy}
+                  >
+                    Download Agreement
+                  </Button>
+                </>
+              )}
               {(uploadState.status === "partial" ||
                 uploadState.status === "failed") && (
                 <>
