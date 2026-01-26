@@ -6,6 +6,12 @@ export enum CustomerType {
     ADMINISTRATOR = 'administrator',
   }
 
+export enum BusinessType {
+  SHA = 'SHA',
+  SHPK = 'SHPK',
+  PF = 'PF',
+}
+
   export interface CustomerAccountMenuProps {
     customerId?: string; // Optional since we get it from URL params
   }
@@ -36,6 +42,7 @@ export enum CustomerType {
     type: CustomerType.BUSINESS;
     legalName?: string; // Optional in list response
     nuisNipt?: string; // Optional in list response
+    businessType?: BusinessType;
     shareholders?: string[]; // Array of shareholder names
     administratorIds?: string[]; // Selected administrator customer IDs
     administrators?: Administrator[]; // Full administrator objects
@@ -73,6 +80,7 @@ export enum CustomerType {
     type: CustomerType.BUSINESS;
     legalName: string;
     nuisNipt: string;
+    businessType: BusinessType;
     shareholders?: string[]; // Array of shareholder names
     administratorIds?: string[]; // Selected administrator customer IDs
     address: string;

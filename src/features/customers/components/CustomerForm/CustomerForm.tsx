@@ -16,7 +16,7 @@ import {
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
-import { CustomerType } from "../../types/customer.types";
+import { BusinessType, CustomerType } from "../../types/customer.types";
 import {
   CreateCustomerDto,
   CreateIndividualCustomerDto,
@@ -190,6 +190,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         customerType === CustomerType.BUSINESS
           ? {
               type: CustomerType.BUSINESS,
+              businessType: BusinessType.SHA,
               legalName: "",
               nuisNipt: "",
               shareholders: [],
@@ -277,6 +278,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       if (!currentFormData.businessDetails) {
         setValue("businessDetails", {
           type: CustomerType.BUSINESS,
+          businessType: BusinessType.SHA,
           legalName: "",
           nuisNipt: "",
           shareholders: [],
@@ -519,6 +521,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             businessDetails: data.businessDetails
               ? {
                   type: data.businessDetails.type,
+                  businessType: data.businessDetails.businessType,
                   legalName: data.businessDetails.legalName,
                   nuisNipt: data.businessDetails.nuisNipt,
                   address: data.businessDetails.address,
@@ -586,6 +589,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           customerType === CustomerType.BUSINESS
             ? {
                 type: CustomerType.BUSINESS,
+                businessType: BusinessType.SHA,
                 legalName: "",
                 nuisNipt: "",
                 shareholders: [],
@@ -704,6 +708,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 <>
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Business:</strong> {getValues("businessDetails.legalName")}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Business Type:</strong>{" "}
+                    {getValues("businessDetails.businessType")}
                   </Typography>
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>NUIS/NIPT:</strong> {getValues("businessDetails.nuisNipt")}

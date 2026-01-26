@@ -11,6 +11,8 @@ import { PaymentHeader } from '../components/PaymentHeader';
 import { PaymentInformation } from '../components/PaymentInformation';
 import { PaymentRelatedInfo } from '../components/PaymentRelatedInfo';
 import { LoadingSpinner } from '../../../shared/components/LoadingSpinner';
+import { useGetContractQuery } from '../../contracts/api/contractApi';
+import { ContractStatus } from '../../contracts/types/contract.types';
 
 const PaymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +23,11 @@ const PaymentDetailPage: React.FC = () => {
     isError,
     error
   } = useGetPaymentByIdQuery(id!);
+
+  const { data: contract } = useGetContractQuery(payment?.contractId as string, {
+    skip: !payment?.contractId,
+  });
+  const isContractCompleted = contract?.status === ContractStatus.COMPLETED;
 
   const { markAsPaid, markAsPaidWithCredit, applyPayment, isLoading: isMarkingPayment } = useMarkPaymentAsPaid();
 
@@ -134,6 +141,7 @@ const PaymentDetailPage: React.FC = () => {
           payment={payment} 
           onMarkAsPaid={handleMarkAsPaid}
           loading={isMarkingPayment}
+          disableMarkAsPaid={isContractCompleted}
         />
 
       {/* Main Content */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -34,16 +34,22 @@ interface PaymentHeaderProps {
     overpaymentOption?: 'credit' | 'upcoming_payments';
   }) => Promise<void>;
   loading?: boolean;
+  disableMarkAsPaid?: boolean;
 }
 
 export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
   payment,
   onMarkAsPaid,
-  loading = false
+  loading = false,
+  disableMarkAsPaid = false
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (disableMarkAsPaid && modalOpen) setModalOpen(false);
+  }, [disableMarkAsPaid, modalOpen]);
 
   const handleBack = () => {
     navigate('/payments');
@@ -238,7 +244,7 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
 
         {/* Action Buttons */}
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {String(payment.status) !== 'paid' && (
+          {String(payment.status) !== 'paid' && !disableMarkAsPaid && (
             <Button
               variant="contained"
               size="large"
@@ -291,7 +297,7 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
 
       {/* Mark as Paid Modal */}
       <MarkPaymentPaidModal
-        open={modalOpen}
+        open={modalOpen && !disableMarkAsPaid}
         onClose={() => setModalOpen(false)}
         payment={payment}
         onMarkAsPaid={onMarkAsPaid}

@@ -165,7 +165,7 @@ export const ContractDetailsPage: React.FC = () => {
 
             {/* Contract Payments */}
             <Grid item xs={12}>
-              <ContractPayments contractId={contract.id} />
+              <ContractPayments contractId={contract.id} contractStatus={contract.status} />
             </Grid>
           </Grid>
         </Grid>

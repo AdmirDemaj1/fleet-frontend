@@ -87,7 +87,7 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
           
           let customerName = 'Unknown Customer';
           if (customer && customer.type) {
-            if (customer.type === 'individual' || customer.type === 'endorser') {
+            if (customer.type === 'individual') {
               customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown Customer';
             } else if (customer.type === 'business') {
               customerName = customer.legalName || 'Unknown Business';

@@ -45,15 +45,19 @@ import { useGetCurrentPaymentsByContractQuery, useCreatePrepaymentMutation } fro
 import { Payment, PaymentStatus, PaymentType } from '../../invoices/types/invoice.types';
 import { format } from 'date-fns';
 import { useNotification } from '../../../shared/hooks/useNotification';
+import { ContractStatus } from '../types/contract.types';
 
 interface ContractPaymentsProps {
   contractId: string;
+  contractStatus?: ContractStatus;
 }
 
-export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }) => {
+export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, contractStatus }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
+
+  const isCompletedContract = contractStatus === ContractStatus.COMPLETED;
   
   // Filter state management
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -181,6 +185,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
   };
 
   const handleOpenExtraPaymentDialog = () => {
+    if (isCompletedContract) return;
     setExtraPaymentDialogOpen(true);
     setExtraPaymentAmount('');
     setExtraPaymentDate(format(new Date(), 'yyyy-MM-dd'));
@@ -205,6 +210,10 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
   };
 
   const handleSubmitExtraPayment = async () => {
+    if (isCompletedContract) {
+      showError('This contract is completed. Payments can no longer be modified.');
+      return;
+    }
     if (!extraPaymentAmount || parseFloat(extraPaymentAmount) <= 0) {
       showError('Please enter a valid payment amount');
       return;
@@ -334,6 +343,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
             variant="contained"
             startIcon={<Add />}
             onClick={handleOpenExtraPaymentDialog}
+            disabled={isCompletedContract}
             sx={{
               borderRadius: 2,
               textTransform: 'none',
@@ -574,6 +584,11 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
           </Box>
         </DialogTitle>
         <DialogContent>
+          {isCompletedContract && (
+            <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+              This contract is completed. Payments can no longer be modified.
+            </Alert>
+          )}
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Record a prepayment that exceeds the scheduled amount for this contract.
           </Typography>
@@ -584,6 +599,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
             type="number"
             value={extraPaymentAmount}
             onChange={(e) => setExtraPaymentAmount(e.target.value)}
+            disabled={isCompletedContract}
             placeholder="0.00"
             InputProps={{
               startAdornment: (
@@ -612,6 +628,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
               setStartingFromPaymentNumber(null); // Reset starting payment when date changes
               setStartingFromPaymentId(null);
             }}
+            disabled={isCompletedContract}
             InputLabelProps={{
               shrink: true,
             }}
@@ -682,6 +699,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
               value={extraPaymentMethod}
               onChange={(e) => setExtraPaymentMethod(e.target.value)}
               label="Payment Method"
+              disabled={isCompletedContract}
             >
               <MenuItem value="cash">Cash</MenuItem>
               <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
@@ -698,6 +716,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
             label="Transaction Reference"
             value={extraTransactionReference}
             onChange={(e) => setExtraTransactionReference(e.target.value)}
+            disabled={isCompletedContract}
             placeholder="Optional transaction reference or confirmation number"
             sx={{ mb: 3 }}
             inputProps={{ maxLength: 100 }}
@@ -709,6 +728,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
               value={extraPrepaymentOption}
               onChange={(e) => setExtraPrepaymentOption(e.target.value as 'reduce_term' | 'reduce_payment')}
               label="Prepayment Option"
+              disabled={isCompletedContract}
             >
               <MenuItem value="reduce_payment">Reduce Payment (keep same term, lower payments)</MenuItem>
               <MenuItem value="reduce_term">Reduce Term (keep same payment, fewer months)</MenuItem>
@@ -720,6 +740,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
             label="Notes"
             value={extraNotes}
             onChange={(e) => setExtraNotes(e.target.value)}
+            disabled={isCompletedContract}
             placeholder="Optional additional notes about the prepayment"
             multiline
             rows={3}
@@ -741,7 +762,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId }
           <Button
             variant="contained"
             onClick={handleSubmitExtraPayment}
-            disabled={isCreatingPayment || !extraPaymentAmount || parseFloat(extraPaymentAmount) <= 0 || !extraPaymentMethod}
+            disabled={isCompletedContract || isCreatingPayment || !extraPaymentAmount || parseFloat(extraPaymentAmount) <= 0 || !extraPaymentMethod}
             startIcon={isCreatingPayment ? <CircularProgress size={16} /> : <AttachMoney />}
             sx={{
               textTransform: 'none',

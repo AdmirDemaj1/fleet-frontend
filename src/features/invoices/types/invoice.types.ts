@@ -5,7 +5,8 @@ export enum PaymentStatus {
   PARTIAL = 'partial',
   PARTIALLY_PAID = 'partially_paid',
   CANCELLED = 'cancelled',
-  REFUNDED = 'refunded'
+  REFUNDED = 'refunded',
+  SETTLED = 'settled',
 }
 
 export enum PaymentType {

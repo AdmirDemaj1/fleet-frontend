@@ -15,6 +15,14 @@ import {
   AmortizationScheduleResponse,
 } from "../types/contract.types";
 
+// TODO: Put these in a separate file...
+export interface EarlyPayoffRequestDto {
+  payoffDate: string; // YYYY-MM-DD
+  paymentMethod: string;
+  transactionReference?: string;
+  notes?: string;
+}
+
 export const contractApi = createApi({
   reducerPath: "contractApi",
   baseQuery: fetchBaseQuery({
@@ -557,6 +565,26 @@ export const contractApi = createApi({
       },
     }),
 
+    // Early payoff (close contract early)
+    earlyPayoffContract: builder.mutation<
+      any,
+      { contractId: string; data: EarlyPayoffRequestDto }
+    >({
+      query: ({ contractId, data }) => ({
+        url: `/contracts/${contractId}/early-payoff`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { contractId }) => [
+        { type: "Contract", id: contractId },
+        "Contract",
+      ],
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Early payoff failed:", response);
+        return response;
+      },
+    }),
+
     // Get amortization schedule as JSON (for preview)
     getAmortizationSchedule: builder.query<
       AmortizationScheduleResponse,
@@ -722,6 +750,7 @@ export const {
   useGetEndorserQuery,
   useCalculateLoanPaymentQuery,
   useUpdateEuriborRateMutation,
+  useEarlyPayoffContractMutation,
   useGetAmortizationScheduleQuery,
   useExportAmortizationScheduleMutation,
   useUploadAmortizationPlanJsonMutation,
