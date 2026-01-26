@@ -19,7 +19,7 @@ interface ContractFinancialOverviewProps {
   contractConfig: any;
 }
 
-export const ContractFinancialOverview: React.FC<ContractFinancialOverviewProps> = ({ contractConfig }) => {
+export const ContractFinancialOverview = React.memo<ContractFinancialOverviewProps>(({ contractConfig }) => {
   const theme = useTheme();
 
   const formatCurrency = (amount: string | number): string => {
@@ -472,4 +472,6 @@ export const ContractFinancialOverview: React.FC<ContractFinancialOverviewProps>
       </Box>
     </Paper>
   );
-};
+});
+
+ContractFinancialOverview.displayName = 'ContractFinancialOverview';

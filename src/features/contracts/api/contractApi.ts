@@ -15,6 +15,14 @@ import {
   AmortizationScheduleResponse,
 } from "../types/contract.types";
 
+// TODO: Put these in a separate file...
+export interface EarlyPayoffRequestDto {
+  payoffDate: string; // YYYY-MM-DD
+  paymentMethod: string;
+  transactionReference?: string;
+  notes?: string;
+}
+
 export const contractApi = createApi({
   reducerPath: "contractApi",
   baseQuery: fetchBaseQuery({
@@ -28,7 +36,7 @@ export const contractApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Contract", "Customer", "Vehicle", "Endorser"],
+  tagTypes: ["Contract", "Customer", "Vehicle", "Endorser", "AmortizationPlan"],
   endpoints: (builder) => ({
     // Contract endpoints - Legacy (without documents)
     createContract: builder.mutation<any, CreateContractDto>({
@@ -203,6 +211,25 @@ export const contractApi = createApi({
       ],
       transformErrorResponse: (response: any) => {
         console.error("❌ Contract update failed:", response);
+        return response;
+      },
+    }),
+
+    // Delete contract (may require approval depending on backend rules)
+    deleteContract: builder.mutation<
+      { requiresApproval?: boolean; approvalRequestId?: string; message?: string } | any,
+      string
+    >({
+      query: (id) => ({
+        url: `/contracts/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, id) => [
+        { type: "Contract", id },
+        "Contract",
+      ],
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Contract delete failed:", response);
         return response;
       },
     }),
@@ -538,6 +565,26 @@ export const contractApi = createApi({
       },
     }),
 
+    // Early payoff (close contract early)
+    earlyPayoffContract: builder.mutation<
+      any,
+      { contractId: string; data: EarlyPayoffRequestDto }
+    >({
+      query: ({ contractId, data }) => ({
+        url: `/contracts/${contractId}/early-payoff`,
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { contractId }) => [
+        { type: "Contract", id: contractId },
+        "Contract",
+      ],
+      transformErrorResponse: (response: any) => {
+        console.error("❌ Early payoff failed:", response);
+        return response;
+      },
+    }),
+
     // Get amortization schedule as JSON (for preview)
     getAmortizationSchedule: builder.query<
       AmortizationScheduleResponse,
@@ -685,6 +732,34 @@ export const contractApi = createApi({
         return response;
       },
     }),
+
+    // Get amortization plan info for a contract
+    getAmortizationPlanInfo: builder.query<
+      {
+        id: string;
+        contractId: string;
+        fileName: string;
+        fileSize: number;
+        downloadCount: number;
+        createdAt: string;
+        updatedAt: string;
+      } | null,
+      string
+    >({
+      query: (contractId) => `/amortization-plans/contract/${contractId}`,
+      providesTags: (_result, _error, contractId) => [
+        { type: "AmortizationPlan", id: contractId },
+      ],
+      transformResponse: (response: any) => response || null,
+      transformErrorResponse: (response: any) => {
+        // If 404, the amortization plan doesn't exist yet - return null
+        if (response?.status === 404) {
+          return null;
+        }
+        console.error("Error fetching amortization plan info:", response);
+        return response;
+      },
+    }),
   }),
 });
 
@@ -692,6 +767,7 @@ export const {
   useCreateContractMutation,
   useCreateContractWithDependenciesMutation,
   useUpdateContractMutation,
+  useDeleteContractMutation,
   useGetContractQuery,
   useGetContractsQuery,
   useGetCustomersQuery,
@@ -702,9 +778,11 @@ export const {
   useGetEndorserQuery,
   useCalculateLoanPaymentQuery,
   useUpdateEuriborRateMutation,
+  useEarlyPayoffContractMutation,
   useGetAmortizationScheduleQuery,
   useExportAmortizationScheduleMutation,
   useUploadAmortizationPlanJsonMutation,
   useValidateMigrationMutation,
   useMigrateContractMutation,
+  useGetAmortizationPlanInfoQuery,
 } = contractApi;

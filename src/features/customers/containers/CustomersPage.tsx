@@ -16,6 +16,7 @@ import { setFilters } from '../slices/customerSlice';
 import { CustomerType } from '../types/customer.types';
 import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
 import { useDebounce } from '../../../shared/hooks/useDebounce';
+import { useGetCustomersQuery } from '../api/customerRtkApi';
 
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -23,8 +24,14 @@ export const CustomersPage: React.FC = () => {
   const { customers, loading, totalCount } = useCustomers();
   const { deleteCustomer } = useDeleteCustomer();
   
+  const CLIENT_FILTER_LIMIT = 5000;
+
+  type AdminRoleFilter = 'any' | 'isAdmin' | 'notAdmin';
+
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [segmentFilter, setSegmentFilter] = useState<string>('');
+  const [adminRoleFilter, setAdminRoleFilter] = useState<AdminRoleFilter>('any');
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<CustomerType | ''>('');
   const [hasVehicles, setHasVehicles] = useState<boolean | undefined>(undefined);
@@ -35,29 +42,141 @@ export const CustomersPage: React.FC = () => {
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  // Simple approach: single effect with debounced dispatch
-  React.useEffect(() => {
-    // Reset page when filters change (except for page/rowsPerPage changes)
-    const filtersChanged = (
-      debouncedSearchTerm !== '' ||
-      typeFilter !== '' ||
-      hasVehicles !== undefined ||
-      hasContracts !== undefined ||
-      hasCollaterals !== undefined
+  const needsAdminRoleFiltering = adminRoleFilter !== 'any';
+
+  const { data: businessesData, isLoading: businessesLoading } = useGetCustomersQuery(
+    { type: CustomerType.BUSINESS, limit: CLIENT_FILTER_LIMIT, offset: 0 },
+    { skip: !needsAdminRoleFiltering }
+  );
+
+  const administratorIdSet = React.useMemo(() => {
+    const ids = new Set<string>();
+    const businesses = businessesData?.customers || [];
+    for (const c of businesses as any[]) {
+      // We only care about business customers for admin IDs
+      if (c?.type !== CustomerType.BUSINESS) continue;
+      const adminIds: string[] = c?.administratorIds || [];
+      for (const id of adminIds) {
+        if (id) ids.add(id);
+      }
+      const admins: Array<{ id: string }> = c?.administrators || [];
+      for (const a of admins) {
+        if (a?.id) ids.add(a.id);
+      }
+    }
+    return ids;
+  }, [businessesData]);
+
+  const displayed = React.useMemo(() => {
+    if (!needsAdminRoleFiltering) {
+      return {
+        customers,
+        totalCount,
+      };
+    }
+
+    const candidates = (customers || []).filter(
+      (c) => c?.type === CustomerType.INDIVIDUAL || c?.type === CustomerType.ADMINISTRATOR
     );
 
-    const targetPage = filtersChanged && page > 0 ? 0 : page;
-    
-    if (filtersChanged && page > 0) {
-      setPage(0);
+    const isAdminCustomer = (c: any) => {
+      if (!c?.id) return false;
+      if (c?.type === CustomerType.ADMINISTRATOR) return true; // legacy support
+      return administratorIdSet.has(c.id);
+    };
+
+    const filtered =
+      adminRoleFilter === 'isAdmin'
+        ? candidates.filter(isAdminCustomer)
+        : candidates.filter((c) => c?.type === CustomerType.INDIVIDUAL && !isAdminCustomer(c));
+
+    const start = page * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    return {
+      customers: filtered.slice(start, end),
+      totalCount: filtered.length,
+    };
+  }, [
+    adminRoleFilter,
+    administratorIdSet,
+    customers,
+    needsAdminRoleFiltering,
+    page,
+    rowsPerPage,
+    totalCount,
+  ]);
+
+  const effectiveLoading = loading || (needsAdminRoleFiltering && businessesLoading);
+
+  const applySegmentPreset = (segment: string) => {
+    setSegmentFilter(segment);
+    setPage(0);
+
+    switch (segment) {
+      case '':
+        setAdminRoleFilter('any');
+        setTypeFilter('');
+        setHasContracts(undefined);
+        return;
+      case 'individual':
+        setAdminRoleFilter('any');
+        setTypeFilter(CustomerType.INDIVIDUAL);
+        setHasContracts(undefined);
+        return;
+      case 'business':
+        setAdminRoleFilter('any');
+        setTypeFilter(CustomerType.BUSINESS);
+        setHasContracts(undefined);
+        return;
+      case 'asAdmin':
+        setAdminRoleFilter('isAdmin');
+        setTypeFilter(CustomerType.INDIVIDUAL);
+        setHasContracts(undefined);
+        return;
+      case 'asAdminWithContract':
+        setAdminRoleFilter('isAdmin');
+        setTypeFilter(CustomerType.INDIVIDUAL);
+        setHasContracts(true);
+        return;
+      case 'individualNoContractNotAdmin':
+        setAdminRoleFilter('notAdmin');
+        setTypeFilter(CustomerType.INDIVIDUAL);
+        setHasContracts(false);
+        return;
+      case 'individualWithContractNotAdmin':
+        setAdminRoleFilter('notAdmin');
+        setTypeFilter(CustomerType.INDIVIDUAL);
+        setHasContracts(true);
+        return;
+      case 'businessWithContract':
+        setAdminRoleFilter('any');
+        setTypeFilter(CustomerType.BUSINESS);
+        setHasContracts(true);
+        return;
+      case 'businessNoContract':
+        setAdminRoleFilter('any');
+        setTypeFilter(CustomerType.BUSINESS);
+        setHasContracts(false);
+        return;
+      default:
+        // Unknown preset: treat as custom
+        setAdminRoleFilter('any');
+        return;
     }
+  };
+
+  // Simple approach: single effect with debounced dispatch
+  React.useEffect(() => {
+    const apiLimit = needsAdminRoleFiltering ? CLIENT_FILTER_LIMIT : rowsPerPage;
+    const apiOffset = needsAdminRoleFiltering ? 0 : page * rowsPerPage;
 
     const timeoutId = setTimeout(() => {
       dispatch(setFilters({
         search: debouncedSearchTerm,
         type: typeFilter || undefined,
-        limit: rowsPerPage,
-        offset: targetPage * rowsPerPage,
+        limit: apiLimit,
+        offset: apiOffset,
         hasVehicles,
         hasContracts,
         hasCollaterals
@@ -65,7 +184,18 @@ export const CustomersPage: React.FC = () => {
     }, 50); // Small delay to batch updates
 
     return () => clearTimeout(timeoutId);
-  }, [debouncedSearchTerm, typeFilter, hasVehicles, hasContracts, hasCollaterals, page, rowsPerPage, dispatch]);
+  }, [
+    CLIENT_FILTER_LIMIT,
+    debouncedSearchTerm,
+    dispatch,
+    hasCollaterals,
+    hasContracts,
+    hasVehicles,
+    needsAdminRoleFiltering,
+    page,
+    rowsPerPage,
+    typeFilter,
+  ]);
 
   const handleDelete = (id: string) => {
     setCustomerToDelete(id);
@@ -98,6 +228,8 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handleClearFilters = () => {
+    setSegmentFilter('');
+    setAdminRoleFilter('any');
     setSearchTerm('');
     setTypeFilter('');
     setHasVehicles(undefined);
@@ -120,23 +252,40 @@ export const CustomersPage: React.FC = () => {
       </Box>
 
       <CustomerListFilters
+        segmentFilter={segmentFilter}
+        onSegmentChange={applySegmentPreset}
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={(v) => {
+          setSearchTerm(v);
+          setPage(0);
+        }}
         typeFilter={typeFilter}
-        onTypeChange={setTypeFilter}
+        onTypeChange={(v) => {
+          setTypeFilter(v);
+          setPage(0);
+        }}
         hasVehicles={hasVehicles}
-        onHasVehiclesChange={setHasVehicles}
+        onHasVehiclesChange={(v) => {
+          setHasVehicles(v);
+          setPage(0);
+        }}
         hasContracts={hasContracts}
-        onHasContractsChange={setHasContracts}
+        onHasContractsChange={(v) => {
+          setHasContracts(v);
+          setPage(0);
+        }}
         hasCollaterals={hasCollaterals}
-        onHasCollateralsChange={setHasCollaterals}
+        onHasCollateralsChange={(v) => {
+          setHasCollaterals(v);
+          setPage(0);
+        }}
         onClearFilters={handleClearFilters}
       />
 
       <CustomerList
-        customers={customers}
-        loading={loading}
-        totalCount={totalCount}
+        customers={displayed.customers}
+        loading={effectiveLoading}
+        totalCount={displayed.totalCount}
         page={page}
         rowsPerPage={rowsPerPage}
         onPageChange={handlePageChange}

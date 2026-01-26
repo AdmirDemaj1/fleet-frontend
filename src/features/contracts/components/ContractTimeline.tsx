@@ -17,7 +17,7 @@ import {
   History,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { ContractResponse } from "../types/contract.types";
+import { ContractResponse, ContractStatus } from "../types/contract.types";
 import { useGetCurrentPaymentsByContractQuery } from "../../invoices/api/paymentsApi";
 import { PaymentType } from "../../invoices/types/invoice.types";
 import dayjs from "dayjs";
@@ -26,11 +26,12 @@ interface ContractTimelineProps {
   contract: ContractResponse;
 }
 
-export const ContractTimeline: React.FC<ContractTimelineProps> = ({
+export const ContractTimeline = React.memo<ContractTimelineProps>(({
   contract,
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const isCompletedContract = contract.status === ContractStatus.COMPLETED;
 
   // Fetch payment data for this contract - filter for scheduled payments only
   // Using getCurrentPaymentsByContract which supports type filter on the /current endpoint
@@ -73,14 +74,14 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
     return dayjs(dateString).format("MMM DD, YYYY");
   };
 
-  // Create a map of payment statuses by month
-  const getPaymentStatusByMonth = () => {
+  // Create a map of payment statuses by month - memoized for performance
+  const monthlyStatuses = React.useMemo(() => {
     const startDate = dayjs(contract.startDate);
     const endDate = dayjs(contract.endDate);
     const totalMonths = endDate.diff(startDate, "month") + 1; // Include the end month
-    const monthlyStatuses = [];
+    const statuses = [];
     const currentDate = dayjs();
-    
+
     // Sort payments by paymentNumber for accurate matching
     const sortedPayments = [...payments]
       .filter((p: any) => p.paymentNumber !== null && p.paymentNumber !== undefined)
@@ -99,10 +100,10 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
       // Match payment by paymentNumber (paymentNumber 1 = first month, etc.)
       // If multiple payments have the same paymentNumber (due to recalculations),
       // prefer the one that matches the month date
-      const paymentsWithNumber = sortedPayments.filter((payment: any) => 
+      const paymentsWithNumber = sortedPayments.filter((payment: any) =>
         payment.paymentNumber === i + 1
       );
-      
+
       let monthPayment = paymentsWithNumber.find((payment: any) => {
         const paymentDue = dayjs(payment.dueDate);
         return (
@@ -110,12 +111,12 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
           paymentDue.month() === monthDate.month()
         );
       });
-      
+
       // If no date match, use the first payment with this paymentNumber
       if (!monthPayment && paymentsWithNumber.length > 0) {
         monthPayment = paymentsWithNumber[0];
       }
-      
+
       // Fallback: If no match by paymentNumber, try date-based matching
       if (!monthPayment) {
         monthPayment = sortedPayments.find((payment: any) => {
@@ -126,8 +127,6 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
           );
         });
       }
-      
-
 
       let status = "pending"; // Default for months without payments
 
@@ -142,7 +141,6 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
         ) {
           status = "overdue";
         }
-        
       } else {
         // For months without payments, determine status based on timing
         if (monthDate.isAfter(currentDate, "month")) {
@@ -153,33 +151,45 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
           // Past months without payments - likely missed
           status = "pending";
         }
-        
       }
 
-      monthlyStatuses.push({
+      statuses.push({
         month: monthDate,
         payment: monthPayment,
         status: status,
       });
     }
 
-    return monthlyStatuses;
-  };
+    return statuses;
+  }, [contract.startDate, contract.endDate, payments]);
+  const displayMonthlyStatuses = React.useMemo(() => {
+    if (!isCompletedContract) return monthlyStatuses;
+    return monthlyStatuses.map((m) => ({ ...m, status: "paid" }));
+  }, [isCompletedContract, monthlyStatuses]);
 
-  const monthlyStatuses = getPaymentStatusByMonth();
+  // Calculate actual payment status counts from real payments - memoized
+  const actualPaymentCounts = React.useMemo(() => {
+    const currentDate = dayjs();
+    return {
+      paid: payments.filter((p) => p.status === "paid").length,
+      pending: payments.filter((p) => p.status === "pending").length,
+      overdue: payments.filter((p) => {
+        return (
+          p.status !== "paid" && dayjs(p.dueDate).isBefore(currentDate, "day")
+        );
+      }).length,
+      total: payments.length,
+    };
+  }, [payments]);
 
-  // Calculate actual payment status counts from real payments
-  const actualPaymentCounts = {
-    paid: payments.filter((p) => p.status === "paid").length,
-    pending: payments.filter((p) => p.status === "pending").length,
-    overdue: payments.filter((p) => {
-      const currentDate = dayjs();
-      return (
-        p.status !== "paid" && dayjs(p.dueDate).isBefore(currentDate, "day")
-      );
-    }).length,
-    total: payments.length,
-  };
+  const displayPaymentCounts = isCompletedContract
+    ? {
+        total: displayMonthlyStatuses.length,
+        paid: displayMonthlyStatuses.length,
+        pending: 0,
+        overdue: 0,
+      }
+    : actualPaymentCounts;
 
   return (
     <Paper
@@ -294,16 +304,16 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
             variant="body2"
             sx={{ fontWeight: 600, color: "info.main" }}
           >
-            {actualPaymentCounts.total} payments total
+            {displayPaymentCounts.total} payments total
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            • {actualPaymentCounts.paid} paid
+            • {displayPaymentCounts.paid} paid
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            • {actualPaymentCounts.pending} pending
+            • {displayPaymentCounts.pending} pending
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            • {actualPaymentCounts.overdue} overdue
+            • {displayPaymentCounts.overdue} overdue
           </Typography>
           {/* {actualPaymentCounts.scheduled > 0 && (
             <Typography variant="body2" color="text.secondary">
@@ -323,7 +333,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
               bgcolor: alpha(theme.palette.grey[500], 0.1),
             }}
           >
-            {monthlyStatuses.map((monthStatus, index) => {
+            {displayMonthlyStatuses.map((monthStatus, index) => {
               let segmentColor;
               let statusLabel = monthStatus.status;
 
@@ -481,7 +491,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
                       height: "100%",
                       bgcolor: segmentColor,
                       borderRight:
-                        index < monthlyStatuses.length - 1
+                        index < displayMonthlyStatuses.length - 1
                           ? `1px solid ${theme.palette.background.paper}`
                           : "none",
                       transition: "all 0.3s ease",
@@ -560,4 +570,6 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({
       </Box>
     </Paper>
   );
-};
+});
+
+ContractTimeline.displayName = 'ContractTimeline';

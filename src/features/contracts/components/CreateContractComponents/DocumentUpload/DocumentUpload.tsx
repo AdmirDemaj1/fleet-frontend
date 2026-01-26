@@ -204,14 +204,14 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   // Initialize pending document IDs from existing documents (for edit mode)
   // Use a ref to track if we've already initialized to prevent loops
   const hasInitializedRef = useRef(false);
-  
+
   useEffect(() => {
     if (contractId && documents.length > 0 && !hasInitializedRef.current) {
       const existingPendingIds = documents
         .filter((doc) => doc.status === "pending" && doc.documentId)
         .map((doc) => doc.documentId!)
         .filter(Boolean);
-      
+
       if (existingPendingIds.length > 0) {
         setPendingDocumentIds(existingPendingIds);
         onPendingDocumentIdsChange?.(existingPendingIds);
@@ -304,13 +304,19 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       setDeletingDocumentId(documentId);
 
       const documentToRemove = documents.find((doc) => doc.id === documentId);
-      
+
       // If it's a pending document in edit mode, delete it from API
-      if (contractId && documentToRemove?.documentId && documentToRemove.status === "pending") {
+      if (
+        contractId &&
+        documentToRemove?.documentId &&
+        documentToRemove.status === "pending"
+      ) {
         try {
-          await documentApi.deletePendingDocuments([documentToRemove.documentId]);
+          await documentApi.deletePendingDocuments([
+            documentToRemove.documentId,
+          ]);
           console.log("✅ Deleted pending document from API");
-          
+
           // Remove from pending document IDs
           const updatedPendingIds = pendingDocumentIds.filter(
             (id) => id !== documentToRemove.documentId
@@ -417,15 +423,18 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       try {
         // Map category to document type
         const documentType = selectedCategory; // Category already matches document type
-        
+
         // Upload document immediately with PENDING status
-        const uploadedDoc = await documentApi.uploadPendingDocument(pendingFile, {
-          type: documentType,
-          title: pendingFile.name,
-          description: documentDescription,
-          contractId: contractId,
-          expiryDate: documentExpiryDate,
-        });
+        const uploadedDoc = await documentApi.uploadPendingDocument(
+          pendingFile,
+          {
+            type: documentType,
+            title: pendingFile.name,
+            description: documentDescription,
+            contractId: contractId,
+            expiryDate: documentExpiryDate,
+          }
+        );
 
         console.log("✅ Uploaded pending document:", uploadedDoc);
 
@@ -484,7 +493,9 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         uploadedAt: new Date(),
       };
 
-      console.log("📄 Document added locally (will be uploaded with contract):");
+      console.log(
+        "📄 Document added locally (will be uploaded with contract):"
+      );
       console.log("  📁 File:", pendingFile.name);
       console.log("  📂 Category:", selectedCategory);
       console.log("  📅 Expiry Date:", documentExpiryDate);
@@ -513,27 +524,30 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   };
 
   // Replace document - supports both create mode (local) and edit mode (optimistic update)
-  const handleReplaceDocument = async (document: ContractDocument, newFile: File) => {
+  const handleReplaceDocument = async (
+    document: ContractDocument,
+    newFile: File
+  ) => {
     const defaultExpiryDate = new Date();
     defaultExpiryDate.setFullYear(defaultExpiryDate.getFullYear() + 1);
-    const formattedDate = defaultExpiryDate.toISOString().split('T')[0];
+    const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
 
     // For edit mode (contractId exists), upload immediately with PENDING status
     if (contractId && document.documentId) {
       try {
         setReplacingDocumentId(document.id);
-        
+
         // Upload document immediately with PENDING status as replacement
         const uploadedDoc = await documentApi.uploadPendingDocument(newFile, {
           type: document.category,
           title: newFile.name,
-          description: document.description || '',
+          description: document.description || "",
           contractId: contractId,
           replacesDocumentId: document.documentId,
           expiryDate: formattedDate,
         });
 
-        console.log('✅ Uploaded pending replacement document:', uploadedDoc);
+        console.log("✅ Uploaded pending replacement document:", uploadedDoc);
 
         // Create pending replacement document
         const pendingReplacement: ContractDocument = {
@@ -548,7 +562,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           description: document.description,
           expiryDate: formattedDate,
           isRequired: document.isRequired,
-          status: 'pending',
+          status: "pending",
           uploadedAt: new Date(uploadedDoc.createdAt),
           parentDocumentId: document.documentId,
         };
@@ -576,8 +590,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
         showSuccess("Document replacement uploaded. Click Save to confirm.");
       } catch (error) {
-        console.error('Failed to upload replacement document:', error);
-        showError('Failed to upload replacement document. Please try again.');
+        console.error("Failed to upload replacement document:", error);
+        showError("Failed to upload replacement document. Please try again.");
       } finally {
         setReplacingDocumentId(null);
       }
@@ -602,9 +616,9 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   };
 
   const handleReplaceClick = (document: ContractDocument) => {
-    const input = window.document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/pdf,image/*';
+    const input = window.document.createElement("input");
+    input.type = "file";
+    input.accept = "application/pdf,image/*";
     input.onchange = async (e: any) => {
       const file = e.target.files?.[0];
       if (file) {
@@ -620,9 +634,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     // Delete pending document if it was uploaded
     if (contractId && document.pendingReplacementId) {
       try {
-        await documentApi.deletePendingDocuments([document.pendingReplacementId]);
+        await documentApi.deletePendingDocuments([
+          document.pendingReplacementId,
+        ]);
       } catch (error) {
-        console.error('Failed to delete pending document:', error);
+        console.error("Failed to delete pending document:", error);
       }
     }
 
@@ -643,7 +659,9 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     onDocumentsChange(updatedDocuments);
 
     // Update pending document IDs
-    const newPendingIds = pendingDocumentIds.filter(id => id !== document.pendingReplacementId);
+    const newPendingIds = pendingDocumentIds.filter(
+      (id) => id !== document.pendingReplacementId
+    );
     setPendingDocumentIds(newPendingIds);
     onPendingDocumentIdsChange?.(newPendingIds);
   };
@@ -721,15 +739,46 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     [buildFullUrl]
   );
 
+  const openDocumentViewInNewTab = useCallback(
+    async (documentId?: string) => {
+      if (!documentId) {
+        showError("Document ID is missing.");
+        return;
+      }
+
+      try {
+        // Match the customer documents preview behavior:
+        // fetch as Blob via authenticated client, then open in a new tab WITHOUT forcing download.
+        const blob = await documentApi.downloadDocument(documentId);
+        const blobUrl = URL.createObjectURL(blob);
+
+        const link = window.document.createElement("a");
+        link.href = blobUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
+
+        // Best-effort cleanup (can't guarantee new tab finished reading)
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } catch (e: any) {
+        console.error("Failed to open document:", e);
+        showError(
+          e?.response?.data?.message || e?.message || "Failed to open document"
+        );
+      }
+    },
+    [showError]
+  );
+
   // Handle customer document preview
   const handlePreviewCustomerDocument = useCallback(
     (document: any) => {
       console.log("🔍 Opening customer document preview:", document);
-      // Open document preview in new tab using the document ID
-      const previewUrl = buildFullUrl(`/documents/${document.id}/preview`);
-      window.open(previewUrl, "_blank");
+      openDocumentViewInNewTab(document?.id);
     },
-    [buildFullUrl]
+    [openDocumentViewInNewTab]
   );
 
   console.log("documents", documents);
@@ -1012,8 +1061,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         </Alert>
       )}
 
-      
-
       {/* Document Upload Area */}
       <Paper
         {...getRootProps()}
@@ -1150,8 +1197,6 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           </Grid>
         </Box>
       )}
-
-     
 
       {/* Uploaded Documents List */}
       {documents.length > 0 && (
@@ -1754,10 +1799,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                       variant="contained"
                       startIcon={<Visibility />}
                       onClick={() => {
-                        window.open(
-                          buildFullUrl(previewDocument.previewUrl),
-                          "_blank"
-                        );
+                        openDocumentViewInNewTab(previewDocument?.id);
                       }}
                     >
                       Open Preview
@@ -1769,6 +1811,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                       variant="outlined"
                       startIcon={<Download />}
                       onClick={() => {
+                        // Keep download behavior explicit
                         window.open(
                           buildFullUrl(previewDocument.downloadUrl),
                           "_blank"
@@ -1807,4 +1850,3 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     </Box>
   );
 };
-

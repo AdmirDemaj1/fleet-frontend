@@ -137,6 +137,15 @@ export const vehicleApi = {
     if (vehicleData.year) formData.append('year', String(vehicleData.year));
     if (vehicleData.color) formData.append('color', vehicleData.color);
     if (vehicleData.status) formData.append('status', vehicleData.status);
+    if (vehicleData.currentMileage !== undefined && vehicleData.currentMileage !== null) {
+      const strValue = String(vehicleData.currentMileage);
+      if (strValue !== '' && strValue !== 'null' && strValue !== 'undefined') {
+        const value = parseInt(strValue, 10);
+        if (!isNaN(value) && isFinite(value) && value >= 0) {
+          formData.append('currentMileage', value.toString());
+        }
+      }
+    }
     if (vehicleData.fuelType) formData.append('fuelType', vehicleData.fuelType);
     if (vehicleData.legalOwner) formData.append('legalOwner', vehicleData.legalOwner);
     if (vehicleData.isLiquidAsset !== undefined) formData.append('isLiquidAsset', String(vehicleData.isLiquidAsset));
@@ -296,6 +305,33 @@ export const vehicleApi = {
   // Delete a vehicle
   deleteVehicle: async (id: string): Promise<void> => {
     await api.delete(`/vehicles/${id}`);
+  },
+
+  // Delete a vehicle with approval-aware response (used for rollback flows)
+  delete: async (
+    id: string
+  ): Promise<{
+    requiresApproval?: boolean;
+    approvalRequestId?: string;
+    message?: string;
+  }> => {
+    try {
+      const response = await api.delete(`/vehicles/${id}`, {
+        responseType: "json",
+        headers: { Accept: "application/json" },
+      });
+
+      if (response.data && typeof response.data === "object") {
+        return response.data;
+      }
+
+      return { message: "Vehicle deleted successfully" };
+    } catch (error: any) {
+      if (error.response?.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
   },
 
   // Update vehicle status

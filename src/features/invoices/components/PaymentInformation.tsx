@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -36,19 +36,23 @@ import {
 } from "@mui/icons-material";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { Payment } from "../types/invoice.types";
+import { Payment, PaymentStatus } from "../types/invoice.types";
 
 interface PaymentInformationProps {
   payment: Payment;
 }
 
-export const PaymentInformation: React.FC<PaymentInformationProps> = ({
+export const PaymentInformation = React.memo<PaymentInformationProps>(({
   payment,
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [showRecalculationHistory, setShowRecalculationHistory] =
     useState(false);
+
+  const handleToggleRecalculationHistory = useCallback(() => {
+    setShowRecalculationHistory(prev => !prev);
+  }, []);
 
   const formatCurrency = (amount: string | number): string => {
     const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -58,6 +62,21 @@ export const PaymentInformation: React.FC<PaymentInformationProps> = ({
       minimumFractionDigits: 2,
     }).format(numAmount);
   };
+
+  const toNumber = (v: unknown): number => {
+    const n = typeof v === "string" ? parseFloat(v) : typeof v === "number" ? v : 0;
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const totalAmount = toNumber(payment.amount);
+  const paidAmount = toNumber((payment as any).paidAmount);
+  const remainingDue = Math.max(0, totalAmount - paidAmount);
+  const paidInterestAmount = toNumber((payment as any).paidInterestAmount);
+  const paidPrincipalAmount = toNumber((payment as any).paidPrincipalAmount);
+  const isPartiallyPaid =
+    payment.status === PaymentStatus.PARTIALLY_PAID ||
+    payment.status === PaymentStatus.PARTIAL ||
+    paidAmount > 0;
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
@@ -148,6 +167,18 @@ export const PaymentInformation: React.FC<PaymentInformationProps> = ({
         >
           {formatCurrency(payment.amount)}
         </Typography>
+        {isPartiallyPaid && (
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Paid: {formatCurrency(paidAmount)} • Remaining: {formatCurrency(remainingDue)}
+            </Typography>
+            {(paidPrincipalAmount > 0 || paidInterestAmount > 0) && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Paid Principal: {formatCurrency(paidPrincipalAmount)} • Paid Interest: {formatCurrency(paidInterestAmount)}
+              </Typography>
+            )}
+          </Box>
+        )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {String(payment.type).replace("_", " ").charAt(0).toUpperCase() +
             String(payment.type).replace("_", " ").slice(1)}{" "}
@@ -345,9 +376,7 @@ export const PaymentInformation: React.FC<PaymentInformationProps> = ({
                     bgcolor: alpha(theme.palette.warning.main, 0.08),
                   },
                 }}
-                onClick={() =>
-                  setShowRecalculationHistory(!showRecalculationHistory)
-                }
+                onClick={handleToggleRecalculationHistory}
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Calculate
@@ -843,4 +872,6 @@ export const PaymentInformation: React.FC<PaymentInformationProps> = ({
       </Box>
     </Paper>
   );
-};
+});
+
+PaymentInformation.displayName = 'PaymentInformation';

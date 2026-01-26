@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -8,6 +8,7 @@ import {
   Button,
   TextField,
   Typography,
+  Checkbox,
   Radio,
   RadioGroup,
   FormControlLabel,
@@ -21,6 +22,7 @@ import {
 } from '@mui/material';
 import { Payment } from '../../types/invoice.types';
 import { LoadingSpinner } from '../../../../shared/components/LoadingSpinner';
+import { useGetCustomerCreditBalanceQuery } from '../../api/paymentsApi';
 
 export interface MarkPaymentPaidModalProps {
   open: boolean;
@@ -33,11 +35,13 @@ export interface MarkPaymentPaidModalProps {
     transactionReference?: string;
     notes?: string;
     overpaymentOption?: 'credit' | 'upcoming_payments';
+    getFromCredit?: boolean;
+    creditAmount?: number;
   }) => Promise<void>;
   loading?: boolean;
 }
 
-export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
+export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
   open,
   onClose,
   payment,
@@ -45,7 +49,7 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
   loading = false
 }) => {
   const theme = useTheme();
-  
+
   // Form state
   const [formData, setFormData] = useState({
     actualAmountReceived: '',
@@ -54,30 +58,77 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
     notes: ''
   });
   const [overpaymentOption, setOverpaymentOption] = useState<'credit' | 'upcoming_payments'>('credit');
+  const [getFromCredit, setGetFromCredit] = useState(false);
+  const [creditMode, setCreditMode] = useState<'full' | 'custom'>('full');
+  const [customCreditAmount, setCustomCreditAmount] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
+  const toCents = useCallback((v: unknown): number => {
+    const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
+    if (!Number.isFinite(n)) return 0;
+    return Math.round(n * 100);
+  }, []);
+
+  const fromCents = useCallback((cents: number): string => {
+    return (cents / 100).toFixed(2);
+  }, []);
+
   // Calculated values
-  const paymentAmount = payment ? Number(payment.amount) : 0;
-  const actualAmount = Number(formData.actualAmountReceived) || 0;
-  const isOverpayment = actualAmount > paymentAmount;
-  const overpaymentAmount = isOverpayment ? actualAmount - paymentAmount : 0;
+  const totalPaymentAmountCents = payment ? toCents(payment.amount) : 0;
+  const alreadyPaidAmountCents = payment ? toCents((payment as any).paidAmount || 0) : 0;
+  const paymentAmountCents = Math.max(0, totalPaymentAmountCents - alreadyPaidAmountCents); // remaining due
+  const paymentAmount = paymentAmountCents / 100;
+
+  const actualAmountCents = toCents(formData.actualAmountReceived);
+  const actualAmount = actualAmountCents / 100;
+
+  const isOverpayment = actualAmountCents > paymentAmountCents;
+  const overpaymentAmount = (actualAmountCents - paymentAmountCents) / 100;
+  const isUnderpayment = actualAmountCents > 0 && actualAmountCents < paymentAmountCents;
+  const underpaymentAmount = (paymentAmountCents - actualAmountCents) / 100;
+
+  const { data: creditData, isLoading: isCreditLoading } =
+    useGetCustomerCreditBalanceQuery(payment?.customerId ?? '', {
+      skip: !open || !payment?.customerId,
+    });
+  const availableCreditCents = toCents((creditData as any)?.creditBalance ?? 0);
+  const availableCredit = availableCreditCents / 100;
+  const maxCreditUsableCents = Math.min(availableCreditCents, Math.max(0, paymentAmountCents - actualAmountCents));
+  const maxCreditUsable = maxCreditUsableCents / 100;
+
+  // If there is no credit available (or we haven't loaded it yet), ensure credit usage is off.
+  useEffect(() => {
+    if (!open) return;
+    if (!isUnderpayment) return;
+    if (isCreditLoading) return;
+    if (availableCredit > 0) return;
+
+    if (getFromCredit) {
+      setGetFromCredit(false);
+      setCreditMode('full');
+      setCustomCreditAmount('');
+    }
+  }, [availableCredit, getFromCredit, isCreditLoading, isUnderpayment, open]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (open && payment) {
       setFormData({
-        actualAmountReceived: payment.amount.toString(),
+        actualAmountReceived: fromCents(paymentAmountCents),
         paymentMethod: 'bank_transfer',
         transactionReference: '',
         notes: ''
       });
       setOverpaymentOption('credit');
+      setGetFromCredit(false);
+      setCreditMode('full');
+      setCustomCreditAmount('');
       setErrors({});
     }
-  }, [open, payment]);
+  }, [open, payment, paymentAmountCents]);
 
   // Validation
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors: { [key: string]: string } = {};
 
     if (!formData.actualAmountReceived) {
@@ -90,36 +141,62 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
       newErrors.paymentMethod = 'Payment method is required';
     }
 
+    if (isUnderpayment && getFromCredit) {
+      const maxUsableCents = Math.min(availableCreditCents, Math.max(0, paymentAmountCents - actualAmountCents));
+      const maxUsable = maxUsableCents / 100;
+
+      if (availableCredit <= 0) {
+        newErrors.getFromCredit = 'Customer has no available credit';
+      } else if (creditMode === 'custom') {
+        const rawCents = toCents(customCreditAmount);
+        if (!customCreditAmount) {
+          newErrors.customCreditAmount = 'Credit amount is required';
+        } else if (rawCents <= 0) {
+          newErrors.customCreditAmount = 'Credit amount must be greater than 0';
+        } else if (rawCents > maxUsableCents) {
+          newErrors.customCreditAmount = `Credit amount cannot exceed €${maxUsable.toFixed(2)}`;
+        }
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData.actualAmountReceived, formData.paymentMethod, actualAmount, isUnderpayment, getFromCredit, availableCreditCents, paymentAmountCents, actualAmountCents, availableCredit, creditMode, toCents, customCreditAmount]);
 
   // Handle form submission
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!validateForm() || !payment) return;
 
     try {
       await onMarkAsPaid({
-        paymentDate: new Date().toISOString(),
+        paymentDate: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
         paymentMethod: formData.paymentMethod,
         actualAmountReceived: actualAmount,
         transactionReference: formData.transactionReference || undefined,
         notes: formData.notes || undefined,
-        overpaymentOption: isOverpayment ? overpaymentOption : undefined
+        overpaymentOption: isOverpayment ? overpaymentOption : undefined,
+        getFromCredit: isUnderpayment ? getFromCredit : undefined,
+        creditAmount:
+          isUnderpayment && getFromCredit && creditMode === 'custom'
+            ? toCents(customCreditAmount) / 100
+            : undefined,
       });
       onClose();
     } catch (error) {
       console.error('Failed to mark payment as paid:', error);
     }
-  };
+  }, [validateForm, payment, onMarkAsPaid, formData.paymentMethod, formData.transactionReference, formData.notes, actualAmount, isOverpayment, overpaymentOption, isUnderpayment, getFromCredit, creditMode, toCents, customCreditAmount, onClose]);
 
   // Handle input changes
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
+    setErrors(prev => {
+      if (prev[field]) {
+        return { ...prev, [field]: '' };
+      }
+      return prev;
+    });
+  }, []);
 
   if (!payment) return null;
 
@@ -158,10 +235,18 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
             Payment Details
           </Typography>
           <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
-            Due Amount: €{Number(payment.amount).toFixed(2)}
+            Remaining Due: €{paymentAmount.toFixed(2)}
           </Typography>
+          {alreadyPaidAmountCents > 0 && (
+            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+              Total: €{fromCents(totalPaymentAmountCents)} • Paid: €{fromCents(alreadyPaidAmountCents)}
+            </Typography>
+          )}
           <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
             Due Date: {new Date(payment.dueDate).toLocaleDateString()}
+          </Typography>
+          <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>
+            Customer Credit: {isCreditLoading ? 'Loading...' : `€${availableCredit.toFixed(2)}`}
           </Typography>
         </Box>
 
@@ -256,6 +341,129 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
           </Box>
         )}
 
+        {/* Underpayment Alert */}
+        {isUnderpayment && (
+          <Alert
+            severity="warning"
+            sx={{
+              mb: 3,
+              borderRadius: 2,
+              '& .MuiAlert-message': { width: '100%' },
+            }}
+          >
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                Partial Payment Detected
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Remaining amount: €{underpaymentAmount.toFixed(2)}
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={getFromCredit}
+                    disabled={isCreditLoading || availableCredit <= 0}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setGetFromCredit(checked);
+                      if (!checked) {
+                        setCreditMode('full');
+                        setCustomCreditAmount('');
+                      }
+                      if (errors.getFromCredit) {
+                        setErrors(prev => ({ ...prev, getFromCredit: '' }));
+                      }
+                      if (errors.customCreditAmount) {
+                        setErrors(prev => ({ ...prev, customCreditAmount: '' }));
+                      }
+                    }}
+                  />
+                }
+                label={
+                  <Typography variant="body2">
+                    Get remaining amount from customer credit
+                  </Typography>
+                }
+              />
+
+              {!isCreditLoading && availableCredit <= 0 && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+                  No customer credit available.
+                </Typography>
+              )}
+
+              {errors.getFromCredit && (
+                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                  {errors.getFromCredit}
+                </Typography>
+              )}
+
+              {getFromCredit && availableCredit > 0 && (
+                <Box sx={{ mt: 1.5 }}>
+                  <FormControl component="fieldset">
+                    <FormLabel component="legend" sx={{ fontWeight: 600, mb: 1 }}>
+                      Credit to apply
+                    </FormLabel>
+                    <RadioGroup
+                      value={creditMode}
+                      onChange={(e) => {
+                        setCreditMode(e.target.value as 'full' | 'custom');
+                        setCustomCreditAmount('');
+                        if (errors.customCreditAmount) {
+                          setErrors(prev => ({ ...prev, customCreditAmount: '' }));
+                        }
+                      }}
+                    >
+                      <FormControlLabel
+                        value="full"
+                        control={<Radio />}
+                        label={
+                          <Typography variant="body2">
+                            Apply full remaining from credit (up to €{Math.min(availableCredit, underpaymentAmount).toFixed(2)})
+                          </Typography>
+                        }
+                      />
+                      <FormControlLabel
+                        value="custom"
+                        control={<Radio />}
+                        label={<Typography variant="body2">Apply custom credit amount</Typography>}
+                      />
+                    </RadioGroup>
+                  </FormControl>
+
+                  {creditMode === 'custom' && (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Credit amount to use"
+                      value={customCreditAmount}
+                      onChange={(e) => {
+                        // Keep input "as typed" (no auto-format/clamp while typing).
+                        // Validation/clamping happens on submit via validateForm().
+                        setCustomCreditAmount(e.target.value);
+                        if (errors.customCreditAmount) {
+                          setErrors(prev => ({ ...prev, customCreditAmount: '' }));
+                        }
+                      }}
+                      error={!!errors.customCreditAmount}
+                      helperText={errors.customCreditAmount}
+                      inputProps={{
+                        min: 0,
+                        max: maxCreditUsable,
+                        step: 0.01,
+                      }}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">€</InputAdornment>,
+                      }}
+                      sx={{ mt: 1.5 }}
+                    />
+                  )}
+                </Box>
+              )}
+            </Box>
+          </Alert>
+        )}
+
         <Divider sx={{ my: 3 }} />
 
         {/* Payment Method */}
@@ -329,6 +537,8 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
       </DialogActions>
     </Dialog>
   );
-};
+});
+
+MarkPaymentPaidModal.displayName = 'MarkPaymentPaidModal';
 
 export default MarkPaymentPaidModal;

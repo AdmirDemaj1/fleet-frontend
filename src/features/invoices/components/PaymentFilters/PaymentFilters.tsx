@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -32,7 +32,7 @@ interface PaymentFiltersProps {
   isLoading?: boolean;
 }
 
-export const PaymentFilters: React.FC<PaymentFiltersProps> = ({
+export const PaymentFilters = React.memo<PaymentFiltersProps>(({
   filters,
   onFiltersChange,
   onClearFilters,
@@ -40,7 +40,7 @@ export const PaymentFilters: React.FC<PaymentFiltersProps> = ({
 }) => {
   const [expanded, setExpanded] = React.useState(false);
 
-  const handleFilterChange = (field: keyof PaymentFiltersType) => (
+  const handleFilterChange = useCallback((field: keyof PaymentFiltersType) => (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const value = event.target.value;
@@ -48,9 +48,9 @@ export const PaymentFilters: React.FC<PaymentFiltersProps> = ({
       ...filters,
       [field]: value === '' ? undefined : value
     });
-  };
+  }, [filters, onFiltersChange]);
 
-  const handleNumberFilterChange = (field: keyof PaymentFiltersType) => (
+  const handleNumberFilterChange = useCallback((field: keyof PaymentFiltersType) => (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const value = event.target.value;
@@ -58,15 +58,17 @@ export const PaymentFilters: React.FC<PaymentFiltersProps> = ({
       ...filters,
       [field]: value === '' ? undefined : parseFloat(value)
     });
-  };
+  }, [filters, onFiltersChange]);
 
-  const getActiveFiltersCount = () => {
-    return Object.values(filters).filter(value => 
+  const activeFiltersCount = useMemo(() => {
+    return Object.values(filters).filter(value =>
       value !== undefined && value !== null && value !== ''
     ).length;
-  };
+  }, [filters]);
 
-  const activeFiltersCount = getActiveFiltersCount();
+  const handleToggleExpanded = useCallback(() => {
+    setExpanded(prev => !prev);
+  }, []);
 
   return (
     <Paper
@@ -108,7 +110,7 @@ export const PaymentFilters: React.FC<PaymentFiltersProps> = ({
             </Button>
           )}
           <IconButton
-            onClick={() => setExpanded(!expanded)}
+            onClick={handleToggleExpanded}
             size="small"
           >
             {expanded ? <ExpandLess /> : <ExpandMore />}
@@ -295,6 +297,8 @@ export const PaymentFilters: React.FC<PaymentFiltersProps> = ({
       </Collapse>
     </Paper>
   );
-};
+});
+
+PaymentFilters.displayName = 'PaymentFilters';
 
 export default PaymentFilters;

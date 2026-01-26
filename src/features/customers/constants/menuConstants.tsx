@@ -1,6 +1,7 @@
 import {
   Dashboard as DashboardIcon,
   Description as DescriptionIcon,
+  Assignment as AssignmentIcon,
   Receipt as ReceiptIcon,
   LocalShipping as LocalShippingIcon,
   History as HistoryIcon,
@@ -32,6 +33,12 @@ export const MENU_ITEMS: MenuItem[] = [
     path: 'vehicles', 
     icon: <LocalShippingIcon />,
     description: 'Fleet vehicles and assets'
+  },
+  { 
+    text: 'Documents', 
+    path: 'documents', 
+    icon: <AssignmentIcon />,
+    description: 'Customer uploaded documents'
   },
   { 
     text: 'Logs', 

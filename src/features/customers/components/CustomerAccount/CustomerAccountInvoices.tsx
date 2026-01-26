@@ -514,16 +514,6 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           View Payment Details
         </MenuItem>
         
-        <MenuItem onClick={() => {
-          if (selectedInvoice) {
-            navigate(`/payments/${selectedInvoice.id}/edit`);
-          }
-          closeMenu();
-        }}>
-          <EditIcon fontSize="small" sx={{ mr: 1 }} />
-          Edit Payment
-        </MenuItem>
-
         {selectedInvoice?.status === 'pending' && (
           <MenuItem onClick={() => {
             if (selectedInvoice) {

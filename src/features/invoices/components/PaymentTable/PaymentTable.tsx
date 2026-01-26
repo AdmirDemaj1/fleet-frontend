@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -45,7 +45,7 @@ interface PaymentTableProps {
   onViewContract?: (contractId: string) => void;
 }
 
-export const PaymentTable: React.FC<PaymentTableProps> = ({
+export const PaymentTable = React.memo<PaymentTableProps>(({
   payments,
   loading = false,
   page = 0,
@@ -87,7 +87,7 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
           
           let customerName = 'Unknown Customer';
           if (customer && customer.type) {
-            if (customer.type === 'individual' || customer.type === 'endorser') {
+            if (customer.type === 'individual') {
               customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown Customer';
             } else if (customer.type === 'business') {
               customerName = customer.legalName || 'Unknown Business';
@@ -134,56 +134,61 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
     fetchCustomerNames();
   }, [payments]); // Only depend on payments, not page/pageSize
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, payment: Payment) => {
+  const handleMenuOpen = useCallback((event: React.MouseEvent<HTMLElement>, payment: Payment) => {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setSelectedPayment(payment);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedPayment(null);
-  };
+  }, []);
 
-  const handleSort = (field: string) => {
+  const handleSort = useCallback((field: string) => {
     if (onSortChange) {
       onSortChange(field);
     }
-  };
+  }, [onSortChange]);
 
-  const formatCurrency = (amount: number | string) => {
+  const formatCurrency = useCallback((amount: number | string) => {
     const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     if (isNaN(numericAmount)) return '$0.00';
-    
+
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2
     }).format(numericAmount);
-  };
+  }, []);
 
-  const formatDate = (date: Date | string) => {
+  const toNumber = useCallback((v: unknown): number => {
+    const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
+    return Number.isFinite(n) ? n : 0;
+  }, []);
+
+  const formatDate = useCallback((date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return format(dateObj, 'MMM dd, yyyy');
-  };
+  }, []);
 
-  const getPaymentMethodInfo = (method?: string) => {
+  const getPaymentMethodInfo = useCallback((method?: string) => {
     if (!method) return null;
     return PAYMENT_METHODS.find(m => m.value === method);
-  };
+  }, []);
 
-  const isOverdue = (payment: Payment) => {
+  const isOverdue = useCallback((payment: Payment) => {
     if (payment.status === PaymentStatus.PAID) return false;
     const dueDate = typeof payment.dueDate === 'string' ? new Date(payment.dueDate) : payment.dueDate;
     return dueDate < new Date();
-  };
+  }, []);
 
-  const getDaysPastDue = (dueDate: Date | string) => {
+  const getDaysPastDue = useCallback((dueDate: Date | string) => {
     const due = typeof dueDate === 'string' ? new Date(dueDate) : dueDate;
     const today = new Date();
     const diffTime = today.getTime() - due.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
+  }, []);
 
   const renderSkeletonRow = () => (
     <TableRow>
@@ -216,6 +221,16 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
     const overdue = isOverdue(payment);
     const daysPastDue = overdue ? getDaysPastDue(payment.dueDate) : 0;
 
+    const totalAmount = toNumber(payment.amount);
+    const paidAmount = toNumber((payment as any).paidAmount);
+    const remainingDue = Math.max(0, totalAmount - paidAmount);
+    const paidInterestAmount = toNumber((payment as any).paidInterestAmount);
+    const paidPrincipalAmount = toNumber((payment as any).paidPrincipalAmount);
+    const isPartiallyPaid =
+      payment.status === PaymentStatus.PARTIALLY_PAID ||
+      payment.status === PaymentStatus.PARTIAL ||
+      paidAmount > 0;
+
     return (
       <TableRow
         key={payment.id}
@@ -238,18 +253,25 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {formatCurrency(payment.amount)}
           </Typography>
-          {payment.appliedAmount && parseFloat(String(payment.appliedAmount)) !== parseFloat(String(payment.amount)) && (
-            <Typography variant="caption" color="text.secondary">
-              Applied: {formatCurrency(payment.appliedAmount)}
+          {isPartiallyPaid && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              Paid: {formatCurrency(paidAmount)} • Remaining: {formatCurrency(remainingDue)}
             </Typography>
           )}
         </TableCell>
 
         <TableCell>
           {payment.principalAmount ? (
-            <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.main' }}>
-              {formatCurrency(payment.principalAmount)}
-            </Typography>
+            <>
+              <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.main' }}>
+                {formatCurrency(payment.principalAmount)}
+              </Typography>
+              {isPartiallyPaid && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Paid: {formatCurrency(paidPrincipalAmount)}
+                </Typography>
+              )}
+            </>
           ) : (
             <Typography variant="body2" color="text.secondary">
               N/A
@@ -259,9 +281,16 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
 
         <TableCell>
           {payment.interestAmount ? (
-            <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
-              {formatCurrency(payment.interestAmount)}
-            </Typography>
+            <>
+              <Typography variant="body2" sx={{ fontWeight: 500, color: 'warning.main' }}>
+                {formatCurrency(payment.interestAmount)}
+              </Typography>
+              {isPartiallyPaid && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  Paid: {formatCurrency(paidInterestAmount)}
+                </Typography>
+              )}
+            </>
           ) : (
             <Typography variant="body2" color="text.secondary">
               N/A
@@ -533,6 +562,8 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
       </Menu>
     </Paper>
   );
-};
+});
+
+PaymentTable.displayName = 'PaymentTable';
 
 export default PaymentTable;

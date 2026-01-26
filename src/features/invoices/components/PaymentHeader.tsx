@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -11,7 +11,6 @@ import {
 } from '@mui/material';
 import {
   ArrowBack,
-  Edit,
   CheckCircle,
   Receipt,
   Schedule,
@@ -21,7 +20,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Payment } from '../types/invoice.types';
+import { Payment, PaymentStatus } from '../types/invoice.types';
 import { MarkPaymentPaidModal } from './MarkPaymentPaidModal';
 
 interface PaymentHeaderProps {
@@ -35,37 +34,56 @@ interface PaymentHeaderProps {
     overpaymentOption?: 'credit' | 'upcoming_payments';
   }) => Promise<void>;
   loading?: boolean;
+  disableMarkAsPaid?: boolean;
 }
 
-export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
+export const PaymentHeader = React.memo<PaymentHeaderProps>(({
   payment,
   onMarkAsPaid,
-  loading = false
+  loading = false,
+  disableMarkAsPaid = false
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
 
-  const handleBack = () => {
+  useEffect(() => {
+    if (disableMarkAsPaid && modalOpen) setModalOpen(false);
+  }, [disableMarkAsPaid, modalOpen]);
+
+  const handleBack = useCallback(() => {
     navigate('/payments');
-  };
+  }, [navigate]);
 
-  const handleEdit = () => {
-    navigate(`/payments/${payment.id}/edit`);
-  };
-
-  const formatCurrency = (amount: string | number): string => {
+  const formatCurrency = useCallback((amount: string | number): string => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
     }).format(numAmount);
-  };
+  }, []);
 
-  const handleGenerateReceipt = () => {
+  const toNumber = useCallback((v: unknown): number => {
+    const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
+    return Number.isFinite(n) ? n : 0;
+  }, []);
+
+  const totalAmount = toNumber(payment.amount);
+  const paidAmount = toNumber((payment as any).paidAmount);
+  const remainingDue = Math.max(0, totalAmount - paidAmount);
+
+  const handleGenerateReceipt = useCallback(() => {
     console.log('Generate receipt for:', payment.id);
-  };
+  }, [payment.id]);
+
+  const handleOpenModal = useCallback(() => {
+    setModalOpen(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setModalOpen(false);
+  }, []);
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -97,6 +115,15 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
           bgcolor: alpha(theme.palette.error.main, 0.1),
           textColor: theme.palette.error.main,
           icon: ErrorIcon
+        };
+      case 'partially_paid':
+      case 'partial':
+        return {
+          label: 'Partially Paid',
+          color: theme.palette.info.main,
+          bgcolor: alpha(theme.palette.info.main, 0.1),
+          textColor: theme.palette.info.main,
+          icon: Schedule
         };
       case 'scheduled':
         return {
@@ -192,6 +219,14 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
             <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette.primary.main, mb: 1 }}>
               {formatCurrency(payment.amount)}
             </Typography>
+            {(payment.status === PaymentStatus.PARTIALLY_PAID ||
+              payment.status === PaymentStatus.PARTIAL) && (
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Paid: {formatCurrency(paidAmount)} • Remaining: {formatCurrency(remainingDue)}
+                </Typography>
+              </Box>
+            )}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Chip
                 icon={<StatusIcon />}
@@ -217,12 +252,12 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
 
         {/* Action Buttons */}
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {String(payment.status) !== 'paid' && (
+          {String(payment.status) !== 'paid' && !disableMarkAsPaid && (
             <Button
               variant="contained"
               size="large"
               startIcon={<CheckCircle />}
-              onClick={() => setModalOpen(true)}
+              onClick={handleOpenModal}
               sx={{
                 bgcolor: theme.palette.success.main,
                 color: theme.palette.success.contrastText,
@@ -265,40 +300,19 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
           >
             Receipt
           </Button>
-          
-          <Button
-            variant="outlined"
-            size="large"
-            startIcon={<Edit />}
-            onClick={handleEdit}
-            sx={{
-              borderColor: alpha(theme.palette.text.secondary, 0.3),
-              color: theme.palette.text.secondary,
-              fontWeight: 600,
-              px: 3,
-              py: 1.5,
-              borderRadius: 2,
-              '&:hover': {
-                borderColor: theme.palette.text.primary,
-                color: theme.palette.text.primary,
-                transform: 'translateY(-1px)'
-              },
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Edit
-          </Button>
         </Box>
       </Box>
 
       {/* Mark as Paid Modal */}
       <MarkPaymentPaidModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        open={modalOpen && !disableMarkAsPaid}
+        onClose={handleCloseModal}
         payment={payment}
         onMarkAsPaid={onMarkAsPaid}
         loading={loading}
       />
     </Box>
   );
-};
+});
+
+PaymentHeader.displayName = 'PaymentHeader';

@@ -188,7 +188,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({
                           {vehicle.year} {vehicle.make} {vehicle.model}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                          {vehicle.color ? `${vehicle.color} • ` : ''}{vehicle.currentMileage?.toLocaleString() || 0} mi
+                          {vehicle.color ? `${vehicle.color} • ` : ''}{vehicle.currentMileage?.toLocaleString() || 0} km
                         </Typography>
                       </Box>
                     </Box>

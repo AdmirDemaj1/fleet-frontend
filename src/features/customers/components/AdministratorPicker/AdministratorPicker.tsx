@@ -101,7 +101,7 @@ export const AdministratorPicker: React.FC<AdministratorPickerProps> = ({
         Select Administrators (Optional)
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Administrators can be any existing customer. Select one or more customers
+        Administrators must be existing individual customers. Select one or more individuals
         to link to this business.
       </Typography>
 

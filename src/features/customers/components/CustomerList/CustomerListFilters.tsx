@@ -14,6 +14,7 @@ import {
   Collapse,
   IconButton,
   Grid,
+  Divider,
   Tooltip,
   useTheme,
   alpha
@@ -31,6 +32,8 @@ import {
 import { CustomerType } from '../../types/customer.types';
 
 interface CustomerListFiltersProps {
+  segmentFilter: string;
+  onSegmentChange: (value: string) => void;
   searchTerm: string;
   onSearchChange: (value: string) => void;
   typeFilter: CustomerType | '';
@@ -46,6 +49,8 @@ interface CustomerListFiltersProps {
 }
 
 export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
+  segmentFilter,
+  onSegmentChange,
   searchTerm,
   onSearchChange,
   typeFilter,
@@ -64,8 +69,33 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
   const [dateRange, setDateRange] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   
-  const hasActiveFilters = searchTerm || typeFilter || dateRange || statusFilter || hasVehicles !== undefined || hasContracts !== undefined || hasCollaterals !== undefined;
-  const filterCount = [searchTerm, typeFilter, dateRange, statusFilter, hasVehicles !== undefined ? 'hasVehicles' : '', hasContracts !== undefined ? 'hasContracts' : '', hasCollaterals !== undefined ? 'hasCollaterals' : ''].filter(Boolean).length;
+  const hasActiveFilters = segmentFilter || searchTerm || typeFilter || dateRange || statusFilter || hasVehicles !== undefined || hasContracts !== undefined || hasCollaterals !== undefined;
+  const filterCount = [segmentFilter, searchTerm, typeFilter, dateRange, statusFilter, hasVehicles !== undefined ? 'hasVehicles' : '', hasContracts !== undefined ? 'hasContracts' : '', hasCollaterals !== undefined ? 'hasCollaterals' : ''].filter(Boolean).length;
+
+  const isPresetActive = !!segmentFilter;
+
+  const segmentLabel = (segment: string): string => {
+    switch (segment) {
+      case 'individual':
+        return 'Individual customers';
+      case 'business':
+        return 'Business customers';
+      case 'asAdmin':
+        return 'Customers as administrators';
+      case 'asAdminWithContract':
+        return 'Administrators with contract';
+      case 'individualNoContractNotAdmin':
+        return 'Individuals w/o contract & not administrators';
+      case 'individualWithContractNotAdmin':
+        return 'Individuals with contract & not administrators';
+      case 'businessWithContract':
+        return 'Businesses with contract';
+      case 'businessNoContract':
+        return 'Businesses without contract';
+      default:
+        return 'Custom';
+    }
+  };
 
   return (
     <Paper 
@@ -122,6 +152,36 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
           
           <Grid item xs={12} md={4}>
             <Box sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+              <FormControl sx={{ minWidth: 220 }}>
+                <InputLabel id="customer-segment-label" size="small">Filter</InputLabel>
+                <Select
+                  labelId="customer-segment-label"
+                  value={segmentFilter}
+                  onChange={(e) => onSegmentChange(e.target.value as string)}
+                  label="Filter"
+                  size="small"
+                  sx={{
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      transition: 'all 0.2s'
+                    }
+                  }}
+                >
+                  <MenuItem value="">All customers</MenuItem>
+                  <MenuItem value="individual">Individual customer</MenuItem>
+                  <MenuItem value="business">Business customer</MenuItem>
+                  <Divider />
+                  <MenuItem value="asAdmin">Customers as administrator</MenuItem>
+                  <MenuItem value="asAdminWithContract">Customers as administrators with contract</MenuItem>
+                  <Divider />
+                  <MenuItem value="individualNoContractNotAdmin">Individuals without contract and not as administrators</MenuItem>
+                  <MenuItem value="individualWithContractNotAdmin">Individuals with contract and not as administrators</MenuItem>
+                  <Divider />
+                  <MenuItem value="businessWithContract">Businesses with contract</MenuItem>
+                  <MenuItem value="businessNoContract">Businesses without contract</MenuItem>
+                </Select>
+              </FormControl>
+
               {!hideTypeFilter && (
                 <FormControl sx={{ minWidth: 140 }}>
                   <InputLabel id="customer-type-label" size="small">Customer Type</InputLabel>
@@ -131,6 +191,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                     onChange={(e) => onTypeChange(e.target.value as CustomerType | '')}
                     label="Customer Type"
                     size="small"
+                    disabled={isPresetActive}
                     sx={{ 
                       borderRadius: 2,
                       '& .MuiOutlinedInput-notchedOutline': {
@@ -246,6 +307,7 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
                       onHasContractsChange(value === '' ? undefined : value === 'true');
                     }}
                     label="Has Contracts"
+                    disabled={isPresetActive}
                   >
                     <MenuItem value="">Any</MenuItem>
                     <MenuItem value="true">Yes</MenuItem>
@@ -280,6 +342,15 @@ export const CustomerListFilters: React.FC<CustomerListFiltersProps> = ({
             <Typography variant="body2" color="text.secondary">
               Active filters:
             </Typography>
+
+            {segmentFilter && (
+              <Chip
+                label={`Filter: ${segmentLabel(segmentFilter)}`}
+                size="small"
+                onDelete={() => onSegmentChange('')}
+                sx={{ borderRadius: 1.5 }}
+              />
+            )}
             
             {searchTerm && (
               <Chip 

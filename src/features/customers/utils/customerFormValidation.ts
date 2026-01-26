@@ -1,5 +1,5 @@
 import * as yup from 'yup';
-import { CustomerType } from '../types/customer.types';
+import { BusinessType, CustomerType } from '../types/customer.types';
 
 /**
  * Enhanced customer form validation schema following VehicleForm pattern
@@ -60,6 +60,10 @@ export const createCustomerValidationSchema = (customerType: CustomerType) => {
 
   const businessSchema = yup.object({
     type: yup.string().oneOf([CustomerType.BUSINESS]).required(),
+    businessType: yup
+      .mixed<BusinessType>()
+      .oneOf(Object.values(BusinessType) as BusinessType[])
+      .required('Business type is required'),
     legalName: yup
       .string()
       .required('Legal name is required')
@@ -115,6 +119,7 @@ export const STEP_FIELDS = {
     'individualDetails.additionalNotes'
   ],
   BUSINESS_DETAILS: [
+    'businessDetails.businessType',
     'businessDetails.legalName',
     'businessDetails.nuisNipt',
     'businessDetails.mainShareholders',
@@ -174,6 +179,7 @@ export const REQUIRED_FIELDS = {
     'individualDetails.email'
   ],
   BUSINESS_DETAILS: [
+    'businessDetails.businessType',
     'businessDetails.legalName',
     'businessDetails.nuisNipt',
     'businessDetails.address',

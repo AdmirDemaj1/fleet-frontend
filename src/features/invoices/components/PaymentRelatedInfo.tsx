@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -20,43 +20,27 @@ import {
   Error as ErrorIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { customerApi } from '../../customers/api/customerApi';
-import { useGetContractQuery } from '../../contracts/api/contractApi';
+import { useGetContractQuery, useGetCustomerQuery } from '../../contracts/api/contractApi';
 
 interface PaymentRelatedInfoProps {
   customerId: string;
   contractId: string;
 }
 
-export const PaymentRelatedInfo: React.FC<PaymentRelatedInfoProps> = ({
+export const PaymentRelatedInfo = React.memo<PaymentRelatedInfoProps>(({
   customerId,
   contractId
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  
-  const [customer, setCustomer] = useState<any>(null);
-  const [customerLoading, setCustomerLoading] = useState(true);
-  
+
+  // Use RTK Query for customer data - benefits from caching across components
+  const { data: customer, isLoading: customerLoading } = useGetCustomerQuery(
+    customerId,
+    { skip: !customerId }
+  );
+
   const { data: contract, isLoading: contractLoading } = useGetContractQuery(contractId);
-
-  useEffect(() => {
-    const fetchCustomer = async () => {
-      try {
-        setCustomerLoading(true);
-        const customerData = await customerApi.getById(customerId);
-        setCustomer(customerData);
-      } catch (error) {
-        console.error('Failed to fetch customer:', error);
-      } finally {
-        setCustomerLoading(false);
-      }
-    };
-
-    if (customerId) {
-      fetchCustomer();
-    }
-  }, [customerId]);
 
   const getContractTypeIcon = (type: string) => {
     return type === 'loan' ? AccountBalance : TrendingUp;
@@ -106,7 +90,8 @@ export const PaymentRelatedInfo: React.FC<PaymentRelatedInfoProps> = ({
     );
   }
 
-  const customerData = customer?.customer || customer;
+  // RTK Query returns customer data directly with CustomerSummary shape
+  const customerData = customer;
   const contractData = contract;
 
   const formatCurrency = (amount: string | number): string => {
@@ -122,13 +107,13 @@ export const PaymentRelatedInfo: React.FC<PaymentRelatedInfoProps> = ({
   const ContractTypeIcon = getContractTypeIcon(contractData?.type || 'loan');
   const ContractStatusIcon = getContractStatusIcon(contractData?.status || 'draft');
 
-  const handleCustomerClick = () => {
+  const handleCustomerClick = useCallback(() => {
     navigate(`/customers/${customerId}`);
-  };
+  }, [navigate, customerId]);
 
-  const handleContractClick = () => {
+  const handleContractClick = useCallback(() => {
     navigate(`/contracts/${contractId}`);
-  };
+  }, [navigate, contractId]);
 
   return (
     <Paper
@@ -161,16 +146,16 @@ export const PaymentRelatedInfo: React.FC<PaymentRelatedInfoProps> = ({
             }}
           >
             {customerData?.type === 'individual' ? (
-              `${customerData?.firstName?.[0] || ''}${customerData?.lastName?.[0] || ''}`
+              customerData?.name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || ''
             ) : (
               <Person />
             )}
           </Avatar>
           <Box>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 600, 
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
                 mb: 0.5,
                 cursor: 'pointer',
                 color: theme.palette.primary.main,
@@ -180,10 +165,7 @@ export const PaymentRelatedInfo: React.FC<PaymentRelatedInfoProps> = ({
               }}
               onClick={handleCustomerClick}
             >
-              {customerData?.type === 'individual' 
-                ? `${customerData?.firstName || ''} ${customerData?.lastName || ''}`.trim()
-                : customerData?.legalName || 'Business Customer'
-              }
+              {customerData?.name || 'Customer'}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
               {customerData?.email}
@@ -273,4 +255,6 @@ export const PaymentRelatedInfo: React.FC<PaymentRelatedInfoProps> = ({
       )}
     </Paper>
   );
-};
+});
+
+PaymentRelatedInfo.displayName = 'PaymentRelatedInfo';

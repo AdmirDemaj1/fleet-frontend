@@ -2,12 +2,13 @@ import { useCallback } from "react";
 import {
   useMarkPaymentAsPaidMutation,
   useMarkPaymentAsPaidWithCreditMutation,
+  useApplyPaymentMutation,
 } from "../api/paymentsApi";
 import { useNotification } from "../../../shared/hooks/useNotification";
 import {
   MarkPaymentPaidDto,
   MarkPaymentPaidWithCreditDto,
-  PaymentWithCreditResponse,
+  ApplyPaymentDto,
 } from "../types/invoice.types";
 
 export const useMarkPaymentAsPaid = () => {
@@ -15,6 +16,8 @@ export const useMarkPaymentAsPaid = () => {
     useMarkPaymentAsPaidMutation();
   const [markAsPaidWithCredit, { isLoading: isMarkingPaidWithCredit }] =
     useMarkPaymentAsPaidWithCreditMutation();
+  const [applyPayment, { isLoading: isApplyingPayment }] =
+    useApplyPaymentMutation();
   const { showSuccess, showError } = useNotification();
 
   const handleMarkAsPaid = useCallback(
@@ -92,9 +95,41 @@ export const useMarkPaymentAsPaid = () => {
     [markAsPaidWithCredit, showSuccess, showError]
   );
 
+  const handleApplyPayment = useCallback(
+    async (id: string, data: ApplyPaymentDto) => {
+      try {
+        const response = await applyPayment({ id, data }).unwrap();
+
+        if (response.requiresApproval) {
+          showSuccess(
+            response.message ||
+              "Action requires approval. Request has been submitted."
+          );
+          return {
+            requiresApproval: true,
+            approvalRequestId: response.approvalRequestId || "",
+          };
+        }
+
+        showSuccess("Payment applied successfully!");
+        return { requiresApproval: false, data: response.data };
+      } catch (error) {
+        console.error("Failed to apply payment:", error);
+        showError(
+          error instanceof Error
+            ? error.message
+            : "Failed to apply payment. Please try again."
+        );
+        throw error;
+      }
+    },
+    [applyPayment, showSuccess, showError]
+  );
+
   return {
     markAsPaid: handleMarkAsPaid,
     markAsPaidWithCredit: handleMarkAsPaidWithCredit,
-    isLoading: isMarkingPaid || isMarkingPaidWithCredit,
+    applyPayment: handleApplyPayment,
+    isLoading: isMarkingPaid || isMarkingPaidWithCredit || isApplyingPayment,
   };
 };

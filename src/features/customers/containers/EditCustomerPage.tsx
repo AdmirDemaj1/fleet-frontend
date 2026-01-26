@@ -5,6 +5,7 @@ import { CustomerForm } from "../components/CustomerForm/CustomerForm";
 import { useUpdateCustomer } from "../hooks/useUpdateCustomer";
 import { customerApi } from "../api/customerApi";
 import { CustomerType } from "../types/customer.types";
+import { documentApi } from "../../../shared/api/documentApi";
 
 export const EditCustomerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +16,7 @@ export const EditCustomerPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [customerType, setCustomerType] = useState<CustomerType | null>(null);
+  const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchCustomerData = async () => {
@@ -104,7 +106,11 @@ export const EditCustomerPage: React.FC = () => {
   }, [id]);
 
   const handleCancel = () => {
-    // Navigate back to customer detail page
+    // Cleanup pending document uploads (if any) before leaving
+    if (pendingDocumentIds.length > 0) {
+      documentApi.deletePendingDocuments(pendingDocumentIds).catch(console.error);
+      setPendingDocumentIds([]);
+    }
     navigate(`/customers/${id}`);
   };
 
@@ -127,6 +133,16 @@ export const EditCustomerPage: React.FC = () => {
       }
 
       await updateCustomer(id, updateData);
+
+      // Commit any pending document replacements uploaded during edit
+      if (pendingDocumentIds.length > 0) {
+        await documentApi.commitPendingDocuments(
+          pendingDocumentIds,
+          "customer",
+          id
+        );
+        setPendingDocumentIds([]);
+      }
       navigate(`/customers/${id}`);
     } catch (error) {
       console.error("Failed to update customer:", error);
@@ -226,6 +242,8 @@ export const EditCustomerPage: React.FC = () => {
           onStepChange={setActiveStep}
           steps={getSteps()}
           isEdit={true}
+          customerId={id}
+          onPendingDocumentIdsChange={(ids) => setPendingDocumentIds(ids)}
           onCancel={handleCancel}
         />
       </Box>

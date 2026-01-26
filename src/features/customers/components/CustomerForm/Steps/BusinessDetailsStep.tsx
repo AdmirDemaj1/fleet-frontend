@@ -10,7 +10,11 @@ import {
   Divider,
   IconButton,
   Button,
-  Paper
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Business,
@@ -25,6 +29,7 @@ import {
 import { Controller, useFormContext, useFieldArray } from 'react-hook-form';
 import { MuiTelInput } from 'mui-tel-input';
 import { AdministratorPicker } from '../../AdministratorPicker';
+import { BusinessType } from '../../../types/customer.types';
 
 export const BusinessDetailsStep: React.FC = () => {
   const theme = useTheme();
@@ -128,6 +133,35 @@ export const BusinessDetailsStep: React.FC = () => {
                   }}
                   sx={fieldStyle}
                 />
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="businessDetails.businessType"
+              control={control}
+              defaultValue={BusinessType.SHA}
+              rules={{ required: "Business type is required" }}
+              render={({ field }) => (
+                <FormControl fullWidth required error={!!getNestedError('businessDetails.businessType')}>
+                  <InputLabel id="business-type-label">Business Type</InputLabel>
+                  <Select
+                    {...field}
+                    labelId="business-type-label"
+                    label="Business Type"
+                    sx={fieldStyle}
+                  >
+                    <MenuItem value={BusinessType.SHA}>SHA</MenuItem>
+                    <MenuItem value={BusinessType.SHPK}>SHPK</MenuItem>
+                    <MenuItem value={BusinessType.PF}>PF</MenuItem>
+                  </Select>
+                  {getNestedError('businessDetails.businessType')?.message && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                      {getNestedError('businessDetails.businessType')?.message}
+                    </Typography>
+                  )}
+                </FormControl>
               )}
             />
           </Grid>

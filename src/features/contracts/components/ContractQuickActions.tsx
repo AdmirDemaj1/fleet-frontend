@@ -32,9 +32,10 @@ import {
   FileDownload,
   Visibility,
   Close,
+  Paid,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { ContractResponse } from "../types/contract.types";
+import { ContractResponse, ContractStatus, ContractType } from "../types/contract.types";
 import { UpdateEuriborRateDialog } from "./UpdateEuriborRateDialog";
 import {
   useExportAmortizationScheduleMutation,
@@ -42,6 +43,7 @@ import {
 } from "../api/contractApi";
 import { useNotification } from "../../../shared/hooks/useNotification";
 import dayjs from "dayjs";
+import { EarlyPayoffDialog } from "./EarlyPayoffDialog";
 
 interface ContractQuickActionsProps {
   contractId: string;
@@ -49,7 +51,7 @@ interface ContractQuickActionsProps {
   contract?: ContractResponse;
 }
 
-export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
+export const ContractQuickActions = React.memo<ContractQuickActionsProps>(({
   contractId,
   customerId,
   contract,
@@ -59,6 +61,7 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
   const { showSuccess, showError } = useNotification();
   const [euriborDialogOpen, setEuriborDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [payoffDialogOpen, setPayoffDialogOpen] = useState(false);
   const [exportAmortizationSchedule, { isLoading: isExporting }] =
     useExportAmortizationScheduleMutation();
 
@@ -148,6 +151,13 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
     }
   }, [contract]);
 
+  const isLoan = contract?.type === ContractType.LOAN;
+  const isActiveContract = contract?.status === ContractStatus.ACTIVE;
+  const isCompletedContract = contract?.status === ContractStatus.COMPLETED;
+
+  const canPayoff = Boolean(contract) && isLoan && isActiveContract;
+  const canUpdateEuribor = Boolean(contract) && !isCompletedContract;
+
   return (
     <Paper
       elevation={0}
@@ -227,7 +237,11 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
           fullWidth
           variant="outlined"
           startIcon={<TrendingUp />}
-          onClick={() => setEuriborDialogOpen(true)}
+          onClick={() => {
+            if (!canUpdateEuribor) return;
+            setEuriborDialogOpen(true);
+          }}
+          disabled={!canUpdateEuribor}
           sx={{
             justifyContent: "flex-start",
             borderRadius: 2,
@@ -288,6 +302,28 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
           }}
         >
           {isExporting ? "Exporting..." : "Export Latest Amortization Schedule"}
+        </Button>
+
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<Paid />}
+          onClick={() => setPayoffDialogOpen(true)}
+          disabled={!canPayoff}
+          sx={{
+            justifyContent: "flex-start",
+            borderRadius: 2,
+            py: 1.5,
+            textTransform: "none",
+            fontWeight: 600,
+            borderColor: alpha(theme.palette.divider, 0.3),
+            "&:hover": {
+              borderColor: "error.main",
+              bgcolor: alpha(theme.palette.error.main, 0.05),
+            },
+          }}
+        >
+          PayOff
         </Button>
       </Stack>
 
@@ -417,6 +453,13 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
         currentMargin={currentMargin}
       />
 
+      <EarlyPayoffDialog
+        open={payoffDialogOpen}
+        onClose={() => setPayoffDialogOpen(false)}
+        contractId={contractId}
+        contract={contract}
+      />
+
       {/* Preview Dialog */}
       <Dialog
         open={previewDialogOpen}
@@ -513,7 +556,7 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
                         {formatCurrency(entry.endingBalance)}
                       </TableCell>
                       <TableCell align="right">
-                        {entry.paidAmount
+                        {entry.paidAmount !== undefined && entry.paidAmount !== null
                           ? formatCurrency(entry.paidAmount)
                           : "-"}
                       </TableCell>
@@ -528,7 +571,38 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
                             }
                           />
                         ) : (
-                          "-"
+                          (() => {
+                            const due = Number(entry.monthlyMortgagePayment) || 0;
+                            const paid = Number(entry.paidAmount) || 0;
+                            if (paid > 0 && paid < due) {
+                              return (
+                                <Chip
+                                  label="Partially Paid"
+                                  size="small"
+                                  color="info"
+                                  variant="outlined"
+                                />
+                              );
+                            }
+                            if (paid >= due && due > 0) {
+                              return (
+                                <Chip
+                                  label="Paid"
+                                  size="small"
+                                  color="success"
+                                  variant="outlined"
+                                />
+                              );
+                            }
+                            return (
+                              <Chip
+                                label="Pending"
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                              />
+                            );
+                          })()
                         )}
                       </TableCell>
                     </TableRow>
@@ -545,4 +619,6 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
       </Dialog>
     </Paper>
   );
-};
+});
+
+ContractQuickActions.displayName = 'ContractQuickActions';

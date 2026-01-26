@@ -95,8 +95,28 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   const [submitError, setSubmitError] = useState<string>("");
 
   // Euribor rate state - Store as percentages (e.g., 3 for 3%, not 0.03)
+  // User-editable minimum allowed total annual interest rate (Euribor + Margin), in percentage points.
+  // Example: 0.01 means 0.01% annual.
+  const [minTotalAnnualInterestPercent, setMinTotalAnnualInterestPercent] =
+    useState<number>(1);
+
+  useEffect(() => {
+    const valueFromInitialData =
+      initialData?.minimumTotalAnnualInterestPercent ??
+      initialData?.loanDetails?.minimumTotalAnnualInterestPercent;
+
+    if (valueFromInitialData !== undefined) {
+      setMinTotalAnnualInterestPercent(
+        Number(valueFromInitialData) || 0
+      );
+    }
+  }, [
+    initialData?.loanDetails?.minimumTotalAnnualInterestPercent,
+    initialData?.minimumTotalAnnualInterestPercent,
+  ]);
+
   const [euriborRate, setEuriborRate] = useState<number>(0);
-  const [marginRate, setMarginRate] = useState<number>(0);
+  const [marginRate, setMarginRate] = useState<number>(1);
   const [euriborRateId, setEuriborRateId] = useState<string | null>(null);
   const [euriborTenor, setEuriborTenor] = useState<string | null>(null);
   const [loadingEuribor, setLoadingEuribor] = useState<boolean>(false);
@@ -154,6 +174,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   } = methods;
 
   const watchedData = watch();
+  const totalInterestPercent = Number(euriborRate) + Number(marginRate);
+  const isInterestBelowMinimum =
+    totalInterestPercent < minTotalAnnualInterestPercent;
 
   // Handle guarantee amount change (defined after setValue is available)
   const handleGuaranteeAmountChange = useCallback(
@@ -706,6 +729,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         // Build the submit data with files and document metadata
         const submitData: any = {
           ...baseContractData,
+          minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
           // Add files and document metadata for the new multipart/form-data approach
           files: files.length > 0 ? files : undefined,
           documents: documentMetadata.length > 0 ? documentMetadata : undefined,
@@ -746,6 +770,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             loanTermMonths: formDataToUse.loanDetails.loanTermMonths,
             monthlyPayment: formDataToUse.loanDetails.monthlyPayment,
             totalInterest: Math.round(totalInterest * 100) / 100, // Round to 2 decimal places
+            minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
             processingFeePercentage:
               formDataToUse.loanDetails.processingFeePercentage,
             earlyRepaymentPenalty:
@@ -798,7 +823,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
       }
     },
-    [onSubmit]
+    [euriborRateId, euriborTenor, getValues, marginRate, minTotalAnnualInterestPercent, onSubmit]
   );
 
   const renderStepContent = () => {
@@ -1078,6 +1103,46 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 <TrendingUp />
                 Interest Rate Calculation
               </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Minimum total annual interest:{" "}
+                <strong>{minTotalAnnualInterestPercent.toFixed(2)}%</strong>
+              </Typography>
+              {isInterestBelowMinimum && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  Total interest ({totalInterestPercent.toFixed(2)}%) is below the
+                  minimum ({minTotalAnnualInterestPercent.toFixed(2)}%).
+                  Increase the margin or select a higher Euribor rate.
+                </Alert>
+              )}
+            </Grid>
+
+            {/* Minimum Total Interest (Editable on Create) */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Minimum Total Annual Interest"
+                type="number"
+                value={minTotalAnnualInterestPercent}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setMinTotalAnnualInterestPercent(
+                    Number.isFinite(value) ? Math.max(0, value) : 0
+                  );
+                }}
+                disabled={isEdit}
+                InputProps={{
+                  readOnly: isEdit,
+                  endAdornment: (
+                    <InputAdornment position="end">%</InputAdornment>
+                  ),
+                }}
+                inputProps={{ min: 0, max: 100, step: 1 }}
+                helperText={
+                  isEdit
+                    ? "Minimum interest cannot be changed in edit mode"
+                    : "Set the minimum allowed total interest (Euribor + Margin)"
+                }
+              />
             </Grid>
 
             {/* Euribor Rate (Selectable) */}
@@ -1183,6 +1248,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   setMarginRate(value);
                 }}
                 disabled={isEdit}
+                error={isInterestBelowMinimum}
                 InputProps={{
                   readOnly: isEdit,
                   startAdornment: (
@@ -1195,9 +1261,15 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 inputProps={{
                   min: 0,
                   max: 100,
-                  step: 0.01,
+                  step: 0.5,
                 }}
-                helperText="Additional margin on top of Euribor (e.g., 5.00 for 5%)"
+                helperText={
+                  isInterestBelowMinimum
+                    ? `Total interest must be >= ${minTotalAnnualInterestPercent.toFixed(
+                        2
+                      )}%`
+                    : "Additional margin on top of Euribor (e.g., 5.00 for 5%)"
+                }
                 required
               />
             </Grid>
@@ -2088,7 +2160,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           watchedData.startDate &&
           watchedData.endDate &&
           watchedData.loanDetails?.interestRate &&
-          watchedData.loanDetails?.loanTermMonths
+          watchedData.loanDetails?.loanTermMonths &&
+          !isInterestBelowMinimum
         );
       case 2: // Vehicles
         return true; // Vehicles are optional but recommended
@@ -2296,6 +2369,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                               loanTermMonths: formDataToUse.loanDetails.loanTermMonths,
                               monthlyPayment: formDataToUse.loanDetails.monthlyPayment,
                               totalInterest: Math.round(totalInterest * 100) / 100,
+                              minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
                               processingFeePercentage:
                                 formDataToUse.loanDetails.processingFeePercentage,
                               earlyRepaymentPenalty:

@@ -8,6 +8,7 @@ import {
   UpdatePaymentDto,
   MarkPaymentPaidDto,
   MarkPaymentPaidWithCreditDto,
+  ApplyPaymentDto,
   RegisterPaymentDto,
   CustomerCreditBalance,
   PaymentStatus,
@@ -618,6 +619,52 @@ export const paymentsApi = createApi({
       },
     }),
 
+    applyPayment: builder.mutation<
+      {
+        requiresApproval?: boolean;
+        approvalRequestId?: string;
+        message?: string;
+        data?: Payment;
+      },
+      { id: string; data: ApplyPaymentDto }
+    >({
+      query: ({ id, data }) => ({
+        url: `/payments/${id}/apply`,
+        method: "PATCH",
+        body: data,
+      }),
+      transformResponse: (response: any) => {
+        if (response?.requiresApproval) {
+          return {
+            requiresApproval: true,
+            approvalRequestId: response.approvalRequestId,
+            message:
+              response.message ||
+              "Action requires approval. Request has been submitted.",
+          };
+        }
+        return { data: response };
+      },
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Payment", id },
+        "Payment",
+        "CustomerCredit",
+      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+
+          const { contractApi } = await import(
+            "../../contracts/api/contractApi"
+          );
+          dispatch(contractApi.util.invalidateTags(["Contract"]));
+          console.log("✅ Contract cache invalidated after payment apply");
+        } catch (error) {
+          console.error("❌ Failed to invalidate contract cache:", error);
+        }
+      },
+    }),
+
     getCustomerCreditBalance: builder.query<CustomerCreditBalance, string>({
       query: (customerId) => `/payments/customer/${customerId}/credit-balance`,
       providesTags: (_result, _error, customerId) => [
@@ -640,5 +687,6 @@ export const {
   useRegisterPaymentMutation,
   useMarkPaymentAsPaidMutation,
   useMarkPaymentAsPaidWithCreditMutation,
+  useApplyPaymentMutation,
   useGetCustomerCreditBalanceQuery,
 } = paymentsApi;

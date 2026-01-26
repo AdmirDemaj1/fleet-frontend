@@ -88,7 +88,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       year: new Date().getFullYear(),
       color: "",
       status: VehicleStatus.AVAILABLE,
-      // mileage: null,
+      currentMileage: undefined,
       fuelType: undefined,
       // transmission: '',
       // condition: '',
@@ -269,6 +269,19 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
           delete cleanedData.licensePlate;
         }
 
+        // Ensure currentMileage is a proper integer >= 0 (kilometers)
+        if (cleanedData.currentMileage !== undefined && cleanedData.currentMileage !== null) {
+          const numValue =
+            typeof cleanedData.currentMileage === "string"
+              ? parseInt(cleanedData.currentMileage, 10)
+              : Number(cleanedData.currentMileage);
+          if (isNaN(numValue) || !isFinite(numValue) || numValue < 0) {
+            delete cleanedData.currentMileage;
+          } else {
+            cleanedData.currentMileage = Math.trunc(numValue);
+          }
+        }
+
         // Ensure numeric fields are proper numbers (not empty strings or invalid values)
         if (cleanedData.currentValuation !== undefined && cleanedData.currentValuation !== null) {
           const numValue = typeof cleanedData.currentValuation === 'string' 
@@ -334,7 +347,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         year: new Date().getFullYear(),
         color: "",
         status: VehicleStatus.AVAILABLE,
-        // mileage: null,
+        currentMileage: undefined,
         fuelType: undefined,
         // transmission: '',
         // condition: '',
