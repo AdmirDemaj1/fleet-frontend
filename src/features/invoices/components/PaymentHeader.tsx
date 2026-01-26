@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -37,7 +37,7 @@ interface PaymentHeaderProps {
   disableMarkAsPaid?: boolean;
 }
 
-export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
+export const PaymentHeader = React.memo<PaymentHeaderProps>(({
   payment,
   onMarkAsPaid,
   loading = false,
@@ -51,31 +51,39 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
     if (disableMarkAsPaid && modalOpen) setModalOpen(false);
   }, [disableMarkAsPaid, modalOpen]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     navigate('/payments');
-  };
+  }, [navigate]);
 
-  const formatCurrency = (amount: string | number): string => {
+  const formatCurrency = useCallback((amount: string | number): string => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
     }).format(numAmount);
-  };
+  }, []);
 
-  const toNumber = (v: unknown): number => {
+  const toNumber = useCallback((v: unknown): number => {
     const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
     return Number.isFinite(n) ? n : 0;
-  };
+  }, []);
 
   const totalAmount = toNumber(payment.amount);
   const paidAmount = toNumber((payment as any).paidAmount);
   const remainingDue = Math.max(0, totalAmount - paidAmount);
 
-  const handleGenerateReceipt = () => {
+  const handleGenerateReceipt = useCallback(() => {
     console.log('Generate receipt for:', payment.id);
-  };
+  }, [payment.id]);
+
+  const handleOpenModal = useCallback(() => {
+    setModalOpen(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setModalOpen(false);
+  }, []);
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -249,7 +257,7 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
               variant="contained"
               size="large"
               startIcon={<CheckCircle />}
-              onClick={() => setModalOpen(true)}
+              onClick={handleOpenModal}
               sx={{
                 bgcolor: theme.palette.success.main,
                 color: theme.palette.success.contrastText,
@@ -298,11 +306,13 @@ export const PaymentHeader: React.FC<PaymentHeaderProps> = ({
       {/* Mark as Paid Modal */}
       <MarkPaymentPaidModal
         open={modalOpen && !disableMarkAsPaid}
-        onClose={() => setModalOpen(false)}
+        onClose={handleCloseModal}
         payment={payment}
         onMarkAsPaid={onMarkAsPaid}
         loading={loading}
       />
     </Box>
   );
-};
+});
+
+PaymentHeader.displayName = 'PaymentHeader';

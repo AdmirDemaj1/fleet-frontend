@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -45,7 +45,7 @@ interface PaymentTableProps {
   onViewContract?: (contractId: string) => void;
 }
 
-export const PaymentTable: React.FC<PaymentTableProps> = ({
+export const PaymentTable = React.memo<PaymentTableProps>(({
   payments,
   loading = false,
   page = 0,
@@ -134,61 +134,61 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
     fetchCustomerNames();
   }, [payments]); // Only depend on payments, not page/pageSize
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, payment: Payment) => {
+  const handleMenuOpen = useCallback((event: React.MouseEvent<HTMLElement>, payment: Payment) => {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setSelectedPayment(payment);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedPayment(null);
-  };
+  }, []);
 
-  const handleSort = (field: string) => {
+  const handleSort = useCallback((field: string) => {
     if (onSortChange) {
       onSortChange(field);
     }
-  };
+  }, [onSortChange]);
 
-  const formatCurrency = (amount: number | string) => {
+  const formatCurrency = useCallback((amount: number | string) => {
     const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     if (isNaN(numericAmount)) return '$0.00';
-    
+
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2
     }).format(numericAmount);
-  };
+  }, []);
 
-  const toNumber = (v: unknown): number => {
+  const toNumber = useCallback((v: unknown): number => {
     const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
     return Number.isFinite(n) ? n : 0;
-  };
+  }, []);
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = useCallback((date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return format(dateObj, 'MMM dd, yyyy');
-  };
+  }, []);
 
-  const getPaymentMethodInfo = (method?: string) => {
+  const getPaymentMethodInfo = useCallback((method?: string) => {
     if (!method) return null;
     return PAYMENT_METHODS.find(m => m.value === method);
-  };
+  }, []);
 
-  const isOverdue = (payment: Payment) => {
+  const isOverdue = useCallback((payment: Payment) => {
     if (payment.status === PaymentStatus.PAID) return false;
     const dueDate = typeof payment.dueDate === 'string' ? new Date(payment.dueDate) : payment.dueDate;
     return dueDate < new Date();
-  };
+  }, []);
 
-  const getDaysPastDue = (dueDate: Date | string) => {
+  const getDaysPastDue = useCallback((dueDate: Date | string) => {
     const due = typeof dueDate === 'string' ? new Date(dueDate) : dueDate;
     const today = new Date();
     const diffTime = today.getTime() - due.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
+  }, []);
 
   const renderSkeletonRow = () => (
     <TableRow>
@@ -562,6 +562,8 @@ export const PaymentTable: React.FC<PaymentTableProps> = ({
       </Menu>
     </Paper>
   );
-};
+});
+
+PaymentTable.displayName = 'PaymentTable';
 
 export default PaymentTable;

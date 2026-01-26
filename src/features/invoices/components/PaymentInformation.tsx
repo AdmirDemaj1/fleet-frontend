@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -42,13 +42,17 @@ interface PaymentInformationProps {
   payment: Payment;
 }
 
-export const PaymentInformation: React.FC<PaymentInformationProps> = ({
+export const PaymentInformation = React.memo<PaymentInformationProps>(({
   payment,
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [showRecalculationHistory, setShowRecalculationHistory] =
     useState(false);
+
+  const handleToggleRecalculationHistory = useCallback(() => {
+    setShowRecalculationHistory(prev => !prev);
+  }, []);
 
   const formatCurrency = (amount: string | number): string => {
     const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -372,9 +376,7 @@ export const PaymentInformation: React.FC<PaymentInformationProps> = ({
                     bgcolor: alpha(theme.palette.warning.main, 0.08),
                   },
                 }}
-                onClick={() =>
-                  setShowRecalculationHistory(!showRecalculationHistory)
-                }
+                onClick={handleToggleRecalculationHistory}
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Calculate
@@ -870,4 +872,6 @@ export const PaymentInformation: React.FC<PaymentInformationProps> = ({
       </Box>
     </Paper>
   );
-};
+});
+
+PaymentInformation.displayName = 'PaymentInformation';

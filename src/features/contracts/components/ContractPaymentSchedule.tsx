@@ -44,9 +44,7 @@ interface ContractPaymentScheduleProps {
   contract: ContractResponse;
 }
 
-export const ContractPaymentSchedule: React.FC<
-  ContractPaymentScheduleProps
-> = ({ contract }) => {
+export const ContractPaymentSchedule = React.memo<ContractPaymentScheduleProps>(({ contract }) => {
   const theme = useTheme();
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
   const {
@@ -1407,4 +1405,6 @@ export const ContractPaymentSchedule: React.FC<
       )}
     </Paper>
   );
-};
+});
+
+ContractPaymentSchedule.displayName = 'ContractPaymentSchedule';

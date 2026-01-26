@@ -51,7 +51,7 @@ interface ContractQuickActionsProps {
   contract?: ContractResponse;
 }
 
-export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
+export const ContractQuickActions = React.memo<ContractQuickActionsProps>(({
   contractId,
   customerId,
   contract,
@@ -619,4 +619,6 @@ export const ContractQuickActions: React.FC<ContractQuickActionsProps> = ({
       </Dialog>
     </Paper>
   );
-};
+});
+
+ContractQuickActions.displayName = 'ContractQuickActions';

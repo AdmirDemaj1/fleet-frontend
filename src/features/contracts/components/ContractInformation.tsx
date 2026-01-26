@@ -33,7 +33,7 @@ interface ContractInformationProps {
   contractConfig: any;
 }
 
-export const ContractInformation: React.FC<ContractInformationProps> = ({
+export const ContractInformation = React.memo<ContractInformationProps>(({
   contract,
   contractConfig
 }) => {
@@ -111,6 +111,14 @@ export const ContractInformation: React.FC<ContractInformationProps> = ({
   const statusConfig = getStatusConfig(contractConfig.status.label);
   const StatusIcon = statusConfig.icon;
   const CustomerIcon = getCustomerIcon();
+  const minimumInterestPercent = contract.minimumTotalAnnualInterestPercent
+    ? Number(contract.minimumTotalAnnualInterestPercent)
+    : null;
+  const formatPercent = (value: number): string =>
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(value);
 
   return (
     <Paper
@@ -266,6 +274,43 @@ export const ContractInformation: React.FC<ContractInformationProps> = ({
             sx={{ 
               p: 2.5,
               borderRadius: 2,
+              bgcolor: alpha(theme.palette.success.main, 0.02),
+              border: `1px solid ${alpha(theme.palette.success.main, 0.08)}`,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: alpha(theme.palette.success.main, 0.04),
+                transform: 'translateY(-2px)',
+                boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.1)}`
+              }
+            }}
+          >
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mb: 1.5,
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5
+              }}
+            >
+              Minimum Annual Interest
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: 'success.main' }}>
+              {minimumInterestPercent !== null && !Number.isNaN(minimumInterestPercent)
+                ? `${formatPercent(minimumInterestPercent)}%`
+                : "-"}
+            </Typography>
+          </Box>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Box 
+            sx={{ 
+              p: 2.5,
+              borderRadius: 2,
               bgcolor: statusConfig.bgcolor,
               border: `1px solid ${alpha(statusConfig.color, 0.2)}`,
               transition: 'all 0.2s ease',
@@ -356,4 +401,6 @@ export const ContractInformation: React.FC<ContractInformationProps> = ({
       </Grid>
     </Paper>
   );
-};
+});
+
+ContractInformation.displayName = 'ContractInformation';

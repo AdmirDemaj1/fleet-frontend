@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useReducer, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -52,7 +52,88 @@ interface ContractPaymentsProps {
   contractStatus?: ContractStatus;
 }
 
-export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, contractStatus }) => {
+// Dialog state interface for useReducer
+interface ExtraPaymentDialogState {
+  isOpen: boolean;
+  amount: string;
+  date: string;
+  method: string;
+  transactionReference: string;
+  notes: string;
+  prepaymentOption: 'reduce_term' | 'reduce_payment';
+  startingFromPaymentNumber: number | null;
+  startingFromPaymentId: string | null;
+}
+
+type DialogAction =
+  | { type: 'OPEN_DIALOG' }
+  | { type: 'CLOSE_DIALOG' }
+  | { type: 'SET_AMOUNT'; payload: string }
+  | { type: 'SET_DATE'; payload: string }
+  | { type: 'SET_METHOD'; payload: string }
+  | { type: 'SET_TRANSACTION_REFERENCE'; payload: string }
+  | { type: 'SET_NOTES'; payload: string }
+  | { type: 'SET_PREPAYMENT_OPTION'; payload: 'reduce_term' | 'reduce_payment' }
+  | { type: 'SET_STARTING_PAYMENT'; payload: { number: number | null; id: string | null } }
+  | { type: 'RESET_STARTING_PAYMENT' };
+
+const initialDialogState: ExtraPaymentDialogState = {
+  isOpen: false,
+  amount: '',
+  date: format(new Date(), 'yyyy-MM-dd'),
+  method: 'bank_transfer',
+  transactionReference: '',
+  notes: '',
+  prepaymentOption: 'reduce_payment',
+  startingFromPaymentNumber: null,
+  startingFromPaymentId: null,
+};
+
+function dialogReducer(state: ExtraPaymentDialogState, action: DialogAction): ExtraPaymentDialogState {
+  switch (action.type) {
+    case 'OPEN_DIALOG':
+      return {
+        ...initialDialogState,
+        isOpen: true,
+        date: format(new Date(), 'yyyy-MM-dd'),
+      };
+    case 'CLOSE_DIALOG':
+      return initialDialogState;
+    case 'SET_AMOUNT':
+      return { ...state, amount: action.payload };
+    case 'SET_DATE':
+      return {
+        ...state,
+        date: action.payload,
+        startingFromPaymentNumber: null,
+        startingFromPaymentId: null,
+      };
+    case 'SET_METHOD':
+      return { ...state, method: action.payload };
+    case 'SET_TRANSACTION_REFERENCE':
+      return { ...state, transactionReference: action.payload };
+    case 'SET_NOTES':
+      return { ...state, notes: action.payload };
+    case 'SET_PREPAYMENT_OPTION':
+      return { ...state, prepaymentOption: action.payload };
+    case 'SET_STARTING_PAYMENT':
+      return {
+        ...state,
+        startingFromPaymentNumber: action.payload.number,
+        startingFromPaymentId: action.payload.id,
+      };
+    case 'RESET_STARTING_PAYMENT':
+      return {
+        ...state,
+        startingFromPaymentNumber: null,
+        startingFromPaymentId: null,
+      };
+    default:
+      return state;
+  }
+}
+
+export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId, contractStatus }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
@@ -63,16 +144,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
 
-  // Extra Payment Dialog State
-  const [extraPaymentDialogOpen, setExtraPaymentDialogOpen] = useState(false);
-  const [extraPaymentAmount, setExtraPaymentAmount] = useState<string>('');
-  const [extraPaymentDate, setExtraPaymentDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [extraPaymentMethod, setExtraPaymentMethod] = useState<string>('bank_transfer');
-  const [extraTransactionReference, setExtraTransactionReference] = useState<string>('');
-  const [extraNotes, setExtraNotes] = useState<string>('');
-  const [extraPrepaymentOption, setExtraPrepaymentOption] = useState<'reduce_term' | 'reduce_payment'>('reduce_payment');
-  const [startingFromPaymentNumber, setStartingFromPaymentNumber] = useState<number | null>(null);
-  const [startingFromPaymentId, setStartingFromPaymentId] = useState<string | null>(null);
+  // Extra Payment Dialog State - consolidated with useReducer
+  const [dialogState, dispatch] = useReducer(dialogReducer, initialDialogState);
   const [createPrepayment, { isLoading: isCreatingPayment }] = useCreatePrepaymentMutation();
 
   // Fetch current payments for the contract with filters
@@ -87,21 +160,21 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
 
   // Find conflicting unpaid payment when prepayment date is selected
   const conflictingPayment = useMemo(() => {
-    if (!extraPaymentDate || !extraPaymentDialogOpen) return null;
-    
-    const selectedDate = format(new Date(extraPaymentDate), 'yyyy-MM-dd');
-    
+    if (!dialogState.date || !dialogState.isOpen) return null;
+
+    const selectedDate = format(new Date(dialogState.date), 'yyyy-MM-dd');
+
     // Find unpaid scheduled payments that match the prepayment date
     const conflict = payments.find((payment: Payment) => {
       const paymentDueDate = format(new Date(payment.dueDate), 'yyyy-MM-dd');
       const isUnpaid = payment.status !== PaymentStatus.PAID;
       const isScheduled = payment.type === PaymentType.SCHEDULED;
-      
+
       return paymentDueDate === selectedDate && isUnpaid && isScheduled;
     });
-    
+
     return conflict || null;
-  }, [extraPaymentDate, payments, extraPaymentDialogOpen]);
+  }, [dialogState.date, payments, dialogState.isOpen]);
 
   const formatCurrency = (amount: string | number): string => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -162,64 +235,49 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
     }
   };
 
-  const handlePaymentClick = (paymentId: string) => {
+  // Memoized event handlers for performance
+  const handlePaymentClick = useCallback((paymentId: string) => {
     navigate(`/payments/${paymentId}`);
-  };
+  }, [navigate]);
 
-  const handleViewAllPayments = () => {
+  const handleViewAllPayments = useCallback(() => {
     navigate(`/payments?contractId=${contractId}`);
-  };
+  }, [navigate, contractId]);
 
-  // Filter handlers
-  const handleStatusFilterChange = (value: string) => {
+  // Filter handlers - memoized
+  const handleStatusFilterChange = useCallback((value: string) => {
     setStatusFilter(value);
-  };
+  }, []);
 
-  const handleTypeFilterChange = (value: string) => {
+  const handleTypeFilterChange = useCallback((value: string) => {
     setTypeFilter(value);
-  };
+  }, []);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setStatusFilter('');
     setTypeFilter('');
-  };
+  }, []);
 
-  const handleOpenExtraPaymentDialog = () => {
+  const handleOpenExtraPaymentDialog = useCallback(() => {
     if (isCompletedContract) return;
-    setExtraPaymentDialogOpen(true);
-    setExtraPaymentAmount('');
-    setExtraPaymentDate(format(new Date(), 'yyyy-MM-dd'));
-    setExtraPaymentMethod('bank_transfer');
-    setExtraTransactionReference('');
-    setExtraNotes('');
-    setExtraPrepaymentOption('reduce_payment');
-    setStartingFromPaymentNumber(null);
-    setStartingFromPaymentId(null);
-  };
+    dispatch({ type: 'OPEN_DIALOG' });
+  }, [isCompletedContract]);
 
-  const handleCloseExtraPaymentDialog = () => {
-    setExtraPaymentDialogOpen(false);
-    setExtraPaymentAmount('');
-    setExtraPaymentDate(format(new Date(), 'yyyy-MM-dd'));
-    setExtraPaymentMethod('bank_transfer');
-    setExtraTransactionReference('');
-    setExtraNotes('');
-    setExtraPrepaymentOption('reduce_payment');
-    setStartingFromPaymentNumber(null);
-    setStartingFromPaymentId(null);
-  };
+  const handleCloseExtraPaymentDialog = useCallback(() => {
+    dispatch({ type: 'CLOSE_DIALOG' });
+  }, []);
 
-  const handleSubmitExtraPayment = async () => {
+  const handleSubmitExtraPayment = useCallback(async () => {
     if (isCompletedContract) {
       showError('This contract is completed. Payments can no longer be modified.');
       return;
     }
-    if (!extraPaymentAmount || parseFloat(extraPaymentAmount) <= 0) {
+    if (!dialogState.amount || parseFloat(dialogState.amount) <= 0) {
       showError('Please enter a valid payment amount');
       return;
     }
 
-    if (!extraPaymentMethod) {
+    if (!dialogState.method) {
       showError('Please select a payment method');
       return;
     }
@@ -227,26 +285,26 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
     try {
       const prepaymentData = {
         contractId,
-        amount: parseFloat(extraPaymentAmount),
-        paymentDate: extraPaymentDate,
-        paymentMethod: extraPaymentMethod as 'cash' | 'bank_transfer' | 'online_banking' | 'credit_card' | 'debit_card' | 'check' | 'other',
-        ...(extraTransactionReference && { transactionReference: extraTransactionReference }),
-        ...(extraNotes && { notes: extraNotes }),
-        prepaymentOption: extraPrepaymentOption,
-        ...(startingFromPaymentNumber !== null && { startingFromPaymentNumber }),
-        ...(startingFromPaymentId !== null && { startingFromPaymentId }),
+        amount: parseFloat(dialogState.amount),
+        paymentDate: dialogState.date,
+        paymentMethod: dialogState.method as 'cash' | 'bank_transfer' | 'online_banking' | 'credit_card' | 'debit_card' | 'check' | 'other',
+        ...(dialogState.transactionReference && { transactionReference: dialogState.transactionReference }),
+        ...(dialogState.notes && { notes: dialogState.notes }),
+        prepaymentOption: dialogState.prepaymentOption,
+        ...(dialogState.startingFromPaymentNumber !== null && { startingFromPaymentNumber: dialogState.startingFromPaymentNumber }),
+        ...(dialogState.startingFromPaymentId !== null && { startingFromPaymentId: dialogState.startingFromPaymentId }),
       };
 
       const response = await createPrepayment(prepaymentData).unwrap();
-      
+
       if (response.requiresApproval) {
         showSuccess(response.message || 'Prepayment request submitted for approval');
       } else {
         showSuccess('Prepayment recorded successfully');
       }
 
-      handleCloseExtraPaymentDialog();
-      
+      dispatch({ type: 'CLOSE_DIALOG' });
+
       // Refetch payments to show the new payment
       // The query will automatically refetch due to cache invalidation
     } catch (error: any) {
@@ -257,7 +315,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
         'Failed to record prepayment. Please try again.'
       );
     }
-  };
+  }, [isCompletedContract, dialogState, contractId, createPrepayment, showError, showSuccess]);
 
   if (isLoading) {
     return (
@@ -556,7 +614,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
 
       {/* Extra Payment Dialog */}
       <Dialog
-        open={extraPaymentDialogOpen}
+        open={dialogState.isOpen}
         onClose={handleCloseExtraPaymentDialog}
         maxWidth="sm"
         fullWidth
@@ -597,8 +655,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
             fullWidth
             label="Payment Amount"
             type="number"
-            value={extraPaymentAmount}
-            onChange={(e) => setExtraPaymentAmount(e.target.value)}
+            value={dialogState.amount}
+            onChange={(e) => dispatch({ type: 'SET_AMOUNT', payload: e.target.value })}
             disabled={isCompletedContract}
             placeholder="0.00"
             InputProps={{
@@ -610,9 +668,9 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
             }}
             sx={{ mb: 3 }}
             required
-            error={extraPaymentAmount !== '' && parseFloat(extraPaymentAmount) <= 0}
+            error={dialogState.amount !== '' && parseFloat(dialogState.amount) <= 0}
             helperText={
-              extraPaymentAmount !== '' && parseFloat(extraPaymentAmount) <= 0
+              dialogState.amount !== '' && parseFloat(dialogState.amount) <= 0
                 ? 'Amount must be greater than 0'
                 : ''
             }
@@ -622,12 +680,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
             fullWidth
             label="Payment Date"
             type="date"
-            value={extraPaymentDate}
-            onChange={(e) => {
-              setExtraPaymentDate(e.target.value);
-              setStartingFromPaymentNumber(null); // Reset starting payment when date changes
-              setStartingFromPaymentId(null);
-            }}
+            value={dialogState.date}
+            onChange={(e) => dispatch({ type: 'SET_DATE', payload: e.target.value })}
             disabled={isCompletedContract}
             InputLabelProps={{
               shrink: true,
@@ -661,15 +715,16 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
                 <InputLabel id="affect-payment-label">Affect the payment from the prepayment?</InputLabel>
                 <Select
                   labelId="affect-payment-label"
-                  value={startingFromPaymentNumber !== null ? startingFromPaymentNumber : ''}
+                  value={dialogState.startingFromPaymentNumber !== null ? dialogState.startingFromPaymentNumber : ''}
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value !== '') {
-                      setStartingFromPaymentNumber(Number(value));
-                      setStartingFromPaymentId(conflictingPayment.id);
+                      dispatch({
+                        type: 'SET_STARTING_PAYMENT',
+                        payload: { number: Number(value), id: conflictingPayment.id }
+                      });
                     } else {
-                      setStartingFromPaymentNumber(null);
-                      setStartingFromPaymentId(null);
+                      dispatch({ type: 'RESET_STARTING_PAYMENT' });
                     }
                   }}
                   label="Affect the payment from the prepayment?"
@@ -685,8 +740,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
                   )}
                 </Select>
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  {startingFromPaymentNumber !== null 
-                    ? `The prepayment will be applied starting from Payment #${startingFromPaymentNumber}`
+                  {dialogState.startingFromPaymentNumber !== null
+                    ? `The prepayment will be applied starting from Payment #${dialogState.startingFromPaymentNumber}`
                     : 'The prepayment will be recorded independently'}
                 </Typography>
               </FormControl>
@@ -696,8 +751,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
           <FormControl fullWidth sx={{ mb: 3 }} required>
             <InputLabel>Payment Method</InputLabel>
             <Select
-              value={extraPaymentMethod}
-              onChange={(e) => setExtraPaymentMethod(e.target.value)}
+              value={dialogState.method}
+              onChange={(e) => dispatch({ type: 'SET_METHOD', payload: e.target.value })}
               label="Payment Method"
               disabled={isCompletedContract}
             >
@@ -714,8 +769,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
           <TextField
             fullWidth
             label="Transaction Reference"
-            value={extraTransactionReference}
-            onChange={(e) => setExtraTransactionReference(e.target.value)}
+            value={dialogState.transactionReference}
+            onChange={(e) => dispatch({ type: 'SET_TRANSACTION_REFERENCE', payload: e.target.value })}
             disabled={isCompletedContract}
             placeholder="Optional transaction reference or confirmation number"
             sx={{ mb: 3 }}
@@ -725,8 +780,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
           <FormControl fullWidth sx={{ mb: 3 }}>
             <InputLabel>Prepayment Option</InputLabel>
             <Select
-              value={extraPrepaymentOption}
-              onChange={(e) => setExtraPrepaymentOption(e.target.value as 'reduce_term' | 'reduce_payment')}
+              value={dialogState.prepaymentOption}
+              onChange={(e) => dispatch({ type: 'SET_PREPAYMENT_OPTION', payload: e.target.value as 'reduce_term' | 'reduce_payment' })}
               label="Prepayment Option"
               disabled={isCompletedContract}
             >
@@ -738,8 +793,8 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
           <TextField
             fullWidth
             label="Notes"
-            value={extraNotes}
-            onChange={(e) => setExtraNotes(e.target.value)}
+            value={dialogState.notes}
+            onChange={(e) => dispatch({ type: 'SET_NOTES', payload: e.target.value })}
             disabled={isCompletedContract}
             placeholder="Optional additional notes about the prepayment"
             multiline
@@ -762,7 +817,7 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
           <Button
             variant="contained"
             onClick={handleSubmitExtraPayment}
-            disabled={isCompletedContract || isCreatingPayment || !extraPaymentAmount || parseFloat(extraPaymentAmount) <= 0 || !extraPaymentMethod}
+            disabled={isCompletedContract || isCreatingPayment || !dialogState.amount || parseFloat(dialogState.amount) <= 0 || !dialogState.method}
             startIcon={isCreatingPayment ? <CircularProgress size={16} /> : <AttachMoney />}
             sx={{
               textTransform: 'none',
@@ -779,4 +834,6 @@ export const ContractPayments: React.FC<ContractPaymentsProps> = ({ contractId, 
       </Dialog>
     </Paper>
   );
-};
+});
+
+ContractPayments.displayName = 'ContractPayments';

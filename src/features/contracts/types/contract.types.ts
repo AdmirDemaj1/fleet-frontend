@@ -100,6 +100,7 @@ export interface CreateContractDto {
   euriborRateId: string; // ID from euribor_rates table which was selected for the contract
   margin?: number; // Optional - will be calculated if not provided (as decimal, e.g., 0.04 for 4%)
   euriborTenor?: string; // Optional - will come from EURIBOR rate if euriborRateId is provided (e.g., "12m")
+  minimumTotalAnnualInterestPercent?: number;
 
   // Contract type-specific details
   loanDetails?: {
@@ -113,6 +114,7 @@ export interface CreateContractDto {
     loanTermMonths: number;
     monthlyPayment: number;
     totalInterest: number;
+    minimumTotalAnnualInterestPercent?: number;
     processingFeePercentage?: number;
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
@@ -231,6 +233,7 @@ export interface ContractFormData {
   startDate: string;
   endDate: string;
   totalAmount: number;
+  minimumTotalAnnualInterestPercent?: number;
 
   // Loan specific fields
   loanDetails?: {
@@ -241,6 +244,7 @@ export interface ContractFormData {
     loanTermMonths: number;
     monthlyPayment: number;
     totalInterest?: number;
+    minimumTotalAnnualInterestPercent?: number;
     processingFeePercentage?: number;
     earlyRepaymentPenalty?: number;
     paymentScheduleType?: string;
@@ -375,6 +379,7 @@ export interface ContractResponse {
   createdAt: string;
   updatedAt: string;
   documents?: ContractDocumentResponseDto[];
+  minimumTotalAnnualInterestPercent?: string;
 
   // Additional nested objects from backend
   vehicles?: {

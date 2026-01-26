@@ -369,6 +369,20 @@ export const PersonalInformation: React.FC<PersonalInformationProps> = ({
                   }}
                 />
               </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Business Type"
+                  value={formData?.businessType || ''}
+                  disabled
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2
+                    }
+                  }}
+                />
+              </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth

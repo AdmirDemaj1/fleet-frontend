@@ -19,7 +19,7 @@ interface ContractHeaderProps {
   contractConfig: any;
 }
 
-export const ContractHeader: React.FC<ContractHeaderProps> = ({ contract, contractConfig }) => {
+export const ContractHeader = React.memo<ContractHeaderProps>(({ contract, contractConfig }) => {
   const theme = useTheme();
   const navigate = useNavigate();
 
@@ -112,4 +112,6 @@ export const ContractHeader: React.FC<ContractHeaderProps> = ({ contract, contra
       </Stack>
     </Box>
   );
-};
+});
+
+ContractHeader.displayName = 'ContractHeader';

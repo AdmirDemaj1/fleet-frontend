@@ -42,7 +42,7 @@ interface ContractDocumentsProps {
   contractId: string;
 }
 
-export const ContractDocuments: React.FC<ContractDocumentsProps> = ({
+export const ContractDocuments = React.memo<ContractDocumentsProps>(({
   contractId,
 }) => {
   const theme = useTheme();
@@ -437,4 +437,6 @@ export const ContractDocuments: React.FC<ContractDocumentsProps> = ({
 
     </Box>
   );
-};
+});
+
+ContractDocuments.displayName = 'ContractDocuments';

@@ -1,36 +1,22 @@
-import { useState, useEffect } from 'react';
-import { amortizationPlanApi, AmortizationPlanInfo } from '../api/amortizationPlanApi';
+import { useState, useCallback } from 'react';
+import { useGetAmortizationPlanInfoQuery } from '../api/contractApi';
+import { amortizationPlanApi } from '../api/amortizationPlanApi';
 import { useNotification } from '../../../shared/hooks/useNotification';
 
 export const useAmortizationPlan = (contractId: string) => {
-  const [planInfo, setPlanInfo] = useState<AmortizationPlanInfo | null>(null);
-  const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const { showSuccess, showError } = useNotification();
 
-  useEffect(() => {
-    if (!contractId) {
-      setLoading(false);
-      return;
-    }
+  // Use RTK Query for fetching plan info - benefits from automatic caching
+  const {
+    data: planInfo,
+    isLoading: loading,
+    refetch,
+  } = useGetAmortizationPlanInfoQuery(contractId, {
+    skip: !contractId,
+  });
 
-    const fetchPlanInfo = async () => {
-      try {
-        setLoading(true);
-        const info = await amortizationPlanApi.getAmortizationPlanInfo(contractId);
-        setPlanInfo(info);
-      } catch (error) {
-        console.error('Error fetching amortization plan info:', error);
-        setPlanInfo(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPlanInfo();
-  }, [contractId]);
-
-  const downloadPlan = async () => {
+  const downloadPlan = useCallback(async () => {
     if (!contractId) return;
 
     try {
@@ -40,10 +26,9 @@ export const useAmortizationPlan = (contractId: string) => {
         planInfo?.fileName
       );
       showSuccess('Amortization plan downloaded successfully');
-      
-      // Refresh plan info to update download count
-      const updatedInfo = await amortizationPlanApi.getAmortizationPlanInfo(contractId);
-      setPlanInfo(updatedInfo);
+
+      // Refetch plan info to update download count
+      refetch();
     } catch (error: any) {
       console.error('Error downloading amortization plan:', error);
       showError(
@@ -53,14 +38,13 @@ export const useAmortizationPlan = (contractId: string) => {
     } finally {
       setDownloading(false);
     }
-  };
+  }, [contractId, planInfo?.fileName, showSuccess, showError, refetch]);
 
   return {
-    planInfo,
+    planInfo: planInfo ?? null,
     loading,
     downloading,
     downloadPlan,
-    hasPlan: planInfo !== null,
+    hasPlan: planInfo !== null && planInfo !== undefined,
   };
 };
-

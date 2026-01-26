@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -41,7 +41,7 @@ export interface MarkPaymentPaidModalProps {
   loading?: boolean;
 }
 
-export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
+export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
   open,
   onClose,
   payment,
@@ -49,7 +49,7 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
   loading = false
 }) => {
   const theme = useTheme();
-  
+
   // Form state
   const [formData, setFormData] = useState({
     actualAmountReceived: '',
@@ -63,15 +63,15 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
   const [customCreditAmount, setCustomCreditAmount] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const toCents = (v: unknown): number => {
+  const toCents = useCallback((v: unknown): number => {
     const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : 0;
     if (!Number.isFinite(n)) return 0;
     return Math.round(n * 100);
-  };
+  }, []);
 
-  const fromCents = (cents: number): string => {
+  const fromCents = useCallback((cents: number): string => {
     return (cents / 100).toFixed(2);
-  };
+  }, []);
 
   // Calculated values
   const totalPaymentAmountCents = payment ? toCents(payment.amount) : 0;
@@ -128,7 +128,7 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
   }, [open, payment, paymentAmountCents]);
 
   // Validation
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors: { [key: string]: string } = {};
 
     if (!formData.actualAmountReceived) {
@@ -161,10 +161,10 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData.actualAmountReceived, formData.paymentMethod, actualAmount, isUnderpayment, getFromCredit, availableCreditCents, paymentAmountCents, actualAmountCents, availableCredit, creditMode, toCents, customCreditAmount]);
 
   // Handle form submission
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!validateForm() || !payment) return;
 
     try {
@@ -185,15 +185,18 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
     } catch (error) {
       console.error('Failed to mark payment as paid:', error);
     }
-  };
+  }, [validateForm, payment, onMarkAsPaid, formData.paymentMethod, formData.transactionReference, formData.notes, actualAmount, isOverpayment, overpaymentOption, isUnderpayment, getFromCredit, creditMode, toCents, customCreditAmount, onClose]);
 
   // Handle input changes
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
+    setErrors(prev => {
+      if (prev[field]) {
+        return { ...prev, [field]: '' };
+      }
+      return prev;
+    });
+  }, []);
 
   if (!payment) return null;
 
@@ -534,6 +537,8 @@ export const MarkPaymentPaidModal: React.FC<MarkPaymentPaidModalProps> = ({
       </DialogActions>
     </Dialog>
   );
-};
+});
+
+MarkPaymentPaidModal.displayName = 'MarkPaymentPaidModal';
 
 export default MarkPaymentPaidModal;

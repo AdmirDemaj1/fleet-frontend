@@ -36,7 +36,7 @@ export const contractApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Contract", "Customer", "Vehicle", "Endorser"],
+  tagTypes: ["Contract", "Customer", "Vehicle", "Endorser", "AmortizationPlan"],
   endpoints: (builder) => ({
     // Contract endpoints - Legacy (without documents)
     createContract: builder.mutation<any, CreateContractDto>({
@@ -732,6 +732,34 @@ export const contractApi = createApi({
         return response;
       },
     }),
+
+    // Get amortization plan info for a contract
+    getAmortizationPlanInfo: builder.query<
+      {
+        id: string;
+        contractId: string;
+        fileName: string;
+        fileSize: number;
+        downloadCount: number;
+        createdAt: string;
+        updatedAt: string;
+      } | null,
+      string
+    >({
+      query: (contractId) => `/amortization-plans/contract/${contractId}`,
+      providesTags: (_result, _error, contractId) => [
+        { type: "AmortizationPlan", id: contractId },
+      ],
+      transformResponse: (response: any) => response || null,
+      transformErrorResponse: (response: any) => {
+        // If 404, the amortization plan doesn't exist yet - return null
+        if (response?.status === 404) {
+          return null;
+        }
+        console.error("Error fetching amortization plan info:", response);
+        return response;
+      },
+    }),
   }),
 });
 
@@ -756,4 +784,5 @@ export const {
   useUploadAmortizationPlanJsonMutation,
   useValidateMigrationMutation,
   useMigrateContractMutation,
+  useGetAmortizationPlanInfoQuery,
 } = contractApi;

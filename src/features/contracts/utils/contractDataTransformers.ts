@@ -1,4 +1,9 @@
-import { ContractType, CollateralType, VehicleSummary, ContractFormData } from "../types/contract.types";
+import {
+  ContractType,
+  CollateralType,
+  VehicleSummary,
+  ContractFormData,
+} from "../types/contract.types";
 import dayjs from "dayjs";
 
 /**
@@ -100,7 +105,7 @@ export const buildContractFormData = (
   transformedDocuments: any[]
 ): Partial<ContractFormData> => {
   const selectedVehicleData = transformVehicles(contract.vehicles);
-  const vehicleIds = contract.vehicles?.map((v) => v.id) || [];
+  const vehicleIds = contract.vehicles?.map((v: any) => v.id) || [];
 
   const { endorserIds, endorserCollaterals } = extractEndorserCollaterals(
     contract.collaterals,
@@ -126,6 +131,15 @@ export const buildContractFormData = (
     startDate: contract.startDate,
     endDate: contract.endDate,
     totalAmount: parseFloat(contract.totalAmount) || 0,
+    minimumTotalAnnualInterestPercent:
+      contract.minimumTotalAnnualInterestPercent !== undefined &&
+      contract.minimumTotalAnnualInterestPercent !== null
+        ? Number(contract.minimumTotalAnnualInterestPercent) || 0
+        : contract.loanDetails?.minimumTotalAnnualInterestPercent !==
+            undefined &&
+          contract.loanDetails?.minimumTotalAnnualInterestPercent !== null
+        ? Number(contract.loanDetails.minimumTotalAnnualInterestPercent) || 0
+        : undefined,
     selectedVehicles: vehicleIds,
     selectedVehicleData,
     selectedCustomerData: customerData || null,
@@ -150,6 +164,8 @@ export const buildContractFormData = (
       interestRate: 0,
       loanTermMonths: loanTermMonths || 36,
       monthlyPayment: 0,
+      minimumTotalAnnualInterestPercent:
+        transformedData.minimumTotalAnnualInterestPercent,
       processingFeePercentage: 0.02,
       earlyRepaymentPenalty: 0.03,
       paymentScheduleType: "monthly_fixed",
@@ -171,4 +187,3 @@ export const buildContractFormData = (
 
   return transformedData;
 };
-

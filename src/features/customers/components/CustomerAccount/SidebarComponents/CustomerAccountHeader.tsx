@@ -201,6 +201,14 @@ const CustomerAccountHeader: React.FC<CustomerAccountHeaderProps> = ({
           </>
         ) : (
           <>
+            {customerData.businessType && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Business sx={{ fontSize: 14, color: 'text.secondary' }} />
+                <Typography variant="caption" color="text.secondary">
+                  Type: {customerData.businessType}
+                </Typography>
+              </Box>
+            )}
             {customerData.nuisNipt && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Tag sx={{ fontSize: 14, color: 'text.secondary' }} />

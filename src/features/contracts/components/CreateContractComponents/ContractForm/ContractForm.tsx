@@ -98,10 +98,25 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   // User-editable minimum allowed total annual interest rate (Euribor + Margin), in percentage points.
   // Example: 0.01 means 0.01% annual.
   const [minTotalAnnualInterestPercent, setMinTotalAnnualInterestPercent] =
-    useState<number>(0.01);
+    useState<number>(1);
+
+  useEffect(() => {
+    const valueFromInitialData =
+      initialData?.minimumTotalAnnualInterestPercent ??
+      initialData?.loanDetails?.minimumTotalAnnualInterestPercent;
+
+    if (valueFromInitialData !== undefined) {
+      setMinTotalAnnualInterestPercent(
+        Number(valueFromInitialData) || 0
+      );
+    }
+  }, [
+    initialData?.loanDetails?.minimumTotalAnnualInterestPercent,
+    initialData?.minimumTotalAnnualInterestPercent,
+  ]);
 
   const [euriborRate, setEuriborRate] = useState<number>(0);
-  const [marginRate, setMarginRate] = useState<number>(0);
+  const [marginRate, setMarginRate] = useState<number>(1);
   const [euriborRateId, setEuriborRateId] = useState<string | null>(null);
   const [euriborTenor, setEuriborTenor] = useState<string | null>(null);
   const [loadingEuribor, setLoadingEuribor] = useState<boolean>(false);
@@ -714,6 +729,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         // Build the submit data with files and document metadata
         const submitData: any = {
           ...baseContractData,
+          minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
           // Add files and document metadata for the new multipart/form-data approach
           files: files.length > 0 ? files : undefined,
           documents: documentMetadata.length > 0 ? documentMetadata : undefined,
@@ -754,6 +770,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             loanTermMonths: formDataToUse.loanDetails.loanTermMonths,
             monthlyPayment: formDataToUse.loanDetails.monthlyPayment,
             totalInterest: Math.round(totalInterest * 100) / 100, // Round to 2 decimal places
+            minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
             processingFeePercentage:
               formDataToUse.loanDetails.processingFeePercentage,
             earlyRepaymentPenalty:
@@ -806,7 +823,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
       }
     },
-    [onSubmit]
+    [euriborRateId, euriborTenor, getValues, marginRate, minTotalAnnualInterestPercent, onSubmit]
   );
 
   const renderStepContent = () => {
@@ -1119,7 +1136,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     <InputAdornment position="end">%</InputAdornment>
                   ),
                 }}
-                inputProps={{ min: 0, max: 100, step: 0.01 }}
+                inputProps={{ min: 0, max: 100, step: 1 }}
                 helperText={
                   isEdit
                     ? "Minimum interest cannot be changed in edit mode"
@@ -1244,7 +1261,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 inputProps={{
                   min: 0,
                   max: 100,
-                  step: 0.01,
+                  step: 0.5,
                 }}
                 helperText={
                   isInterestBelowMinimum
@@ -2352,6 +2369,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                               loanTermMonths: formDataToUse.loanDetails.loanTermMonths,
                               monthlyPayment: formDataToUse.loanDetails.monthlyPayment,
                               totalInterest: Math.round(totalInterest * 100) / 100,
+                              minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
                               processingFeePercentage:
                                 formDataToUse.loanDetails.processingFeePercentage,
                               earlyRepaymentPenalty:

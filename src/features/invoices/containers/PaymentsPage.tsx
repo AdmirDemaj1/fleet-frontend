@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -19,7 +19,7 @@ import { PaymentStatus } from '../types/invoice.types';
 
 const PaymentsPage: React.FC = () => {
   const navigate = useNavigate();
-  
+
   const {
     payments,
     isLoading,
@@ -47,27 +47,42 @@ const PaymentsPage: React.FC = () => {
   console.log('Pending count:', payments.filter(p => p.status === 'pending').length);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
-  const handleRefresh = async () => {
+  // Memoize stats calculations
+  const stats = useMemo(() => ({
+    paid: payments.filter(p => p.status === 'paid').length,
+    pending: payments.filter(p => p.status === 'pending').length,
+    overdue: payments.filter(p => p.status === 'overdue').length,
+  }), [payments]);
+
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
       await refetch();
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [refetch]);
 
-  const handleViewCustomer = (customerId: string) => {
+  const handleViewCustomer = useCallback((customerId: string) => {
     navigate(`/customers/${customerId}`);
-  };
+  }, [navigate]);
 
-  const handleViewContract = (contractId: string) => {
+  const handleViewContract = useCallback((contractId: string) => {
     navigate(`/contracts/${contractId}`);
-  };
+  }, [navigate]);
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
     // TODO: Implement export functionality
     console.log('Export payments');
-  };
+  }, []);
+
+  const handleViewPayment = useCallback((paymentId: string) => {
+    navigate(`/payments/${paymentId}`);
+  }, [navigate]);
+
+  const handleSort = useCallback((field: string) => {
+    handleSortChange(field, sortOrder === 'asc' ? 'desc' : 'asc');
+  }, [handleSortChange, sortOrder]);
 
   if (isError) {
     return (
@@ -147,10 +162,10 @@ const PaymentsPage: React.FC = () => {
           </Typography>
         </Paper>
         
-        <Paper 
+        <Paper
           elevation={0}
-          sx={{ 
-            p: 3, 
+          sx={{
+            p: 3,
             textAlign: 'center',
             border: '1px solid',
             borderColor: 'divider',
@@ -158,17 +173,17 @@ const PaymentsPage: React.FC = () => {
           }}
         >
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main', mb: 1 }}>
-            {payments.filter(p => p.status === 'paid').length.toLocaleString()}
+            {stats.paid.toLocaleString()}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Paid
           </Typography>
         </Paper>
-        
-        <Paper 
+
+        <Paper
           elevation={0}
-          sx={{ 
-            p: 3, 
+          sx={{
+            p: 3,
             textAlign: 'center',
             border: '1px solid',
             borderColor: 'divider',
@@ -176,17 +191,17 @@ const PaymentsPage: React.FC = () => {
           }}
         >
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'warning.main', mb: 1 }}>
-            {payments.filter(p => p.status === 'pending').length.toLocaleString()}
+            {stats.pending.toLocaleString()}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Pending
           </Typography>
         </Paper>
-        
-        <Paper 
+
+        <Paper
           elevation={0}
-          sx={{ 
-            p: 3, 
+          sx={{
+            p: 3,
             textAlign: 'center',
             border: '1px solid',
             borderColor: 'divider',
@@ -194,7 +209,7 @@ const PaymentsPage: React.FC = () => {
           }}
         >
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.secondary', mb: 1 }}>
-            {payments.filter(p => p.status === 'overdue').length.toLocaleString()}
+            {stats.overdue.toLocaleString()}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Overdue
@@ -237,8 +252,8 @@ const PaymentsPage: React.FC = () => {
         sortOrder={sortOrder}
         onPageChange={handlePageChange}
         onPageSizeChange={handleRowsPerPageChange}
-        onSortChange={(field: string) => handleSortChange(field, sortOrder === 'asc' ? 'desc' : 'asc')}
-        onViewPayment={(paymentId: string) => navigate(`/payments/${paymentId}`)}
+        onSortChange={handleSort}
+        onViewPayment={handleViewPayment}
         onViewCustomer={handleViewCustomer}
         onViewContract={handleViewContract}
       />
