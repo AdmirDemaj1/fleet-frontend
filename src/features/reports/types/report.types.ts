@@ -1,48 +1,17 @@
-export enum ReportEntityType {
-  CUSTOMER = 'customer',
-  CONTRACT = 'contract',
-  PAYMENT = 'payment',
-  VEHICLE = 'vehicle',
-  COLLATERAL = 'collateral',
+export enum SimpleReportType {
+  PAYMENTS = 'payments',
+  PAYMENTS_PER_CUSTOMER = 'payments_per_customer',
+  PAYMENTS_PER_CONTRACT = 'payments_per_contract',
+  CUSTOMERS = 'customers',
+  CONTRACTS = 'contracts',
 }
 
-export enum FilterOperator {
-  EQUALS = 'equals',
-  NOT_EQUALS = 'not_equals',
-  IN = 'in',
-  NOT_IN = 'not_in',
-  GREATER_THAN = 'greater_than',
-  GREATER_THAN_OR_EQUAL = 'greater_than_or_equal',
-  LESS_THAN = 'less_than',
-  LESS_THAN_OR_EQUAL = 'less_than_or_equal',
-  BETWEEN = 'between',
-  LIKE = 'like',
-  IS_NULL = 'is_null',
-  IS_NOT_NULL = 'is_not_null',
-}
-
-export interface FilterCondition {
-  field: string;
-  operator: FilterOperator;
-  value?: any;
-  relation?: string;
-}
-
-export interface GenerateDynamicReportDto {
-  entityType: ReportEntityType;
-  relations?: string[];
-  filters?: FilterCondition[];
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  options?: {
-    includeAllFields?: boolean;
-    limit?: number;
-    offset?: number;
-  };
-}
-
-export interface FilterFieldsResponse {
-  [entityType: string]: string[];
+export interface SimplifiedReportRequest {
+  reportType: SimpleReportType;
+  startDate?: string;
+  endDate?: string;
+  customerId?: string;
+  contractId?: string;
 }
 
 // Stored Reports Types
