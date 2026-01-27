@@ -13,6 +13,7 @@ import {
   CustomerCreditBalance,
   PaymentStatus,
   PaymentType,
+  UpdatePaymentPenaltySettingsDto,
 } from "../types/invoice.types";
 
 import { getApiUrl } from "../../../shared/utils/env";
@@ -665,6 +666,39 @@ export const paymentsApi = createApi({
       },
     }),
 
+    updatePaymentPenalties: builder.mutation<
+      Payment,
+      { id: string; data: UpdatePaymentPenaltySettingsDto }
+    >({
+      query: ({ id, data }) => ({
+        url: `/payments/${id}/penalties`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Payment", id },
+        "Payment",
+      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+
+          const { contractApi } = await import(
+            "../../contracts/api/contractApi"
+          );
+          dispatch(contractApi.util.invalidateTags(["Contract"]));
+          console.log(
+            "✅ Contract cache invalidated after payment penalty update"
+          );
+        } catch (error) {
+          console.error(
+            "❌ Failed to invalidate contract cache after penalty update:",
+            error
+          );
+        }
+      },
+    }),
+
     getCustomerCreditBalance: builder.query<CustomerCreditBalance, string>({
       query: (customerId) => `/payments/customer/${customerId}/credit-balance`,
       providesTags: (_result, _error, customerId) => [
@@ -688,5 +722,6 @@ export const {
   useMarkPaymentAsPaidMutation,
   useMarkPaymentAsPaidWithCreditMutation,
   useApplyPaymentMutation,
+  useUpdatePaymentPenaltiesMutation,
   useGetCustomerCreditBalanceQuery,
 } = paymentsApi;

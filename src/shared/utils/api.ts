@@ -4,11 +4,21 @@ import { tokenStorage } from '../../features/auth/utils/tokenStorage';
 
 class ApiClient {
   private instance: AxiosInstance;
+  private refreshInstance: AxiosInstance;
   private isRefreshing = false;
   private refreshPromise: Promise<string> | null = null;
 
   constructor() {
     this.instance = axios.create({
+      baseURL: getApiUrl(),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    // Separate Axios instance used ONLY for refreshing tokens.
+    // This avoids request/response interceptor recursion when we refresh pre-request.
+    this.refreshInstance = axios.create({
       baseURL: getApiUrl(),
       headers: {
         'Content-Type': 'application/json'
@@ -21,10 +31,28 @@ class ApiClient {
   private setupInterceptors() {
     // Request interceptor for adding auth token
     this.instance.interceptors.request.use(
-      (config) => {
-        const accessToken = tokenStorage.getAccessToken();
-        if (accessToken && !this.isAuthEndpoint(config.url)) {
-          config.headers.Authorization = `Bearer ${accessToken}`;
+      async (config) => {
+        // Never attach auth headers (or pre-refresh) for auth endpoints
+        if (this.isAuthEndpoint(config.url)) return config;
+
+        const refreshToken = tokenStorage.getRefreshToken();
+        let accessToken = tokenStorage.getAccessToken();
+
+        // Proactively refresh if token is expired (or near-expired) to avoid 401 loops.
+        if (accessToken && refreshToken && tokenStorage.isAccessTokenExpired()) {
+          try {
+            accessToken = await this.refreshAccessToken();
+          } catch (e) {
+            // Refresh token no longer valid -> force logout and redirect.
+            this.handleAuthFailure('refresh_failed');
+            throw e;
+          }
+        }
+
+        if (accessToken) {
+          config.headers = config.headers ?? {};
+          // Axios headers typing varies between versions; cast to avoid TS friction.
+          (config.headers as any).Authorization = `Bearer ${accessToken}`;
           console.debug('🔐 API Request with token:', {
             url: config.url,
             method: config.method,
@@ -32,6 +60,7 @@ class ApiClient {
             tokenExpired: tokenStorage.isAccessTokenExpired()
           });
         }
+
         return config;
       },
       (error) => Promise.reject(error)
@@ -69,16 +98,16 @@ class ApiClient {
             return this.instance(originalRequest);
           } catch (refreshError) {
             console.error('❌ Token refresh failed:', refreshError);
-            // Don't logout on session expiration - just reject the request
-            // The user can continue working and retry the action
+            // If refresh failed, the app cannot recover on its own; clear auth and redirect.
+            this.handleAuthFailure('refresh_failed');
             return Promise.reject(refreshError);
           }
         }
 
-        // For other 401 errors, don't logout - just reject the request
-        // This allows the user to continue working even if session expires
         if (error.response?.status === 401) {
-          console.warn('⚠️ 401 Unauthorized - Request rejected but user remains logged in');
+          // No refresh token (or auth endpoint) -> force logout instead of leaving a broken "logged in" state.
+          console.warn('⚠️ 401 Unauthorized - forcing logout');
+          this.handleAuthFailure('unauthorized');
         }
         
         return Promise.reject(error);
@@ -106,13 +135,54 @@ class ApiClient {
           throw new Error('No refresh token available');
         }
 
-        const response = await this.instance.post('/auth/refresh-token', {
-          refreshToken
-        });
+        // Use refreshInstance to avoid interceptor recursion.
+        // Some backends expose `/auth/refresh` while others use `/auth/refresh-token`.
+        // We try `/auth/refresh-token` first and fall back to `/auth/refresh` on 404.
+        let response;
+        try {
+          response = await this.refreshInstance.post('/auth/refresh-token', { refreshToken });
+        } catch (e: any) {
+          const status = e?.response?.status;
+          if (status === 404) {
+            response = await this.refreshInstance.post('/auth/refresh', { refreshToken });
+          } else {
+            throw e;
+          }
+        }
 
-        const { accessToken, refreshToken: newRefreshToken, expiresIn } = response.data;
+        const data: any = response.data ?? {};
+        const accessToken: string | undefined = data.accessToken ?? data.access_token;
+        const maybeNewRefreshToken: string | undefined = data.refreshToken ?? data.refresh_token;
+        const expiresInRaw: unknown = data.expiresIn ?? data.expires_in;
+        const expiresAtRaw: unknown = data.expiresAt ?? data.expires_at;
+
+        if (!accessToken) {
+          throw new Error('Refresh response missing accessToken');
+        }
+
+        // Support non-rotating refresh tokens by falling back to the existing one.
+        const newRefreshToken: string = maybeNewRefreshToken || refreshToken;
+
+        let expiresIn: number | null = null;
+        if (typeof expiresInRaw === 'number' && Number.isFinite(expiresInRaw)) {
+          expiresIn = expiresInRaw;
+        } else if (typeof expiresAtRaw === 'number' && Number.isFinite(expiresAtRaw)) {
+          expiresIn = Math.max(0, Math.floor((expiresAtRaw - Date.now()) / 1000));
+        } else if (typeof expiresAtRaw === 'string') {
+          const parsed = Date.parse(expiresAtRaw);
+          if (!Number.isNaN(parsed)) {
+            expiresIn = Math.max(0, Math.floor((parsed - Date.now()) / 1000));
+          }
+        }
+
+        // If backend doesn't provide expiry, pick a conservative short TTL to avoid "forever-valid" UI state.
+        if (expiresIn === null) {
+          console.warn('⚠️ Refresh response missing expiry (expiresIn/expiresAt). Defaulting to 5 minutes.');
+          expiresIn = 5 * 60;
+        }
         
         // Update stored tokens
+        // If backend doesn't rotate refresh tokens, this is still safe (we reuse the existing refresh token).
         tokenStorage.updateTokens(accessToken, newRefreshToken, expiresIn);
         
         // Trigger a custom event to notify other parts of the app about token refresh
@@ -122,9 +192,6 @@ class ApiClient {
         
         return accessToken;
       } catch (error) {
-        // Don't clear tokens on refresh failure - let user stay logged in
-        // They can retry the action or continue working
-        console.warn('⚠️ Token refresh failed, but keeping user logged in');
         throw error;
       } finally {
         this.isRefreshing = false;
@@ -135,9 +202,12 @@ class ApiClient {
     return this.refreshPromise;
   }
 
-  private handleAuthFailure(): void {
+  private handleAuthFailure(reason: 'refresh_failed' | 'unauthorized' = 'unauthorized'): void {
     // Clear auth data
     tokenStorage.clearAuth();
+
+    // Notify the app (Redux/AuthContext) to update UI state immediately.
+    window.dispatchEvent(new CustomEvent('authInvalidated', { detail: { reason } }));
     
     // Only redirect if not already on login page
     if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {

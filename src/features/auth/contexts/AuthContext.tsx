@@ -79,29 +79,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }));
   }, [dispatch]);
 
+  // Handle auth invalidation events from API interceptor (e.g., refresh failed / unauthorized)
+  const handleAuthInvalidated = useCallback((event: CustomEvent) => {
+    console.warn('🔒 Auth invalidated by API interceptor:', event.detail);
+    dispatch(logout());
+  }, [dispatch]);
+
   useEffect(() => {
     // Initialize auth state on app start
     console.log('🚀 AuthProvider initializing...');
     console.log('🔍 Current auth state before init:', { isAuthenticated, user: !!user, isLoading });
     dispatch(initializeAuth());
-    
-    // Log state after a small delay to see the result
-    setTimeout(() => {
-      console.log('🔍 Auth state after init:', { isAuthenticated, user: !!user, isLoading });
-    }, 100);
 
     // Add storage event listener for cross-tab sync
     window.addEventListener('storage', handleStorageChange);
     
     // Add token refresh event listener
     window.addEventListener('tokenRefreshed', handleTokenRefresh as EventListener);
+
+    // Add auth invalidated event listener
+    window.addEventListener('authInvalidated', handleAuthInvalidated as EventListener);
     
     // Cleanup on unmount
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('tokenRefreshed', handleTokenRefresh as EventListener);
+      window.removeEventListener('authInvalidated', handleAuthInvalidated as EventListener);
     };
-  }, [dispatch, handleStorageChange]);
+  }, [dispatch, handleStorageChange, handleTokenRefresh, handleAuthInvalidated]);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
     try {
