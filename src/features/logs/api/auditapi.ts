@@ -1,22 +1,16 @@
 // src/features/logs/api/auditapi.ts
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { getApiUrl } from '../../../shared/utils/env';
-import { tokenStorage } from '../../auth/utils/tokenStorage';
-import { AuditLogResponseDto, FindAuditLogsDto, CustomerLogFilters } from '../types/audit.types';
-import { API_ENDPOINTS } from '../../../shared/utils/constants';
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "../../../shared/utils/rtkBaseQuery";
+import {
+  AuditLogResponseDto,
+  FindAuditLogsDto,
+  CustomerLogFilters,
+} from "../types/audit.types";
+import { API_ENDPOINTS } from "../../../shared/utils/constants";
 
 export const auditApi = createApi({
-  reducerPath: 'auditApi',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl: getApiUrl(),
-    prepareHeaders: (headers) => {
-      const token = tokenStorage.getAccessToken();
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  reducerPath: "auditApi",
+  baseQuery: baseQueryWithReauth,
   endpoints: (builder) => ({
     getAuditLogs: builder.query<
       { data: AuditLogResponseDto[]; total: number },
@@ -31,27 +25,39 @@ export const auditApi = createApi({
           entityId: params.entityId,
           entityType: params.entityType,
           userId: params.userId,
-          eventTypes: params.eventTypes ? params.eventTypes.join(',') : undefined,
+          eventTypes: params.eventTypes
+            ? params.eventTypes.join(",")
+            : undefined,
           startDate: params.startDate,
           endDate: params.endDate,
         },
       }),
-      transformResponse: (response: any, meta) => {
+      transformResponse: (response: any) => {
         // Handle different response structures
         let logsArray: AuditLogResponseDto[];
         let total: number;
         
         if (Array.isArray(response)) {
           logsArray = response;
-          total = parseInt(meta?.response?.headers.get('X-Total-Count') || '0', 10);
-        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          total = logsArray.length;
+        } else if (
+          response &&
+          typeof response === "object" &&
+          "data" in response &&
+          Array.isArray(response.data)
+        ) {
           logsArray = response.data;
           total = response.meta?.total || logsArray.length;
-        } else if (response && typeof response === 'object' && 'logs' in response && Array.isArray(response.logs)) {
+        } else if (
+          response &&
+          typeof response === "object" &&
+          "logs" in response &&
+          Array.isArray(response.logs)
+        ) {
           logsArray = response.logs;
           total = response.meta?.total || logsArray.length;
         } else {
-          console.warn('Unexpected audit logs response structure:', response);
+          console.warn("Unexpected audit logs response structure:", response);
           logsArray = [];
           total = 0;
         }
@@ -73,27 +79,42 @@ export const auditApi = createApi({
           limit: params.limit,
           offset: params.offset,
           search: params.search,
-          eventTypes: params.eventTypes ? params.eventTypes.join(',') : undefined,
+          eventTypes: params.eventTypes
+            ? params.eventTypes.join(",")
+            : undefined,
           startDate: params.startDate,
           endDate: params.endDate,
         },
       }),
-      transformResponse: (response: any, meta) => {
+      transformResponse: (response: any) => {
         // Handle different response structures
         let logsArray: AuditLogResponseDto[];
         let total: number;
         
         if (Array.isArray(response)) {
           logsArray = response;
-          total = parseInt(meta?.response?.headers.get('X-Total-Count') || '0', 10);
-        } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          total = logsArray.length;
+        } else if (
+          response &&
+          typeof response === "object" &&
+          "data" in response &&
+          Array.isArray(response.data)
+        ) {
           logsArray = response.data;
           total = response.meta?.total || logsArray.length;
-        } else if (response && typeof response === 'object' && 'logs' in response && Array.isArray(response.logs)) {
+        } else if (
+          response &&
+          typeof response === "object" &&
+          "logs" in response &&
+          Array.isArray(response.logs)
+        ) {
           logsArray = response.logs;
           total = response.meta?.total || logsArray.length;
         } else {
-          console.warn('Unexpected customer logs response structure:', response);
+          console.warn(
+            "Unexpected customer logs response structure:",
+            response
+          );
           logsArray = [];
           total = 0;
         }

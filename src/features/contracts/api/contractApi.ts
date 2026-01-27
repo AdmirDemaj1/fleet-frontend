@@ -1,6 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { getApiUrl } from "../../../shared/utils/env";
-import { tokenStorage } from "../../auth/utils/tokenStorage";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "../../../shared/utils/rtkBaseQuery";
 import {
   CreateContractDto,
   UpdateContractDto,
@@ -25,17 +24,7 @@ export interface EarlyPayoffRequestDto {
 
 export const contractApi = createApi({
   reducerPath: "contractApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: getApiUrl(),
-    prepareHeaders: (headers) => {
-      // Add authorization header if needed
-      const token = tokenStorage.getAccessToken();
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Contract", "Customer", "Vehicle", "Endorser", "AmortizationPlan"],
   endpoints: (builder) => ({
     // Contract endpoints - Legacy (without documents)

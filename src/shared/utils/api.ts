@@ -35,20 +35,11 @@ class ApiClient {
         // Never attach auth headers (or pre-refresh) for auth endpoints
         if (this.isAuthEndpoint(config.url)) return config;
 
-        const refreshToken = tokenStorage.getRefreshToken();
-        let accessToken = tokenStorage.getAccessToken();
+        const accessToken = tokenStorage.getAccessToken();
 
-        // Proactively refresh if token is expired (or near-expired) to avoid 401 loops.
-        if (accessToken && refreshToken && tokenStorage.isAccessTokenExpired()) {
-          try {
-            accessToken = await this.refreshAccessToken();
-          } catch (e) {
-            // Refresh token no longer valid -> force logout and redirect.
-            this.handleAuthFailure('refresh_failed');
-            throw e;
-          }
-        }
-
+        // Don't proactively refresh - let the backend tell us if token is expired
+        // This avoids unnecessary refresh calls and potential logout loops
+        
         if (accessToken) {
           config.headers = config.headers ?? {};
           // Axios headers typing varies between versions; cast to avoid TS friction.
@@ -246,6 +237,11 @@ class ApiClient {
   // Method to check if tokens need refresh
   shouldRefreshToken(): boolean {
     return tokenStorage.isAccessTokenExpired() && !!tokenStorage.getRefreshToken();
+  }
+
+  // Expose the Axios instance for RTK Query integration
+  get axiosInstance() {
+    return this.instance;
   }
 }
 
