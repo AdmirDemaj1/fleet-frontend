@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -18,6 +18,10 @@ import {
   TableRow,
   Tooltip,
   Link as MuiLink,
+  Switch,
+  FormControlLabel,
+  TextField,
+  Button,
 } from "@mui/material";
 import {
   CreditCard,
@@ -37,6 +41,8 @@ import {
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Payment, PaymentStatus } from "../types/invoice.types";
+import { useUpdatePaymentPenaltiesMutation } from "../api/paymentsApi";
+import { useNotification } from "../../../shared/hooks/useNotification";
 
 interface PaymentInformationProps {
   payment: Payment;
@@ -47,12 +53,36 @@ export const PaymentInformation = React.memo<PaymentInformationProps>(({
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotification();
+  const [updatePaymentPenalties, { isLoading: isUpdatingPenaltySettings }] =
+    useUpdatePaymentPenaltiesMutation();
   const [showRecalculationHistory, setShowRecalculationHistory] =
     useState(false);
+  const [applyPenalties, setApplyPenalties] = useState(
+    Boolean(payment.applyPenalties)
+  );
+  const [latePenaltyRatePerDay, setLatePenaltyRatePerDay] = useState(
+    payment.latePenaltyRatePerDay !== undefined &&
+      payment.latePenaltyRatePerDay !== null
+      ? String(payment.latePenaltyRatePerDay)
+      : ""
+  );
+  const [penaltyRateError, setPenaltyRateError] = useState<string | null>(null);
 
   const handleToggleRecalculationHistory = useCallback(() => {
     setShowRecalculationHistory(prev => !prev);
   }, []);
+
+  useEffect(() => {
+    setApplyPenalties(Boolean(payment.applyPenalties));
+    setLatePenaltyRatePerDay(
+      payment.latePenaltyRatePerDay !== undefined &&
+        payment.latePenaltyRatePerDay !== null
+        ? String(payment.latePenaltyRatePerDay)
+        : ""
+    );
+    setPenaltyRateError(null);
+  }, [payment.id, payment.applyPenalties, payment.latePenaltyRatePerDay]);
 
   const formatCurrency = (amount: string | number): string => {
     const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -87,6 +117,59 @@ export const PaymentInformation = React.memo<PaymentInformationProps>(({
     const dateObj = typeof date === "string" ? new Date(date) : date;
     return format(dateObj, "MMMM dd, yyyy • hh:mm a");
   };
+
+  const getExistingPenaltyRate = () => {
+    const rawRate = payment.latePenaltyRatePerDay;
+    if (rawRate === undefined || rawRate === null || rawRate === "") {
+      return undefined;
+    }
+    const parsed =
+      typeof rawRate === "string" ? parseFloat(rawRate) : rawRate;
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const handleSavePenaltySettings = useCallback(async () => {
+    const trimmedRate = latePenaltyRatePerDay.trim();
+    const parsedRate =
+      trimmedRate === "" ? undefined : Number.parseFloat(trimmedRate);
+    const existingRate = getExistingPenaltyRate();
+
+    if (applyPenalties) {
+      const rateToValidate = parsedRate ?? existingRate;
+      if (!Number.isFinite(rateToValidate) || Number(rateToValidate) <= 0) {
+        const message =
+          "Late penalty rate per day must be > 0 when penalties are enabled.";
+        setPenaltyRateError(message);
+        showError(message);
+        return;
+      }
+    }
+
+    try {
+      await updatePaymentPenalties({
+        id: payment.id,
+        data: {
+          applyPenalties,
+          ...(parsedRate !== undefined
+            ? { latePenaltyRatePerDay: parsedRate }
+            : {}),
+        },
+      }).unwrap();
+
+      setPenaltyRateError(null);
+      showSuccess("Penalty settings updated.");
+    } catch (error) {
+      console.error("Failed to update penalty settings:", error);
+      showError("Failed to update penalty settings. Please try again.");
+    }
+  }, [
+    applyPenalties,
+    latePenaltyRatePerDay,
+    payment.id,
+    updatePaymentPenalties,
+    showSuccess,
+    showError,
+  ]);
 
   const getPaymentMethodInfo = (method: string | null) => {
     if (!method) return null;
@@ -321,6 +404,62 @@ export const PaymentInformation = React.memo<PaymentInformationProps>(({
           </Box>
         </Grid>
       </Grid>
+
+      {/* Penalty Settings */}
+      <Divider sx={{ my: 3 }} />
+      <Box>
+        <Typography
+          variant="subtitle1"
+          sx={{ fontWeight: 600, mb: 2, color: "text.secondary" }}
+        >
+          Penalty Settings
+        </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={applyPenalties}
+              onChange={(event) => {
+                setApplyPenalties(event.target.checked);
+                if (!event.target.checked) {
+                  setPenaltyRateError(null);
+                }
+              }}
+              color="primary"
+            />
+          }
+          label="Apply penalties to this payment"
+          sx={{ mb: 2, display: "flex", alignItems: "center" }}
+        />
+    
+          <TextField
+            label="Late penalty rate per day"
+            type="number"
+            value={latePenaltyRatePerDay}
+            onChange={(event) => {
+              setLatePenaltyRatePerDay(event.target.value);
+              if (penaltyRateError) {
+                setPenaltyRateError(null);
+              }
+            }}
+            error={Boolean(penaltyRateError)}
+            helperText={
+              penaltyRateError ||
+              "Must be > 0 when penalties are enabled."
+            }
+            inputProps={{ min: 0, step: 0.01 }}
+            disabled={!applyPenalties}
+            // sx={{ maxWidth: 240 }}
+          />
+          <Button
+          sx={{ mt: 1, ml: 2 }}
+            variant="contained"
+            onClick={handleSavePenaltySettings}
+            disabled={isUpdatingPenaltySettings}
+          >
+            Save
+          </Button>
+     
+      </Box>
 
       {/* Additional Information */}
       {(payment.transactionReference || payment.notes) && (

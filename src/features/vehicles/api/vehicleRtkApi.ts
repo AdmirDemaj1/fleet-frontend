@@ -1,6 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { getApiUrl } from "../../../shared/utils/env";
-import { tokenStorage } from "../../auth/utils/tokenStorage";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "../../../shared/utils/rtkBaseQuery";
 import {
   Vehicle,
   VehicleQueryParams,
@@ -10,16 +9,7 @@ import {
 
 export const vehicleRtkApi = createApi({
   reducerPath: "vehicleRtkApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: getApiUrl(),
-    prepareHeaders: (headers) => {
-      const token = tokenStorage.getAccessToken();
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Vehicle", "VehicleStatistics"],
   endpoints: (builder) => ({
     // Get vehicles with filtering and pagination

@@ -43,6 +43,8 @@ export interface Payment {
   paymentDate?: Date | string;
   status: PaymentStatus;
   type: PaymentType;
+  applyPenalties?: boolean;
+  latePenaltyRatePerDay?: number | string;
   notes?: string;
   paymentMethod?: string;
   transactionReference?: string;
@@ -111,6 +113,11 @@ export interface ApplyPaymentDto {
   getFromCredit: boolean;
   creditAmount?: number; // optional: amount to take from credit (defaults to remaining if omitted)
   notes?: string;
+}
+
+export interface UpdatePaymentPenaltySettingsDto {
+  applyPenalties?: boolean;
+  latePenaltyRatePerDay?: number;
 }
 
 export interface RegisterPaymentDto {

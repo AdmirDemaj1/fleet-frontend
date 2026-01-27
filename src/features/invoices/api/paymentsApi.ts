@@ -1,4 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "../../../shared/utils/rtkBaseQuery";
 import {
   Payment,
   PaymentWithCreditResponse,
@@ -13,26 +14,12 @@ import {
   CustomerCreditBalance,
   PaymentStatus,
   PaymentType,
+  UpdatePaymentPenaltySettingsDto,
 } from "../types/invoice.types";
-
-import { getApiUrl } from "../../../shared/utils/env";
-import { tokenStorage } from "../../auth/utils/tokenStorage";
 
 export const paymentsApi = createApi({
   reducerPath: "paymentsApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: getApiUrl(),
-    prepareHeaders: (headers) => {
-      // Add authorization header if needed
-      const token = tokenStorage.getAccessToken();
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      headers.set("Accept", "application/json");
-      headers.set("Content-Type", "application/json");
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Payment", "CustomerCredit"],
   endpoints: (builder) => ({
     getPayments: builder.query<
@@ -665,6 +652,39 @@ export const paymentsApi = createApi({
       },
     }),
 
+    updatePaymentPenalties: builder.mutation<
+      Payment,
+      { id: string; data: UpdatePaymentPenaltySettingsDto }
+    >({
+      query: ({ id, data }) => ({
+        url: `/payments/${id}/penalties`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "Payment", id },
+        "Payment",
+      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+
+          const { contractApi } = await import(
+            "../../contracts/api/contractApi"
+          );
+          dispatch(contractApi.util.invalidateTags(["Contract"]));
+          console.log(
+            "✅ Contract cache invalidated after payment penalty update"
+          );
+        } catch (error) {
+          console.error(
+            "❌ Failed to invalidate contract cache after penalty update:",
+            error
+          );
+        }
+      },
+    }),
+
     getCustomerCreditBalance: builder.query<CustomerCreditBalance, string>({
       query: (customerId) => `/payments/customer/${customerId}/credit-balance`,
       providesTags: (_result, _error, customerId) => [
@@ -688,5 +708,6 @@ export const {
   useMarkPaymentAsPaidMutation,
   useMarkPaymentAsPaidWithCreditMutation,
   useApplyPaymentMutation,
+  useUpdatePaymentPenaltiesMutation,
   useGetCustomerCreditBalanceQuery,
 } = paymentsApi;

@@ -1,6 +1,5 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { getApiUrl } from "../../../shared/utils/env";
-import { tokenStorage } from "../../auth/utils/tokenStorage";
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { baseQueryWithReauth } from "../../../shared/utils/rtkBaseQuery";
 
 // Add these enums to match your backend
 export enum ContractDocumentType {
@@ -66,26 +65,7 @@ export interface DocumentRequirementsDto {
 
 export const contractDocumentApi = createApi({
   reducerPath: "contractDocumentApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: getApiUrl(),
-    prepareHeaders: (headers) => {
-      // Add authorization header if needed
-      const token = tokenStorage.getAccessToken();
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-
-      // Get or generate a consistent user ID
-      let userId = localStorage.getItem("userId");
-      if (!userId) {
-        userId = crypto.randomUUID();
-        localStorage.setItem("userId", userId);
-      }
-      headers.set("x-user-id", userId);
-
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["ContractDocument"],
   endpoints: (builder) => ({
     // Test endpoint to verify backend connection

@@ -5,6 +5,7 @@ import {
   VehicleDocumentType, 
   VehicleDocument
 } from "../types/vehicleType";
+import { baseQueryWithReauth } from "../../../shared/utils/rtkBaseQuery";
 
 // Interface for the actual upload request (standalone document upload)
 export interface UploadVehicleDocumentRequestData {
@@ -18,28 +19,16 @@ export interface UploadVehicleDocumentRequestData {
   metadata?: Record<string, any>;
 }
 
+// Custom base query for document uploads that adds user-id header
+const documentBaseQuery = async (args: any, api: any, extraOptions: any) => {
+  // Use the base query with reauth
+  const result = await baseQueryWithReauth(args, api, extraOptions);
+  return result;
+};
+
 export const vehicleDocumentApi = createApi({
   reducerPath: "vehicleDocumentApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: getApiUrl(),
-    prepareHeaders: (headers) => {
-      // Add authorization header if needed
-      const token = tokenStorage.getAccessToken();
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      
-      // Get or generate a consistent user ID
-      let userId = localStorage.getItem("userId");
-      if (!userId) {
-        userId = crypto.randomUUID();
-        localStorage.setItem("userId", userId);
-      }
-      headers.set("x-user-id", userId);
-      
-      return headers;
-    },
-  }),
+  baseQuery: documentBaseQuery,
   tagTypes: ["VehicleDocument"],
   endpoints: (builder) => ({
     // Upload a standalone vehicle document using /documents/upload endpoint
