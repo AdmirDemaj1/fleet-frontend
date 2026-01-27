@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Container,
   Typography,
@@ -10,49 +10,39 @@ import {
   Breadcrumbs,
   Link,
   Grid,
-  Divider,
   Tabs,
   Tab,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Assessment as ReportIcon,
   Home as HomeIcon,
   Download as DownloadIcon,
   History as HistoryIcon,
   Add as AddIcon,
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import {
-  EntitySelector,
-  RelationSelector,
-  FilterBuilder,
-  SortOptions,
-  StoredReportsList,
-} from '../components';
-import { useReportBuilder, useStoredReports } from '../hooks';
+} from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import { SimpleReportSelector, StoredReportsList } from "../components";
+import { useSimpleReportBuilder, useStoredReports } from "../hooks";
 
 export const ReportsPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
 
   const {
-    entityType,
-    availableRelations,
-    selectedRelations,
-    availableFields,
-    filters,
-    sortBy,
-    sortOrder,
-    loading,
+    reportType,
+    startDate,
+    endDate,
+    customerId,
+    contractId,
     error,
     generating,
-    handleEntityTypeChange,
-    handleRelationsChange,
-    handleFiltersChange,
-    handleSortByChange,
-    handleSortOrderChange,
+    handleReportTypeChange,
+    handleStartDateChange,
+    handleEndDateChange,
+    handleCustomerIdChange,
+    handleContractIdChange,
     generateReport,
-  } = useReportBuilder();
+  } = useSimpleReportBuilder();
 
   const {
     reports,
@@ -65,10 +55,9 @@ export const ReportsPage: React.FC = () => {
     handleRowsPerPageChange,
     handleDownload,
     handleDelete,
-    refetch,
   } = useStoredReports();
 
-  const canGenerate = entityType && !generating && !loading;
+  const canGenerate = reportType && !generating;
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -81,8 +70,8 @@ export const ReportsPage: React.FC = () => {
         <Link
           component="button"
           variant="body2"
-          onClick={() => navigate('/')}
-          sx={{ display: 'flex', alignItems: 'center' }}
+          onClick={() => navigate("/")}
+          sx={{ display: "flex", alignItems: "center" }}
         >
           <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" />
           Home
@@ -93,8 +82,8 @@ export const ReportsPage: React.FC = () => {
       </Breadcrumbs>
 
       {/* Page Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <ReportIcon sx={{ mr: 2, fontSize: 32, color: 'primary.main' }} />
+      <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+        <ReportIcon sx={{ mr: 2, fontSize: 32, color: "primary.main" }} />
         <Box sx={{ flexGrow: 1 }}>
           <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
             Reports
@@ -106,19 +95,26 @@ export const ReportsPage: React.FC = () => {
       </Box>
 
       {/* Tabs */}
-      <Paper elevation={0} sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, mb: 3 }}>
-        <Tabs value={activeTab} onChange={handleTabChange} aria-label="reports tabs">
+      <Paper
+        elevation={0}
+        sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, mb: 3 }}
+      >
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          aria-label="reports tabs"
+        >
           <Tab
             icon={<AddIcon />}
             iconPosition="start"
             label="Generate Report"
-            sx={{ textTransform: 'none' }}
+            sx={{ textTransform: "none" }}
           />
           <Tab
             icon={<HistoryIcon />}
             iconPosition="start"
             label="Stored Reports"
-            sx={{ textTransform: 'none' }}
+            sx={{ textTransform: "none" }}
           />
         </Tabs>
       </Paper>
@@ -138,16 +134,6 @@ export const ReportsPage: React.FC = () => {
 
       {/* Generate Report Tab */}
       {activeTab === 0 && (
-        <>
-          {/* Loading State */}
-          {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          )}
-
-          {/* Main Content */}
-          {!loading && (
         <Grid container spacing={3}>
           {/* Left Column - Configuration */}
           <Grid item xs={12} md={8}>
@@ -162,76 +148,19 @@ export const ReportsPage: React.FC = () => {
                 Report Configuration
               </Typography>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {/* Entity Selection */}
-                <Box>
-                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                    1. Select Entity Type
-                  </Typography>
-                  <EntitySelector
-                    value={entityType}
-                    onChange={handleEntityTypeChange}
-                    disabled={generating}
-                  />
-                </Box>
-
-                <Divider />
-
-                {/* Relation Selection */}
-                {entityType && availableRelations.length > 0 && (
-                  <>
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                        2. Select Related Entities (Optional)
-                      </Typography>
-                      <RelationSelector
-                        availableRelations={availableRelations}
-                        selectedRelations={selectedRelations}
-                        onChange={handleRelationsChange}
-                        disabled={generating}
-                      />
-                    </Box>
-                    <Divider />
-                  </>
-                )}
-
-                {/* Filter Builder */}
-                {entityType && Object.keys(availableFields).length > 0 && (
-                  <>
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                        3. Add Filters (Optional)
-                      </Typography>
-                      <FilterBuilder
-                        filters={filters}
-                        availableFields={availableFields}
-                        selectedRelations={selectedRelations}
-                        onChange={handleFiltersChange}
-                        disabled={generating}
-                      />
-                    </Box>
-                    <Divider />
-                  </>
-                )}
-
-                {/* Sort Options */}
-                {entityType && Object.keys(availableFields).length > 0 && (
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                      4. Set Sorting (Optional)
-                    </Typography>
-                    <SortOptions
-                      availableFields={availableFields}
-                      selectedRelations={selectedRelations}
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSortByChange={handleSortByChange}
-                      onSortOrderChange={handleSortOrderChange}
-                      disabled={generating}
-                    />
-                  </Box>
-                )}
-              </Box>
+              <SimpleReportSelector
+                reportType={reportType}
+                startDate={startDate}
+                endDate={endDate}
+                customerId={customerId}
+                contractId={contractId}
+                onReportTypeChange={handleReportTypeChange}
+                onStartDateChange={handleStartDateChange}
+                onEndDateChange={handleEndDateChange}
+                onCustomerIdChange={handleCustomerIdChange}
+                onContractIdChange={handleContractIdChange}
+                disabled={generating}
+              />
             </Paper>
           </Grid>
 
@@ -242,7 +171,7 @@ export const ReportsPage: React.FC = () => {
               sx={{
                 p: 3,
                 border: (theme) => `1px solid ${theme.palette.divider}`,
-                position: 'sticky',
+                position: "sticky",
                 top: 20,
               }}
             >
@@ -254,12 +183,18 @@ export const ReportsPage: React.FC = () => {
                 variant="contained"
                 fullWidth
                 size="large"
-                startIcon={generating ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
+                startIcon={
+                  generating ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : (
+                    <DownloadIcon />
+                  )
+                }
                 onClick={generateReport}
                 disabled={!canGenerate}
                 sx={{ mb: 2 }}
               >
-                {generating ? 'Generating...' : 'Generate Excel Report'}
+                {generating ? "Generating..." : "Generate Excel Report"}
               </Button>
 
               <Alert severity="info" sx={{ mt: 2 }}>
@@ -268,37 +203,49 @@ export const ReportsPage: React.FC = () => {
                 </Typography>
                 <Typography variant="body2" component="div">
                   <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                    <li>Select an entity type to get started</li>
-                    <li>Optionally include related entities</li>
-                    <li>Add filters to narrow down results</li>
-                    <li>Set sorting preferences</li>
+                    <li>Select a report type</li>
+                    <li>Optionally set start and end dates to filter data</li>
                     <li>Click Generate to download Excel file</li>
                   </Box>
                 </Typography>
               </Alert>
 
-              {entityType && (
+              {reportType && (
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ mb: 1, fontWeight: 600 }}
+                  >
                     Current Configuration:
                   </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 0.5,
+                    }}
+                  >
                     <Typography variant="body2" color="text.secondary">
-                      Entity: <strong>{entityType}</strong>
+                      Report Type: <strong>{reportType}</strong>
                     </Typography>
-                    {selectedRelations.length > 0 && (
+                    {customerId && (
                       <Typography variant="body2" color="text.secondary">
-                        Relations: <strong>{selectedRelations.join(', ')}</strong>
+                        Customer: <strong>Selected</strong>
                       </Typography>
                     )}
-                    {filters.length > 0 && (
+                    {contractId && (
                       <Typography variant="body2" color="text.secondary">
-                        Filters: <strong>{filters.length}</strong>
+                        Contract: <strong>Selected</strong>
                       </Typography>
                     )}
-                    {sortBy && (
+                    {startDate && (
                       <Typography variant="body2" color="text.secondary">
-                        Sort: <strong>{sortBy} ({sortOrder})</strong>
+                        Start Date: <strong>{startDate}</strong>
+                      </Typography>
+                    )}
+                    {endDate && (
+                      <Typography variant="body2" color="text.secondary">
+                        End Date: <strong>{endDate}</strong>
                       </Typography>
                     )}
                   </Box>
@@ -307,8 +254,6 @@ export const ReportsPage: React.FC = () => {
             </Paper>
           </Grid>
         </Grid>
-          )}
-        </>
       )}
 
       {/* Stored Reports Tab */}
@@ -330,4 +275,3 @@ export const ReportsPage: React.FC = () => {
     </Container>
   );
 };
-

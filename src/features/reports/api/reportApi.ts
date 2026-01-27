@@ -1,12 +1,10 @@
 import { getApiUrl } from '../../../shared/utils/env';
 import { tokenStorage } from '../../auth/utils/tokenStorage';
 import {
-  ReportEntityType,
-  FilterFieldsResponse,
-  GenerateDynamicReportDto,
   GetStoredReportsQueryDto,
   StoredReportsListDto,
   StoredReportDto,
+  SimplifiedReportRequest,
 } from '../types/report.types';
 
 class ReportApi {
@@ -32,56 +30,42 @@ class ReportApi {
   }
 
   /**
-   * Get available relations for an entity type
+   * Extract filename from Content-Disposition header
    */
-  async getAvailableRelations(entityType: ReportEntityType): Promise<string[]> {
-    const url = this.buildUrl(`${this.BASE_URL}/entities/relations?entityType=${entityType}`);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: this.getHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Failed to fetch relations' }));
-      throw new Error(error.message || 'Failed to fetch available relations');
+  private extractFilename(response: Response): string | null {
+    const contentDisposition = response.headers.get('Content-Disposition');
+    
+    if (!contentDisposition) {
+      return null;
     }
 
-    return await response.json();
+    // Try to match filename*=UTF-8''filename (RFC 5987)
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''(.+)/i);
+    if (utf8Match) {
+      return decodeURIComponent(utf8Match[1]);
+    }
+
+    // Try filename="something"
+    const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
+    if (quotedMatch) {
+      return quotedMatch[1];
+    }
+
+    // Try filename=something (without quotes)
+    const unquotedMatch = contentDisposition.match(/filename=([^;]+)/i);
+    if (unquotedMatch) {
+      return unquotedMatch[1].trim();
+    }
+
+    return null;
   }
 
   /**
-   * Get available filter fields for entity and relations
+   * Generate and download a report
+   * Sends the simple request format directly to the backend
+   * Returns both the blob and filename from Content-Disposition header
    */
-  async getAvailableFilterFields(
-    entityType: ReportEntityType,
-    relations?: string[]
-  ): Promise<FilterFieldsResponse> {
-    let path = `${this.BASE_URL}/entities/filter-fields?entityType=${entityType}`;
-
-    if (relations && relations.length > 0) {
-      path += `&relations=${relations.join(',')}`;
-    }
-
-    const url = this.buildUrl(path);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: this.getHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Failed to fetch filter fields' }));
-      throw new Error(error.message || 'Failed to fetch available filter fields');
-    }
-
-    return await response.json();
-  }
-
-  /**
-   * Generate and download a dynamic report
-   */
-  async generateReport(requestBody: GenerateDynamicReportDto): Promise<Blob> {
+  async generateReport(requestBody: SimplifiedReportRequest): Promise<{ blob: Blob; filename: string | null }> {
     const url = this.buildUrl(`${this.BASE_URL}/generate`);
 
     const headers: HeadersInit = {
@@ -105,7 +89,11 @@ class ReportApi {
       throw new Error(error.message || 'Failed to generate report');
     }
 
-    return await response.blob();
+    const blob = await response.blob();
+    const filename = this.extractFilename(response);
+    console.log('filename from headerrrrr', filename);
+
+    return { blob, filename };
   }
 
   /**
