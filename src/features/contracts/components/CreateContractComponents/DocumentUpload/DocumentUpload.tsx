@@ -819,7 +819,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       {/* Customer Documents Section */}
       {customerData &&
         customerData.documents &&
-        customerData.documents.length > 0 && (
+        customerData.documents.filter((doc) => doc.type !== "contract_agreement").length > 0 && (
           <Card
             sx={{
               mb: 3,
@@ -852,7 +852,9 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                   👤 {customerData.name} ({customerData.type})
                 </Typography>
                 <Grid container spacing={1}>
-                  {customerData.documents.map((doc) => (
+                  {customerData.documents
+                    .filter((doc) => doc.type !== "contract_agreement")
+                    .map((doc) => (
                     <Grid item xs={12} sm={6} md={4} key={doc.id}>
                       <Card
                         variant="outlined"

@@ -89,30 +89,40 @@ export const ContractQuickActions = React.memo<ContractQuickActionsProps>(({
 
   const handleExportAmortizationSchedule = async () => {
     try {
-      const blob = await exportAmortizationSchedule({
+      const { blob, filename } = await exportAmortizationSchedule({
         contractId,
         // versionId is optional - omit it to get the latest/active version
       }).unwrap();
 
-      // Create a download link
+      // Create blob URL and download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-
-      // Try to get filename from Content-Disposition header, or use default
-      // Note: RTK Query might not expose headers directly, so we'll use a default name
+      
+      // Use filename from backend or generate default
       const contractNumber = contract?.contractNumber || contractId;
       const date = new Date().toISOString().split("T")[0];
-      a.download = `Amortization_Plan_${contractNumber}_${date}.xlsx`;
+      a.download = filename || `Amortization_Plan_${contractNumber}_${date}.xlsx`;
 
       document.body.appendChild(a);
       a.click();
+      
+      // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
       showSuccess("Amortization schedule exported successfully");
     } catch (error: any) {
       console.error("Error exporting amortization schedule:", error);
+      
+      // Handle 404 - no amortization schedule exists
+      if (error?.status === 404) {
+        showError(
+          "No amortization schedule found for this contract. Please create one first."
+        );
+        return;
+      }
+      
       showError(
         error?.data?.message ||
           error?.message ||
