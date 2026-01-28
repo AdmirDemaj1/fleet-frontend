@@ -661,6 +661,8 @@ export const CreateContractPage: React.FC = () => {
       console.log("📋 response.data:", response?.data);
       console.log("📋 response.data.contract:", response?.data?.contract);
       console.log("🆔 Contract ID for document upload:", contractId);
+      console.log("🔢 Contract Number:", contractNumber);
+      console.log("📄 Agreement Document ID:", agreementId);
       console.log("📁 Files count:", files?.length);
       console.log(
         "🔍 Condition check - files:",
@@ -700,12 +702,21 @@ export const CreateContractPage: React.FC = () => {
           showError(
             `Contract created, but ${state.failed} document(s) failed to upload. You can retry uploads or rollback.`
           );
+          // Don't navigate - let user retry or rollback
         } else if (state.status === "success") {
           showSuccess(
             `Contract created successfully with ${state.uploaded} document(s)!`
           );
+          // Navigate to contract details page after successful upload
+          setTimeout(() => {
+            navigate(`/contracts/${contractId}`);
+          }, 1500);
         } else {
           showSuccess("Contract created successfully!");
+          // Navigate to contract details page
+          setTimeout(() => {
+            navigate(`/contracts/${contractId}`);
+          }, 1500);
         }
       } else {
         // No documents to upload
@@ -716,8 +727,17 @@ export const CreateContractPage: React.FC = () => {
           );
         } else if (response.requiresApproval) {
           showSuccess("Action requires approval. Request has been submitted.");
+          // Don't navigate for approval-required cases
+          return;
         } else {
           showSuccess("Contract created successfully!");
+        }
+        
+        // Navigate to contract details page after success message
+        if (contractId) {
+          setTimeout(() => {
+            navigate(`/contracts/${contractId}`);
+          }, 1500);
         }
       }
     } catch (error) {
@@ -727,6 +747,8 @@ export const CreateContractPage: React.FC = () => {
     }
   };
 
+  console.log('uploadState.status === "success"', uploadState.status);
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 3 }}>
@@ -734,28 +756,46 @@ export const CreateContractPage: React.FC = () => {
           Create New Contract
         </Typography>
 
-        {createdContractId && (uploadState.status !== "none" || !!contractAgreementDocumentId) && (
+        {createdContractId && (
           <Box sx={{ mb: 2 }}>
-            {contractAgreementDocumentId ? (
+            {/* Show agreement status only if there was an attempt to generate one */}
+            {(uploadState.status !== "none" || contractAgreementDocumentId !== null) && (
+              <>
+                {contractAgreementDocumentId ? (
+                  <Alert severity="success" sx={{ mb: 1 }}>
+                    Contract agreement generated successfully.
+                  </Alert>
+                ) : (
+                  <Alert severity="info" sx={{ mb: 1 }}>
+                    Contract agreement was not generated.
+                  </Alert>
+                )}
+              </>
+            )}
+
+            {/* Show upload status only if documents were uploaded */}
+            {uploadState.status !== "none" && (
+              <>
+                {uploadState.status === "success" ? (
+                  <Alert severity="success" sx={{ mb: 1 }}>
+                    Documents uploaded: {uploadState.uploaded}/{uploadState.total}
+                  </Alert>
+                ) : (
+                  <Alert severity="warning" sx={{ mb: 1 }}>
+                    Contract created, but documents uploaded: {uploadState.uploaded}
+                    /{uploadState.total}. Failed: {uploadState.failed}.
+                  </Alert>
+                )}
+              </>
+            )}
+
+            {/* Always show success alert if no uploads and no agreement */}
+            {uploadState.status === "none" && !contractAgreementDocumentId && (
               <Alert severity="success" sx={{ mb: 1 }}>
-                Contract agreement generated successfully.
-              </Alert>
-            ) : (
-              <Alert severity="info" sx={{ mb: 1 }}>
-                Contract agreement was not generated.
+                Contract created successfully!
               </Alert>
             )}
 
-            {uploadState.status === "success" ? (
-              <Alert severity="success">
-                Documents uploaded: {uploadState.uploaded}/{uploadState.total}
-              </Alert>
-            ) : (
-              <Alert severity="warning">
-                Contract created, but documents uploaded: {uploadState.uploaded}
-                /{uploadState.total}. Failed: {uploadState.failed}.
-              </Alert>
-            )}
             <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
               <Button
                 variant="outlined"

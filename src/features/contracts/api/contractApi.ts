@@ -1,5 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQueryWithReauth } from "../../../shared/utils/rtkBaseQuery";
+import { getApiUrl } from "../../../shared/utils/env";
+import { tokenStorage } from "../../auth/utils/tokenStorage";
 import {
   CreateContractDto,
   UpdateContractDto,
@@ -598,29 +600,75 @@ export const contractApi = createApi({
 
     // Export amortization schedule to Excel
     exportAmortizationSchedule: builder.mutation<
-      Blob,
+      { blob: Blob; filename: string | null }, 
       { contractId: string; versionId?: string }
     >({
-      query: ({ contractId, versionId }) => {
-        const params = new URLSearchParams();
-        if (versionId) {
-          params.append("versionId", versionId);
-        }
-        const queryString = params.toString();
-        return {
-          url: `/contracts/${contractId}/amortization/export/excel${
+      queryFn: async ({ contractId, versionId }) => {
+        try {
+          // Build the URL manually
+          const params = new URLSearchParams();
+          if (versionId) {
+            params.append("versionId", versionId);
+          }
+          const queryString = params.toString();
+          
+          const baseUrl = getApiUrl().replace(/\/$/, '');
+          const url = `${baseUrl}/contracts/${contractId}/amortization/export/excel${
             queryString ? `?${queryString}` : ""
-          }`,
-          method: "GET",
-          responseHandler: async (response) => {
-            const blob = await response.blob();
-            return blob;
-          },
-        };
-      },
-      transformErrorResponse: (response: any) => {
-        console.error("❌ Amortization schedule export failed:", response);
-        return response;
+          }`;
+          
+          // Get auth token
+          const token = tokenStorage.getAccessToken();
+          const headers: HeadersInit = {};
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          
+          // Use plain fetch to avoid RTK Query serialization
+          const response = await fetch(url, {
+            method: "GET",
+            headers,
+          });
+          
+          if (!response.ok) {
+            return { 
+              error: { 
+                status: response.status, 
+                data: await response.json().catch(() => ({ message: 'Failed to export amortization schedule' }))
+              } 
+            };
+          }
+          
+          // Get the blob
+          const blob = await response.blob();
+          
+          // Extract filename from Content-Disposition header
+          const contentDisposition = response.headers.get('Content-Disposition');
+          let filename: string | null = null;
+          
+          if (contentDisposition) {
+            const utf8Match = contentDisposition.match(/filename\*=UTF-8''(.+)/i);
+            if (utf8Match) {
+              filename = decodeURIComponent(utf8Match[1]);
+            } else {
+              const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
+              if (quotedMatch) {
+                filename = quotedMatch[1];
+              } else {
+                const unquotedMatch = contentDisposition.match(/filename=([^;]+)/i);
+                if (unquotedMatch) {
+                  filename = unquotedMatch[1].trim();
+                }
+              }
+            }
+          }
+          
+          // Return blob and filename directly - component will handle download
+          return { data: { blob, filename } };
+        } catch (error: any) {
+          console.error("❌ Amortization schedule export failed:", error);
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
       },
     }),
 
