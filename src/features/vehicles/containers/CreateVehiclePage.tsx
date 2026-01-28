@@ -6,7 +6,6 @@ import { Vehicle, VehicleDocumentType } from "../types/vehicleType";
 import { vehicleApi } from "../api/vehicleApi";
 import { STEP_CONFIG } from "../utils/vehicleFormValidation";
 import { useNotification } from "../../../shared/hooks/useNotification";
-import { useUploadDocumentMutation } from "../api/vehicleDocumentApi";
 
 // Type for the new submission data format
 interface VehicleSubmissionData {
@@ -38,7 +37,6 @@ type DocumentUploadState = {
 export const CreateVehiclePage: React.FC = () => {
   const { showSuccess, showError, showInfo } = useNotification();
   const navigate = useNavigate();
-  const [uploadDocument] = useUploadDocumentMutation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -94,20 +92,19 @@ export const CreateVehiclePage: React.FC = () => {
         const docType =
           (meta?.type as VehicleDocumentType) || VehicleDocumentType.OTHER;
 
-        await uploadDocument({
+        const expiryDate =
+          meta?.expiryDate ||
+          new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0];
+
+        await vehicleApi.uploadVehicleDocument(
+          vehicleId,
           file,
-          data: {
-            type: docType,
-            title: meta?.title || file.name,
-            description: meta?.description || "",
-            expiryDate:
-              meta?.expiryDate ||
-              new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-                .toISOString()
-                .split("T")[0],
-            vehicleId,
-          },
-        }).unwrap();
+          docType,
+          expiryDate,
+          meta?.title || file.name
+        );
         uploaded++;
       } catch (e: any) {
         failed++;

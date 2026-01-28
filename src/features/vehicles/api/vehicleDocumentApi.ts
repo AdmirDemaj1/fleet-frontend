@@ -1,6 +1,4 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { getApiUrl } from "../../../shared/utils/env";
-import { tokenStorage } from "../../auth/utils/tokenStorage";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import { 
   VehicleDocumentType, 
   VehicleDocument

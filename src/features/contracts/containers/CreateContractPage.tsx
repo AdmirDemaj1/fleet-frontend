@@ -14,10 +14,8 @@ import {
   useMigrateContractMutation,
   useDeleteContractMutation,
 } from "../api/contractApi";
-import {
-  useUploadDocumentMutation,
-  ContractDocumentType,
-} from "../api/contractDocumentApi";
+import { ContractDocumentType } from "../api/contractDocumentApi";
+import { contractPlainApi } from "../api/contractPlainApi";
 import { CreateContractWithDocumentsDto } from "../types/contract.types";
 import { useNotification } from "../../../shared/hooks/useNotification";
 import { parseAmortizationExcel } from "../utils/parseAmortizationExcel";
@@ -48,7 +46,6 @@ export const CreateContractPage: React.FC = () => {
     useValidateMigrationMutation();
   const [migrateContract, { isLoading: isMigrating }] =
     useMigrateContractMutation();
-  const [uploadDocument] = useUploadDocumentMutation();
   const [deleteContract] = useDeleteContractMutation();
   const { showSuccess, showError, showInfo } = useNotification();
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
@@ -118,21 +115,20 @@ export const CreateContractPage: React.FC = () => {
           (metadata?.type as ContractDocumentType) ||
           ContractDocumentType.OTHER;
 
-        await uploadDocument({
+        const expiryDate =
+          metadata?.expiryDate ||
+          new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0];
+
+        await contractPlainApi.uploadContractDocument(
+          contractId,
           file,
-          data: {
-            type: docType,
-            title: metadata?.title || file.name,
-            description: metadata?.description || "",
-            expiryDate:
-              metadata?.expiryDate ||
-              new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-                .toISOString()
-                .split("T")[0],
-            contractId,
-            customerId,
-          },
-        }).unwrap();
+          docType,
+          expiryDate,
+          metadata?.title || file.name,
+          customerId
+        );
         uploaded++;
       } catch (e: any) {
         failed++;

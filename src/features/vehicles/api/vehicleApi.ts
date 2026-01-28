@@ -409,5 +409,43 @@ export const vehicleApi = {
   getVehicleStatistics: async (): Promise<VehicleStatistics> => {
     const response = await api.get<VehicleStatistics>('/vehicles/reports/statistics');
     return response.data;
-  }
+  },
+
+  // Upload vehicle document
+  uploadVehicleDocument: async (
+    vehicleId: string,
+    file: File,
+    documentType: string,
+    expiryDate: string,
+    title?: string
+  ): Promise<any> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", documentType);
+    formData.append("title", title || file.name);
+    formData.append("expiryDate", expiryDate);
+    formData.append("vehicleId", vehicleId);
+
+    console.log("📄 Uploading vehicle document:", {
+      vehicleId,
+      documentType,
+      fileName: file.name,
+      expiryDate,
+    });
+
+    // Log FormData contents for debugging
+    console.log("📄 FormData entries:");
+    for (const [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value instanceof File ? `${value.name} (${value.size} bytes)` : value);
+    }
+
+    const response = await api.post(`/documents/upload`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    console.log("✅ Vehicle document uploaded successfully:", response.data);
+    return response.data;
+  },
 };

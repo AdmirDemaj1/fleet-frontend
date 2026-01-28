@@ -37,7 +37,6 @@ import {
   VehicleSummary,
 } from "../../../types/contract.types";
 import { vehicleApi } from "../../../../vehicles/api/vehicleApi";
-import { useUploadDocumentMutation } from "../../../../vehicles/api/vehicleDocumentApi";
 import { VehicleDocumentType } from "../../../../vehicles/types/vehicleType";
 import {
   VehicleCreationModal,
@@ -101,7 +100,6 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
 }) => {
   const theme = useTheme();
   const { showSuccess, showError } = useNotification();
-  const [uploadDocument] = useUploadDocumentMutation();
 
   const [state, setState] = useState<VehiclePickerState>({
     searchTerm: "",
@@ -188,9 +186,9 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
 
   // Combine available vehicles with selected vehicles (for edit mode where selected vehicles might not be in available list)
   const autocompleteOptions = useMemo(() => {
-    const availableIds = new Set(availableVehicles.map(v => v.id));
+    const availableIds = new Set(availableVehicles.map((v) => v.id));
     const selectedNotInAvailable = state.selectedVehicles.filter(
-      sv => !availableIds.has(sv.id)
+      (sv) => !availableIds.has(sv.id)
     );
     return [...availableVehicles, ...selectedNotInAvailable];
   }, [availableVehicles, state.selectedVehicles]);
@@ -207,7 +205,7 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
       const existingDocTypes = Array.isArray(documents)
         ? documents.map((d: any) => d.type || d.category).filter(Boolean)
         : [];
-      
+
       console.log("🔍 Checking vehicle completeness:", {
         vehicleId: vehicle.id,
         licensePlate: vehicle.licensePlate,
@@ -215,12 +213,17 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         documentTypes: existingDocTypes,
         requiredTypes: REQUIRED_VEHICLE_DOCUMENT_TYPES,
       });
-      
+
       const hasAllDocs = REQUIRED_VEHICLE_DOCUMENT_TYPES.every((type) =>
         existingDocTypes.includes(type)
       );
 
-      console.log("✅ Vehicle complete:", hasAllDocs, "for vehicle", vehicle.id);
+      console.log(
+        "✅ Vehicle complete:",
+        hasAllDocs,
+        "for vehicle",
+        vehicle.id
+      );
       return hasAllDocs;
     },
     []
@@ -534,15 +537,13 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         // Upload documents if provided
         if (data.documents && data.documents.length > 0) {
           const uploadPromises = data.documents.map((doc) =>
-            uploadDocument({
-              file: doc.file,
-              data: {
-                type: doc.type as VehicleDocumentType,
-                title: doc.title,
-                expiryDate: doc.expiryDate, // Use the expiry date provided by user
-                vehicleId: vehicle.id,
-              },
-            }).unwrap()
+            vehicleApi.uploadVehicleDocument(
+              vehicle.id,
+              doc.file,
+              doc.type,
+              doc.expiryDate,
+              doc.title
+            )
           );
 
           await Promise.all(uploadPromises);
@@ -623,7 +624,6 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
       state.pendingVehicle,
       onVehicleSelect,
       onVehicleDataChange,
-      uploadDocument,
       refetch,
       showSuccess,
       showError,
