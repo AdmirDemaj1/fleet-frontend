@@ -46,731 +46,852 @@ import { useNotification } from "../../../shared/hooks/useNotification";
 
 interface PaymentInformationProps {
   payment: Payment;
+  isContractCompleted?: boolean;
 }
 
-export const PaymentInformation = React.memo<PaymentInformationProps>(({
-  payment,
-}) => {
-  const theme = useTheme();
-  const navigate = useNavigate();
-  const { showSuccess, showError } = useNotification();
-  const [updatePaymentPenalties, { isLoading: isUpdatingPenaltySettings }] =
-    useUpdatePaymentPenaltiesMutation();
-  const [showRecalculationHistory, setShowRecalculationHistory] =
-    useState(false);
-  const [applyPenalties, setApplyPenalties] = useState(
-    Boolean(payment.applyPenalties)
-  );
-  const [latePenaltyRatePerDay, setLatePenaltyRatePerDay] = useState(
-    payment.latePenaltyRatePerDay !== undefined &&
-      payment.latePenaltyRatePerDay !== null
-      ? String(payment.latePenaltyRatePerDay)
-      : ""
-  );
-  const [penaltyRateError, setPenaltyRateError] = useState<string | null>(null);
-
-  const handleToggleRecalculationHistory = useCallback(() => {
-    setShowRecalculationHistory(prev => !prev);
-  }, []);
-
-  useEffect(() => {
-    setApplyPenalties(Boolean(payment.applyPenalties));
-    setLatePenaltyRatePerDay(
+export const PaymentInformation = React.memo<PaymentInformationProps>(
+  ({ payment, isContractCompleted = false }) => {
+    const theme = useTheme();
+    const navigate = useNavigate();
+    const { showSuccess, showError } = useNotification();
+    const [updatePaymentPenalties, { isLoading: isUpdatingPenaltySettings }] =
+      useUpdatePaymentPenaltiesMutation();
+    const [showRecalculationHistory, setShowRecalculationHistory] =
+      useState(false);
+    const [applyPenalties, setApplyPenalties] = useState(
+      Boolean(payment.applyPenalties)
+    );
+    const [latePenaltyRatePerDay, setLatePenaltyRatePerDay] = useState(
       payment.latePenaltyRatePerDay !== undefined &&
         payment.latePenaltyRatePerDay !== null
         ? String(payment.latePenaltyRatePerDay)
         : ""
     );
-    setPenaltyRateError(null);
-  }, [payment.id, payment.applyPenalties, payment.latePenaltyRatePerDay]);
+    const [penaltyRateError, setPenaltyRateError] = useState<string | null>(
+      null
+    );
 
-  const formatCurrency = (amount: string | number): string => {
-    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-    }).format(numAmount);
-  };
+    const handleToggleRecalculationHistory = useCallback(() => {
+      setShowRecalculationHistory((prev) => !prev);
+    }, []);
 
-  const toNumber = (v: unknown): number => {
-    const n = typeof v === "string" ? parseFloat(v) : typeof v === "number" ? v : 0;
-    return Number.isFinite(n) ? n : 0;
-  };
-
-  const totalAmount = toNumber(payment.amount);
-  const paidAmount = toNumber((payment as any).paidAmount);
-  const remainingDue = Math.max(0, totalAmount - paidAmount);
-  const paidInterestAmount = toNumber((payment as any).paidInterestAmount);
-  const paidPrincipalAmount = toNumber((payment as any).paidPrincipalAmount);
-  const isPartiallyPaid =
-    payment.status === PaymentStatus.PARTIALLY_PAID ||
-    payment.status === PaymentStatus.PARTIAL ||
-    paidAmount > 0;
-
-  const formatDate = (date: Date | string) => {
-    const dateObj = typeof date === "string" ? new Date(date) : date;
-    return format(dateObj, "MMMM dd, yyyy");
-  };
-
-  const formatDateTime = (date: Date | string) => {
-    const dateObj = typeof date === "string" ? new Date(date) : date;
-    return format(dateObj, "MMMM dd, yyyy • hh:mm a");
-  };
-
-  const getExistingPenaltyRate = () => {
-    const rawRate = payment.latePenaltyRatePerDay;
-    if (rawRate === undefined || rawRate === null || rawRate === "") {
-      return undefined;
-    }
-    const parsed =
-      typeof rawRate === "string" ? parseFloat(rawRate) : rawRate;
-    return Number.isFinite(parsed) ? parsed : undefined;
-  };
-
-  const handleSavePenaltySettings = useCallback(async () => {
-    const trimmedRate = latePenaltyRatePerDay.trim();
-    const parsedRate =
-      trimmedRate === "" ? undefined : Number.parseFloat(trimmedRate);
-    const existingRate = getExistingPenaltyRate();
-
-    if (applyPenalties) {
-      const rateToValidate = parsedRate ?? existingRate;
-      if (!Number.isFinite(rateToValidate) || Number(rateToValidate) <= 0) {
-        const message =
-          "Late penalty rate per day must be > 0 when penalties are enabled.";
-        setPenaltyRateError(message);
-        showError(message);
-        return;
-      }
-    }
-
-    try {
-      await updatePaymentPenalties({
-        id: payment.id,
-        data: {
-          applyPenalties,
-          ...(parsedRate !== undefined
-            ? { latePenaltyRatePerDay: parsedRate }
-            : {}),
-        },
-      }).unwrap();
-
+    useEffect(() => {
+      setApplyPenalties(Boolean(payment.applyPenalties));
+      setLatePenaltyRatePerDay(
+        payment.latePenaltyRatePerDay !== undefined &&
+          payment.latePenaltyRatePerDay !== null
+          ? String(payment.latePenaltyRatePerDay)
+          : ""
+      );
       setPenaltyRateError(null);
-      showSuccess("Penalty settings updated.");
-    } catch (error) {
-      console.error("Failed to update penalty settings:", error);
-      showError("Failed to update penalty settings. Please try again.");
-    }
-  }, [
-    applyPenalties,
-    latePenaltyRatePerDay,
-    payment.id,
-    updatePaymentPenalties,
-    showSuccess,
-    showError,
-  ]);
+    }, [payment.id, payment.applyPenalties, payment.latePenaltyRatePerDay]);
 
-  const getPaymentMethodInfo = (method: string | null) => {
-    if (!method) return null;
+    const formatCurrency = (amount: string | number): string => {
+      const numAmount =
+        typeof amount === "string" ? parseFloat(amount) : amount;
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+      }).format(numAmount);
+    };
 
-    switch (method.toLowerCase()) {
-      case "credit_card":
-        return {
-          label: "Credit Card",
-          icon: CreditCard,
-          color: theme.palette.primary.main,
-        };
-      case "bank_transfer":
-        return {
-          label: "Bank Transfer",
-          icon: AccountBalance,
-          color: theme.palette.info.main,
-        };
-      case "cash":
-        return {
-          label: "Cash",
-          icon: AttachMoney,
-          color: theme.palette.success.main,
-        };
-      default:
-        return {
-          label: method.replace("_", " "),
-          icon: CreditCard,
-          color: theme.palette.text.secondary,
-        };
-    }
-  };
+    const toNumber = (v: unknown): number => {
+      const n =
+        typeof v === "string" ? parseFloat(v) : typeof v === "number" ? v : 0;
+      return Number.isFinite(n) ? n : 0;
+    };
 
-  const paymentMethodInfo = getPaymentMethodInfo(payment.paymentMethod || null);
+    const totalAmount = toNumber(payment.amount);
+    const paidAmount = toNumber((payment as any).paidAmount);
+    const remainingDue = Math.max(0, totalAmount - paidAmount);
+    const paidInterestAmount = toNumber((payment as any).paidInterestAmount);
+    const paidPrincipalAmount = toNumber((payment as any).paidPrincipalAmount);
+    const isPartiallyPaid =
+      payment.status === PaymentStatus.PARTIALLY_PAID ||
+      payment.status === PaymentStatus.PARTIAL ||
+      paidAmount > 0;
 
-  console.log("payment notesss", payment.notes);
+    const formatDate = (date: Date | string) => {
+      const dateObj = typeof date === "string" ? new Date(date) : date;
+      return format(dateObj, "MMMM dd, yyyy");
+    };
 
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 4,
-        borderRadius: 3,
-        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        bgcolor: theme.palette.background.paper,
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
-        <ReceiptLong
-          sx={{ color: theme.palette.primary.main, mr: 2, fontSize: 28 }}
-        />
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          Payment Information
-        </Typography>
-      </Box>
+    // Check if payment is past due
+    const isPastDue = useCallback(() => {
+      const dueDate = new Date(payment.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    }, [payment.dueDate]);
 
-      {/* Amount Section */}
-      <Box
+    // Check if penalty settings should be shown
+    const shouldShowPenaltySettings = useCallback(() => {
+      if (isContractCompleted) {
+        return false;
+      }
+
+      // Only show for partially_paid or pending payments
+      const status = String(payment.status);
+      const isEligibleStatus =
+        status === PaymentStatus.PARTIALLY_PAID ||
+        status === PaymentStatus.PARTIAL ||
+        status === PaymentStatus.PENDING;
+
+      if (!isEligibleStatus) {
+        return false;
+      }
+
+      // Must be past due
+      return isPastDue();
+    }, [isContractCompleted, payment.status, isPastDue]);
+
+    const formatDateTime = (date: Date | string) => {
+      const dateObj = typeof date === "string" ? new Date(date) : date;
+      return format(dateObj, "MMMM dd, yyyy • hh:mm a");
+    };
+
+    const getExistingPenaltyRate = () => {
+      const rawRate = payment.latePenaltyRatePerDay;
+      if (rawRate === undefined || rawRate === null || rawRate === "") {
+        return undefined;
+      }
+      const parsed =
+        typeof rawRate === "string" ? parseFloat(rawRate) : rawRate;
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
+
+    const handleSavePenaltySettings = useCallback(async () => {
+      const trimmedRate = latePenaltyRatePerDay.trim();
+      const parsedRate =
+        trimmedRate === "" ? undefined : Number.parseFloat(trimmedRate);
+      const existingRate = getExistingPenaltyRate();
+
+      if (applyPenalties) {
+        const rateToValidate = parsedRate ?? existingRate;
+        if (!Number.isFinite(rateToValidate) || Number(rateToValidate) <= 0) {
+          const message =
+            "Late penalty rate per day must be > 0 when penalties are enabled.";
+          setPenaltyRateError(message);
+          showError(message);
+          return;
+        }
+      }
+
+      try {
+        await updatePaymentPenalties({
+          id: payment.id,
+          data: {
+            applyPenalties,
+            ...(parsedRate !== undefined
+              ? { latePenaltyRatePerDay: parsedRate }
+              : {}),
+          },
+        }).unwrap();
+
+        setPenaltyRateError(null);
+        showSuccess("Penalty settings updated.");
+      } catch (error) {
+        console.error("Failed to update penalty settings:", error);
+        showError("Failed to update penalty settings. Please try again.");
+      }
+    }, [
+      applyPenalties,
+      latePenaltyRatePerDay,
+      payment.id,
+      updatePaymentPenalties,
+      showSuccess,
+      showError,
+    ]);
+
+    const getPaymentMethodInfo = (method: string | null) => {
+      if (!method) return null;
+
+      switch (method.toLowerCase()) {
+        case "credit_card":
+          return {
+            label: "Credit Card",
+            icon: CreditCard,
+            color: theme.palette.primary.main,
+          };
+        case "bank_transfer":
+          return {
+            label: "Bank Transfer",
+            icon: AccountBalance,
+            color: theme.palette.info.main,
+          };
+        case "cash":
+          return {
+            label: "Cash",
+            icon: AttachMoney,
+            color: theme.palette.success.main,
+          };
+        default:
+          return {
+            label: method.replace("_", " "),
+            icon: CreditCard,
+            color: theme.palette.text.secondary,
+          };
+      }
+    };
+
+    const paymentMethodInfo = getPaymentMethodInfo(
+      payment.paymentMethod || null
+    );
+
+    console.log("payment notesss", payment.notes);
+
+    return (
+      <Paper
+        elevation={0}
         sx={{
-          p: 3,
-          mb: 4,
-          borderRadius: 2,
-          background: `linear-gradient(135deg, ${alpha(
-            theme.palette.primary.main,
-            0.05
-          )} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          p: 4,
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          bgcolor: theme.palette.background.paper,
         }}
       >
-        <Typography
-          variant="subtitle1"
-          sx={{ fontWeight: 600, mb: 2, color: "text.secondary" }}
+        <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+          <ReceiptLong
+            sx={{ color: theme.palette.primary.main, mr: 2, fontSize: 28 }}
+          />
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            Payment Information
+          </Typography>
+        </Box>
+
+        {/* Amount Section */}
+        <Box
+          sx={{
+            p: 3,
+            mb: 4,
+            borderRadius: 2,
+            background: `linear-gradient(135deg, ${alpha(
+              theme.palette.primary.main,
+              0.05
+            )} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          }}
         >
-          Payment Amount
-        </Typography>
-        <Typography
-          variant="h3"
-          sx={{ fontWeight: 800, color: theme.palette.primary.main, mb: 1 }}
-        >
-          {formatCurrency(payment.amount)}
-        </Typography>
-        {isPartiallyPaid && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Paid: {formatCurrency(paidAmount)} • Remaining: {formatCurrency(remainingDue)}
-            </Typography>
-            {(paidPrincipalAmount > 0 || paidInterestAmount > 0) && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Paid Principal: {formatCurrency(paidPrincipalAmount)} • Paid Interest: {formatCurrency(paidInterestAmount)}
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: 600, mb: 2, color: "text.secondary" }}
+          >
+            Payment Amount
+          </Typography>
+          <Typography
+            variant="h3"
+            sx={{ fontWeight: 800, color: theme.palette.primary.main, mb: 1 }}
+          >
+            {formatCurrency(payment.amount)}
+          </Typography>
+          {isPartiallyPaid && (
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Paid: {formatCurrency(paidAmount)} • Remaining:{" "}
+                {formatCurrency(remainingDue)}
               </Typography>
-            )}
-          </Box>
-        )}
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {String(payment.type).replace("_", " ").charAt(0).toUpperCase() +
-            String(payment.type).replace("_", " ").slice(1)}{" "}
-          Payment
-        </Typography>
-
-        {/* Principal and Interest breakdown */}
-        {(payment.principalAmount || payment.interestAmount) && (
-          <Box sx={{ display: "flex", gap: 3, mt: 2 }}>
-            {payment.principalAmount && (
-              <Box>
+              {(paidPrincipalAmount > 0 || paidInterestAmount > 0) && (
                 <Typography
-                  variant="caption"
+                  variant="body2"
                   color="text.secondary"
-                  sx={{ fontWeight: 600 }}
+                  sx={{ mt: 0.5 }}
                 >
-                  Principal Amount
+                  Paid Principal: {formatCurrency(paidPrincipalAmount)} • Paid
+                  Interest: {formatCurrency(paidInterestAmount)}
                 </Typography>
+              )}
+              {(payment.paidCashAmount && Number(payment.paidCashAmount) > 0) || 
+               (payment.paidCreditAmount && Number(payment.paidCreditAmount) > 0) ? (
                 <Typography
-                  variant="body1"
-                  sx={{ fontWeight: 600, color: theme.palette.primary.main }}
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
                 >
-                  {formatCurrency(payment.principalAmount)}
+                  {payment.paidCashAmount && Number(payment.paidCashAmount) > 0 && (
+                    <span style={{ color: theme.palette.success.main, fontWeight: 600 }}>
+                      Cash: {formatCurrency(payment.paidCashAmount)}
+                    </span>
+                  )}
+                  {payment.paidCashAmount && Number(payment.paidCashAmount) > 0 && 
+                   payment.paidCreditAmount && Number(payment.paidCreditAmount) > 0 && ' • '}
+                  {payment.paidCreditAmount && Number(payment.paidCreditAmount) > 0 && (
+                    <span style={{ color: theme.palette.warning.main, fontWeight: 600 }}>
+                      Credit: {formatCurrency(payment.paidCreditAmount)}
+                    </span>
+                  )}
+                </Typography>
+              ) : null}
+            </Box>
+          )}
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {String(payment.type).replace("_", " ").charAt(0).toUpperCase() +
+              String(payment.type).replace("_", " ").slice(1)}{" "}
+            Payment
+          </Typography>
+
+          {/* Principal, Interest, and Penalty breakdown */}
+          {(payment.principalAmount || payment.interestAmount || payment.penaltyAmount) && (
+            <Box sx={{ display: "flex", gap: 3, mt: 2, flexWrap: "wrap" }}>
+              {payment.principalAmount && (
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontWeight: 600 }}
+                  >
+                    Principal Amount
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontWeight: 600, color: theme.palette.primary.main }}
+                  >
+                    {formatCurrency(payment.principalAmount)}
+                  </Typography>
+                </Box>
+              )}
+              {payment.interestAmount && (
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontWeight: 600 }}
+                  >
+                    Interest Amount
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontWeight: 600, color: theme.palette.warning.main }}
+                  >
+                    {formatCurrency(payment.interestAmount)}
+                  </Typography>
+                </Box>
+              )}
+              {payment.penaltyAmount && Number(payment.penaltyAmount) > 0 && (
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontWeight: 600 }}
+                  >
+                    Total Penalty
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontWeight: 600, color: theme.palette.error.main }}
+                  >
+                    {formatCurrency(payment.penaltyAmount)}
+                  </Typography>
+                  {payment.paidPenaltyAmount && Number(payment.paidPenaltyAmount) > 0 && (
+                    <>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', mt: 0.5 }}
+                      >
+                        Paid: {formatCurrency(payment.paidPenaltyAmount)}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ 
+                          display: 'block',
+                          color: theme.palette.error.main,
+                          fontWeight: 600
+                        }}
+                      >
+                        Remaining: {formatCurrency(
+                          Number(payment.penaltyAmount) - Number(payment.paidPenaltyAmount)
+                        )}
+                      </Typography>
+                    </>
+                  )}
+                </Box>
+              )}
+            </Box>
+          )}
+        </Box>
+
+        {/* Payment Details Grid */}
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ mb: 1, fontWeight: 600 }}
+              >
+                Due Date
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Schedule
+                  sx={{
+                    color: theme.palette.warning.main,
+                    mr: 1,
+                    fontSize: 20,
+                  }}
+                />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {formatDate(payment.dueDate)}
                 </Typography>
               </Box>
-            )}
-            {payment.interestAmount && (
-              <Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ fontWeight: 600 }}
-                >
-                  Interest Amount
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{ fontWeight: 600, color: theme.palette.warning.main }}
-                >
-                  {formatCurrency(payment.interestAmount)}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        )}
-      </Box>
+            </Box>
+          </Grid>
 
-      {/* Payment Details Grid */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6}>
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant="subtitle2"
-              color="text.secondary"
-              sx={{ mb: 1, fontWeight: 600 }}
-            >
-              Due Date
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <Schedule
-                sx={{ color: theme.palette.warning.main, mr: 1, fontSize: 20 }}
-              />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {formatDate(payment.dueDate)}
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ mb: 1, fontWeight: 600 }}
+              >
+                Payment Date
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  color: payment.paymentDate
+                    ? "success.main"
+                    : "text.secondary",
+                }}
+              >
+                {payment.paymentDate
+                  ? formatDate(payment.paymentDate)
+                  : "Not paid yet"}
               </Typography>
             </Box>
-          </Box>
-        </Grid>
+          </Grid>
 
-        <Grid item xs={12} sm={6}>
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant="subtitle2"
-              color="text.secondary"
-              sx={{ mb: 1, fontWeight: 600 }}
-            >
-              Payment Date
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 600,
-                color: payment.paymentDate ? "success.main" : "text.secondary",
-              }}
-            >
-              {payment.paymentDate
-                ? formatDate(payment.paymentDate)
-                : "Not paid yet"}
-            </Typography>
-          </Box>
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant="subtitle2"
-              color="text.secondary"
-              sx={{ mb: 1, fontWeight: 600 }}
-            >
-              Payment Type
-            </Typography>
-            <Chip
-              label={
-                String(payment.type).replace("_", " ").charAt(0).toUpperCase() +
-                String(payment.type).replace("_", " ").slice(1)
-              }
-              sx={{
-                bgcolor: alpha(theme.palette.info.main, 0.1),
-                color: theme.palette.info.main,
-                fontWeight: 600,
-                textTransform: "capitalize",
-              }}
-            />
-          </Box>
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant="subtitle2"
-              color="text.secondary"
-              sx={{ mb: 1, fontWeight: 600 }}
-            >
-              Payment Method
-            </Typography>
-            {paymentMethodInfo ? (
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <paymentMethodInfo.icon
-                  sx={{ color: paymentMethodInfo.color, mr: 1, fontSize: 20 }}
-                />
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {paymentMethodInfo.label}
-                </Typography>
-              </Box>
-            ) : (
-              <Typography variant="body1" color="text.secondary">
-                Not specified
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ mb: 1, fontWeight: 600 }}
+              >
+                Payment Type
               </Typography>
-            )}
-          </Box>
-        </Grid>
-      </Grid>
-
-      {/* Penalty Settings */}
-      <Divider sx={{ my: 3 }} />
-      <Box>
-        <Typography
-          variant="subtitle1"
-          sx={{ fontWeight: 600, mb: 2, color: "text.secondary" }}
-        >
-          Penalty Settings
-        </Typography>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={applyPenalties}
-              onChange={(event) => {
-                setApplyPenalties(event.target.checked);
-                if (!event.target.checked) {
-                  setPenaltyRateError(null);
+              <Chip
+                label={
+                  String(payment.type)
+                    .replace("_", " ")
+                    .charAt(0)
+                    .toUpperCase() +
+                  String(payment.type).replace("_", " ").slice(1)
                 }
-              }}
-              color="primary"
-            />
-          }
-          label="Apply penalties to this payment"
-          sx={{ mb: 2, display: "flex", alignItems: "center" }}
-        />
-    
-          <TextField
-            label="Late penalty rate per day"
-            type="number"
-            value={latePenaltyRatePerDay}
-            onChange={(event) => {
-              setLatePenaltyRatePerDay(event.target.value);
-              if (penaltyRateError) {
-                setPenaltyRateError(null);
-              }
-            }}
-            error={Boolean(penaltyRateError)}
-            helperText={
-              penaltyRateError ||
-              "Must be > 0 when penalties are enabled."
-            }
-            inputProps={{ min: 0, step: 0.01 }}
-            disabled={!applyPenalties}
-            // sx={{ maxWidth: 240 }}
-          />
-          <Button
-          sx={{ mt: 1, ml: 2 }}
-            variant="contained"
-            onClick={handleSavePenaltySettings}
-            disabled={isUpdatingPenaltySettings}
-          >
-            Save
-          </Button>
-     
-      </Box>
+                sx={{
+                  bgcolor: alpha(theme.palette.info.main, 0.1),
+                  color: theme.palette.info.main,
+                  fontWeight: 600,
+                  textTransform: "capitalize",
+                }}
+              />
+            </Box>
+          </Grid>
 
-      {/* Additional Information */}
-      {(payment.transactionReference || payment.notes) && (
-        <>
-          <Divider sx={{ my: 3 }} />
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ mb: 1, fontWeight: 600 }}
+              >
+                Payment Method
+              </Typography>
+              {paymentMethodInfo ? (
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <paymentMethodInfo.icon
+                    sx={{ color: paymentMethodInfo.color, mr: 1, fontSize: 20 }}
+                  />
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {paymentMethodInfo.label}
+                  </Typography>
+                </Box>
+              ) : (
+                <Typography variant="body1" color="text.secondary">
+                  Not specified
+                </Typography>
+              )}
+            </Box>
+          </Grid>
+        </Grid>
 
-          {payment.transactionReference && (
-            <Box sx={{ mb: payment.notes ? 3 : 0 }}>
+        {/* Penalty Settings - Only show for past due partially_paid/pending payments */}
+        {shouldShowPenaltySettings() && (
+          <>
+            <Divider sx={{ my: 3 }} />
+            <Box>
               <Typography
                 variant="subtitle1"
                 sx={{ fontWeight: 600, mb: 2, color: "text.secondary" }}
               >
-                Transaction Reference
+                Penalty Settings
               </Typography>
-              <Box
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: alpha(theme.palette.background.default, 0.5),
-                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                }}
-              >
-                <Typography
-                  variant="body1"
-                  sx={{ fontFamily: "monospace", fontSize: "0.95rem" }}
-                >
-                  {payment.transactionReference}
-                </Typography>
-              </Box>
-            </Box>
-          )}
-        </>
-      )}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={applyPenalties}
+                    onChange={(event) => {
+                      setApplyPenalties(event.target.checked);
+                      if (!event.target.checked) {
+                        setPenaltyRateError(null);
+                      }
+                    }}
+                    color="primary"
+                  />
+                }
+                label="Apply penalties to this payment"
+                sx={{ mb: 2, display: "flex", alignItems: "center" }}
+              />
 
-      {/* Recalculation History */}
-      {payment.recalculationHistory &&
-        payment.recalculationHistory.length > 0 && (
+              <TextField
+                label="Late penalty rate per day"
+                type="number"
+                value={latePenaltyRatePerDay}
+                onChange={(event) => {
+                  setLatePenaltyRatePerDay(event.target.value);
+                  if (penaltyRateError) {
+                    setPenaltyRateError(null);
+                  }
+                }}
+                error={Boolean(penaltyRateError)}
+                helperText={
+                  penaltyRateError || "Must be > 0 when penalties are enabled."
+                }
+                inputProps={{ min: 0, step: 0.01 }}
+                disabled={!applyPenalties}
+                // sx={{ maxWidth: 240 }}
+              />
+              <Button
+                sx={{ mt: 1, ml: 2 }}
+                variant="contained"
+                onClick={handleSavePenaltySettings}
+                disabled={isUpdatingPenaltySettings}
+              >
+                Save
+              </Button>
+            </Box>
+          </>
+        )}
+
+        {/* Additional Information */}
+        {(payment.transactionReference || payment.notes) && (
           <>
             <Divider sx={{ my: 3 }} />
-            <Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  cursor: "pointer",
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: alpha(theme.palette.warning.main, 0.05),
-                  border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    bgcolor: alpha(theme.palette.warning.main, 0.08),
-                  },
-                }}
-                onClick={handleToggleRecalculationHistory}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Calculate
-                    sx={{ color: theme.palette.warning.main, fontSize: 24 }}
-                  />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    Recalculation History
-                  </Typography>
-                  <Chip
-                    label={payment.recalculationHistory.length}
-                    size="small"
-                    sx={{
-                      bgcolor: alpha(theme.palette.warning.main, 0.2),
-                      color: theme.palette.warning.dark,
-                      fontWeight: 700,
-                      height: 24,
-                    }}
-                  />
-                </Box>
-                <IconButton size="small">
-                  {showRecalculationHistory ? <ExpandLess /> : <ExpandMore />}
-                </IconButton>
-              </Box>
 
-              <Collapse in={showRecalculationHistory}>
-                <Box sx={{ mt: 2 }}>
-                  <TableContainer
-                    component={Paper}
-                    elevation={0}
-                    sx={{
-                      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                      borderRadius: 2,
-                      overflow: "hidden",
-                    }}
+            {payment.transactionReference && (
+              <Box sx={{ mb: payment.notes ? 3 : 0 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: 600, mb: 2, color: "text.secondary" }}
+                >
+                  Transaction Reference
+                </Typography>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: alpha(theme.palette.background.default, 0.5),
+                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  }}
+                >
+                  <Typography
+                    variant="body1"
+                    sx={{ fontFamily: "monospace", fontSize: "0.95rem" }}
                   >
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow
-                          sx={{
-                            bgcolor: alpha(theme.palette.primary.main, 0.05),
-                          }}
-                        >
-                          <TableCell
-                            sx={{ fontWeight: 700, fontSize: "0.75rem", py: 2 }}
+                    {payment.transactionReference}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+          </>
+        )}
+
+        {/* Recalculation History */}
+        {payment.recalculationHistory &&
+          payment.recalculationHistory.length > 0 && (
+            <>
+              <Divider sx={{ my: 3 }} />
+              <Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    cursor: "pointer",
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: alpha(theme.palette.warning.main, 0.05),
+                    border: `1px solid ${alpha(
+                      theme.palette.warning.main,
+                      0.2
+                    )}`,
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      bgcolor: alpha(theme.palette.warning.main, 0.08),
+                    },
+                  }}
+                  onClick={handleToggleRecalculationHistory}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Calculate
+                      sx={{ color: theme.palette.warning.main, fontSize: 24 }}
+                    />
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      Recalculation History
+                    </Typography>
+                    <Chip
+                      label={payment.recalculationHistory.length}
+                      size="small"
+                      sx={{
+                        bgcolor: alpha(theme.palette.warning.main, 0.2),
+                        color: theme.palette.warning.dark,
+                        fontWeight: 700,
+                        height: 24,
+                      }}
+                    />
+                  </Box>
+                  <IconButton size="small">
+                    {showRecalculationHistory ? <ExpandLess /> : <ExpandMore />}
+                  </IconButton>
+                </Box>
+
+                <Collapse in={showRecalculationHistory}>
+                  <Box sx={{ mt: 2 }}>
+                    <TableContainer
+                      component={Paper}
+                      elevation={0}
+                      sx={{
+                        border: `1px solid ${alpha(
+                          theme.palette.divider,
+                          0.1
+                        )}`,
+                        borderRadius: 2,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow
+                            sx={{
+                              bgcolor: alpha(theme.palette.primary.main, 0.05),
+                            }}
                           >
-                            <Box
+                            <TableCell
                               sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 0.5,
+                                fontWeight: 700,
+                                fontSize: "0.75rem",
+                                py: 2,
                               }}
                             >
-                              <History sx={{ fontSize: 16 }} />
-                              Date
-                            </Box>
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ fontWeight: 700, fontSize: "0.75rem", py: 2 }}
-                          >
-                            Caused By
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ fontWeight: 700, fontSize: "0.75rem", py: 2 }}
-                          >
-                            <Tooltip title="Amount before recalculation">
                               <Box
                                 sx={{
                                   display: "flex",
                                   alignItems: "center",
-                                  justifyContent: "flex-end",
                                   gap: 0.5,
                                 }}
                               >
-                                Starting
-                                <Info
-                                  sx={{ fontSize: 14, color: "text.secondary" }}
-                                />
+                                <History sx={{ fontSize: 16 }} />
+                                Date
                               </Box>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ fontWeight: 700, fontSize: "0.75rem", py: 2 }}
-                          >
-                            <Tooltip title="Amount after recalculation">
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "flex-end",
-                                  gap: 0.5,
-                                }}
-                              >
-                                Calculated
-                                <Info
-                                  sx={{ fontSize: 14, color: "text.secondary" }}
-                                />
-                              </Box>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ fontWeight: 700, fontSize: "0.75rem", py: 2 }}
-                          >
-                            Change
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ fontWeight: 700, fontSize: "0.75rem", py: 2 }}
-                          >
-                            Overpayment
-                          </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{ fontWeight: 700, fontSize: "0.75rem", py: 2 }}
-                          >
-                            Details
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {payment.recalculationHistory.map((entry, index) => {
-                          const amountChange =
-                            entry.calculatedAmount - entry.startingAmount;
-                          const isReduction = amountChange < 0;
-
-                          return (
-                            <React.Fragment key={index}>
-                              <TableRow
-                                sx={{
-                                  "&:hover": {
-                                    bgcolor: alpha(
-                                      theme.palette.primary.main,
-                                      0.02
-                                    ),
-                                  },
-                                  transition: "background-color 0.2s ease",
-                                }}
-                              >
-                                <TableCell sx={{ py: 2 }}>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{ fontWeight: 600, fontSize: "0.8rem" }}
-                                  >
-                                    {formatDateTime(entry.recalculatedAt)}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <MuiLink
-                                    component="button"
-                                    onClick={(e: React.MouseEvent) => {
-                                      e.stopPropagation();
-                                      navigate(
-                                        `/payments/${entry.causedByPaymentId}`
-                                      );
-                                    }}
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: "0.75rem",
+                                py: 2,
+                              }}
+                            >
+                              Caused By
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: "0.75rem",
+                                py: 2,
+                              }}
+                            >
+                              <Tooltip title="Amount before recalculation">
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "flex-end",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  Starting
+                                  <Info
                                     sx={{
-                                      textDecoration: "none",
-                                      "&:hover": {
-                                        textDecoration: "none",
-                                      },
+                                      fontSize: 14,
+                                      color: "text.secondary",
                                     }}
-                                  >
-                                    <Chip
-                                      label={
-                                        <Box
-                                          sx={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: 0.5,
-                                          }}
-                                        >
-                                          Payment #{entry.causedByPaymentNumber}
-                                          <OpenInNew sx={{ fontSize: 12 }} />
-                                        </Box>
-                                      }
-                                      size="small"
-                                      clickable
+                                  />
+                                </Box>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: "0.75rem",
+                                py: 2,
+                              }}
+                            >
+                              <Tooltip title="Amount after recalculation">
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "flex-end",
+                                    gap: 0.5,
+                                  }}
+                                >
+                                  Calculated
+                                  <Info
+                                    sx={{
+                                      fontSize: 14,
+                                      color: "text.secondary",
+                                    }}
+                                  />
+                                </Box>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: "0.75rem",
+                                py: 2,
+                              }}
+                            >
+                              Change
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: "0.75rem",
+                                py: 2,
+                              }}
+                            >
+                              Overpayment
+                            </TableCell>
+                            <TableCell
+                              align="center"
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: "0.75rem",
+                                py: 2,
+                              }}
+                            >
+                              Details
+                            </TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {payment.recalculationHistory.map((entry, index) => {
+                            const amountChange =
+                              entry.calculatedAmount - entry.startingAmount;
+                            const isReduction = amountChange < 0;
+
+                            return (
+                              <React.Fragment key={index}>
+                                <TableRow
+                                  sx={{
+                                    "&:hover": {
+                                      bgcolor: alpha(
+                                        theme.palette.primary.main,
+                                        0.02
+                                      ),
+                                    },
+                                    transition: "background-color 0.2s ease",
+                                  }}
+                                >
+                                  <TableCell sx={{ py: 2 }}>
+                                    <Typography
+                                      variant="body2"
                                       sx={{
-                                        bgcolor: alpha(
-                                          theme.palette.info.main,
-                                          0.1
-                                        ),
-                                        color: theme.palette.info.main,
                                         fontWeight: 600,
-                                        fontSize: "0.7rem",
-                                        height: 24,
-                                        cursor: "pointer",
-                                        transition: "all 0.2s ease",
+                                        fontSize: "0.8rem",
+                                      }}
+                                    >
+                                      {formatDateTime(entry.recalculatedAt)}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <MuiLink
+                                      component="button"
+                                      onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        navigate(
+                                          `/payments/${entry.causedByPaymentId}`
+                                        );
+                                      }}
+                                      sx={{
+                                        textDecoration: "none",
                                         "&:hover": {
-                                          bgcolor: alpha(
-                                            theme.palette.info.main,
-                                            0.2
-                                          ),
-                                          transform: "translateY(-1px)",
-                                          boxShadow: `0 2px 8px ${alpha(
-                                            theme.palette.info.main,
-                                            0.3
-                                          )}`,
+                                          textDecoration: "none",
                                         },
                                       }}
-                                    />
-                                  </MuiLink>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontWeight: 600,
-                                      fontSize: "0.85rem",
-                                    }}
-                                  >
-                                    {formatCurrency(entry.startingAmount)}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontWeight: 700,
-                                      fontSize: "0.85rem",
-                                      color: isReduction
-                                        ? theme.palette.success.main
-                                        : theme.palette.primary.main,
-                                    }}
-                                  >
-                                    {formatCurrency(entry.calculatedAmount)}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "flex-end",
-                                      gap: 0.5,
-                                    }}
-                                  >
-                                    {isReduction ? (
-                                      <TrendingDown
+                                    >
+                                      <Chip
+                                        label={
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 0.5,
+                                            }}
+                                          >
+                                            Payment #
+                                            {entry.causedByPaymentNumber}
+                                            <OpenInNew sx={{ fontSize: 12 }} />
+                                          </Box>
+                                        }
+                                        size="small"
+                                        clickable
                                         sx={{
-                                          fontSize: 16,
-                                          color: theme.palette.success.main,
+                                          bgcolor: alpha(
+                                            theme.palette.info.main,
+                                            0.1
+                                          ),
+                                          color: theme.palette.info.main,
+                                          fontWeight: 600,
+                                          fontSize: "0.7rem",
+                                          height: 24,
+                                          cursor: "pointer",
+                                          transition: "all 0.2s ease",
+                                          "&:hover": {
+                                            bgcolor: alpha(
+                                              theme.palette.info.main,
+                                              0.2
+                                            ),
+                                            transform: "translateY(-1px)",
+                                            boxShadow: `0 2px 8px ${alpha(
+                                              theme.palette.info.main,
+                                              0.3
+                                            )}`,
+                                          },
                                         }}
                                       />
-                                    ) : (
-                                      <TrendingUp
-                                        sx={{
-                                          fontSize: 16,
-                                          color: theme.palette.error.main,
-                                        }}
-                                      />
-                                    )}
+                                    </MuiLink>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        fontWeight: 600,
+                                        fontSize: "0.85rem",
+                                      }}
+                                    >
+                                      {formatCurrency(entry.startingAmount)}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
                                     <Typography
                                       variant="body2"
                                       sx={{
@@ -778,239 +899,279 @@ export const PaymentInformation = React.memo<PaymentInformationProps>(({
                                         fontSize: "0.85rem",
                                         color: isReduction
                                           ? theme.palette.success.main
-                                          : theme.palette.error.main,
+                                          : theme.palette.primary.main,
                                       }}
                                     >
-                                      {isReduction ? "" : "+"}
-                                      {formatCurrency(Math.abs(amountChange))}
+                                      {formatCurrency(entry.calculatedAmount)}
                                     </Typography>
-                                  </Box>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontWeight: 700,
-                                      fontSize: "0.85rem",
-                                      color: theme.palette.warning.main,
-                                    }}
-                                  >
-                                    {formatCurrency(entry.overpaymentAmount)}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align="center">
-                                  <Tooltip
-                                    title={
-                                      <Box sx={{ p: 1.5 }}>
-                                        <Typography
-                                          variant="body2"
-                                          sx={{
-                                            fontWeight: 700,
-                                            display: "block",
-                                            mb: 2,
-                                            fontSize: "0.875rem",
-                                            color: "#fff",
-                                          }}
-                                        >
-                                          Principal & Interest Breakdown
-                                        </Typography>
-                                         <Box
-                                           sx={{
-                                             display: "grid",
-                                             gridTemplateColumns: "auto 1fr",
-                                             gap: 1.5,
-                                             rowGap: 1.5,
-                                           }}
-                                         >
-                                           <Typography
-                                             variant="body2"
-                                             sx={{
-                                               color: "rgba(255, 255, 255, 0.8)",
-                                               fontSize: "0.8125rem",
-                                               fontWeight: 600,
-                                             }}
-                                           >
-                                             Principal:
-                                           </Typography>
-                                           <Typography
-                                             variant="body2"
-                                             sx={{
-                                               fontWeight: 600,
-                                               color: "#fff",
-                                               fontSize: "0.8125rem",
-                                             }}
-                                           >
-                                             {formatCurrency(
-                                               entry.startingPrincipalAmount
-                                             )}{" "}
-                                             →{" "}
-                                             {formatCurrency(
-                                               entry.calculatedPrincipalAmount
-                                             )}
-                                           </Typography>
-                                           <Typography
-                                             variant="body2"
-                                             sx={{
-                                               color: "rgba(255, 255, 255, 0.8)",
-                                               fontSize: "0.8125rem",
-                                               fontWeight: 600,
-                                             }}
-                                           >
-                                             Interest:
-                                           </Typography>
-                                           <Typography
-                                             variant="body2"
-                                             sx={{
-                                               fontWeight: 600,
-                                               color: "#fff",
-                                               fontSize: "0.8125rem",
-                                             }}
-                                           >
-                                             {formatCurrency(
-                                               entry.startingInterestAmount
-                                             )}{" "}
-                                             →{" "}
-                                             {formatCurrency(
-                                               entry.calculatedInterestAmount
-                                             )}
-                                           </Typography>
-                                         </Box>
-                                      </Box>
-                                    }
-                                    placement="left"
-                                    arrow
-                                    componentsProps={{
-                                      tooltip: {
-                                        sx: {
-                                          bgcolor: "rgba(33, 33, 33, 0.95)",
-                                          "& .MuiTooltip-arrow": {
-                                            color: "rgba(33, 33, 33, 0.95)",
-                                          },
-                                          boxShadow:
-                                            "0 8px 32px rgba(0, 0, 0, 0.3)",
-                                          borderRadius: 2,
-                                          maxWidth: 400,
-                                        },
-                                      },
-                                    }}
-                                  >
-                                    <IconButton
-                                      size="small"
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Box
                                       sx={{
-                                        bgcolor: alpha(
-                                          theme.palette.info.main,
-                                          0.1
-                                        ),
-                                        "&:hover": {
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "flex-end",
+                                        gap: 0.5,
+                                      }}
+                                    >
+                                      {isReduction ? (
+                                        <TrendingDown
+                                          sx={{
+                                            fontSize: 16,
+                                            color: theme.palette.success.main,
+                                          }}
+                                        />
+                                      ) : (
+                                        <TrendingUp
+                                          sx={{
+                                            fontSize: 16,
+                                            color: theme.palette.error.main,
+                                          }}
+                                        />
+                                      )}
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          fontWeight: 700,
+                                          fontSize: "0.85rem",
+                                          color: isReduction
+                                            ? theme.palette.success.main
+                                            : theme.palette.error.main,
+                                        }}
+                                      >
+                                        {isReduction ? "" : "+"}
+                                        {formatCurrency(Math.abs(amountChange))}
+                                      </Typography>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        fontWeight: 700,
+                                        fontSize: "0.85rem",
+                                        color: theme.palette.warning.main,
+                                      }}
+                                    >
+                                      {formatCurrency(entry.overpaymentAmount)}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    <Tooltip
+                                      title={
+                                        <Box sx={{ p: 1.5 }}>
+                                          <Typography
+                                            variant="body2"
+                                            sx={{
+                                              fontWeight: 700,
+                                              display: "block",
+                                              mb: 2,
+                                              fontSize: "0.875rem",
+                                              color: "#fff",
+                                            }}
+                                          >
+                                            Principal & Interest Breakdown
+                                          </Typography>
+                                          <Box
+                                            sx={{
+                                              display: "grid",
+                                              gridTemplateColumns: "auto 1fr",
+                                              gap: 1.5,
+                                              rowGap: 1.5,
+                                            }}
+                                          >
+                                            <Typography
+                                              variant="body2"
+                                              sx={{
+                                                color:
+                                                  "rgba(255, 255, 255, 0.8)",
+                                                fontSize: "0.8125rem",
+                                                fontWeight: 600,
+                                              }}
+                                            >
+                                              Principal:
+                                            </Typography>
+                                            <Typography
+                                              variant="body2"
+                                              sx={{
+                                                fontWeight: 600,
+                                                color: "#fff",
+                                                fontSize: "0.8125rem",
+                                              }}
+                                            >
+                                              {formatCurrency(
+                                                entry.startingPrincipalAmount
+                                              )}{" "}
+                                              →{" "}
+                                              {formatCurrency(
+                                                entry.calculatedPrincipalAmount
+                                              )}
+                                            </Typography>
+                                            <Typography
+                                              variant="body2"
+                                              sx={{
+                                                color:
+                                                  "rgba(255, 255, 255, 0.8)",
+                                                fontSize: "0.8125rem",
+                                                fontWeight: 600,
+                                              }}
+                                            >
+                                              Interest:
+                                            </Typography>
+                                            <Typography
+                                              variant="body2"
+                                              sx={{
+                                                fontWeight: 600,
+                                                color: "#fff",
+                                                fontSize: "0.8125rem",
+                                              }}
+                                            >
+                                              {formatCurrency(
+                                                entry.startingInterestAmount
+                                              )}{" "}
+                                              →{" "}
+                                              {formatCurrency(
+                                                entry.calculatedInterestAmount
+                                              )}
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                      }
+                                      placement="left"
+                                      arrow
+                                      componentsProps={{
+                                        tooltip: {
+                                          sx: {
+                                            bgcolor: "rgba(33, 33, 33, 0.95)",
+                                            "& .MuiTooltip-arrow": {
+                                              color: "rgba(33, 33, 33, 0.95)",
+                                            },
+                                            boxShadow:
+                                              "0 8px 32px rgba(0, 0, 0, 0.3)",
+                                            borderRadius: 2,
+                                            maxWidth: 400,
+                                          },
+                                        },
+                                      }}
+                                    >
+                                      <IconButton
+                                        size="small"
+                                        sx={{
                                           bgcolor: alpha(
                                             theme.palette.info.main,
-                                            0.2
+                                            0.1
                                           ),
-                                        },
-                                      }}
-                                    >
-                                      <Info
-                                        sx={{
-                                          fontSize: 18,
-                                          color: theme.palette.info.main,
+                                          "&:hover": {
+                                            bgcolor: alpha(
+                                              theme.palette.info.main,
+                                              0.2
+                                            ),
+                                          },
                                         }}
-                                      />
-                                    </IconButton>
-                                  </Tooltip>
-                                </TableCell>
-                              </TableRow>
-                            </React.Fragment>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                                      >
+                                        <Info
+                                          sx={{
+                                            fontSize: 18,
+                                            color: theme.palette.info.main,
+                                          }}
+                                        />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </TableCell>
+                                </TableRow>
+                              </React.Fragment>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
 
-                  {/* Summary Section */}
-                  <Box
-                    sx={{
-                      mt: 2,
-                      p: 2,
-                      borderRadius: 2,
-                      bgcolor: alpha(theme.palette.info.main, 0.05),
-                      border: `1px solid ${alpha(
-                        theme.palette.info.main,
-                        0.1
-                      )}`,
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
+                    {/* Summary Section */}
+                    <Box
                       sx={{
-                        fontWeight: 700,
-                        color: "text.secondary",
-                        display: "block",
-                        mb: 1,
+                        mt: 2,
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: alpha(theme.palette.info.main, 0.05),
+                        border: `1px solid ${alpha(
+                          theme.palette.info.main,
+                          0.1
+                        )}`,
                       }}
                     >
-                      Recalculation Summary
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={4}>
-                        <Typography variant="caption" color="text.secondary">
-                          Total Recalculations
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {payment.recalculationHistory.length}
-                        </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontWeight: 700,
+                          color: "text.secondary",
+                          display: "block",
+                          mb: 1,
+                        }}
+                      >
+                        Recalculation Summary
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={4}>
+                          <Typography variant="caption" color="text.secondary">
+                            Total Recalculations
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {payment.recalculationHistory.length}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={4}>
+                          <Typography variant="caption" color="text.secondary">
+                            Original Amount
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {formatCurrency(
+                              payment.recalculationHistory[0].startingAmount
+                            )}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={4}>
+                          <Typography variant="caption" color="text.secondary">
+                            Current Amount
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 700,
+                              color: theme.palette.primary.main,
+                            }}
+                          >
+                            {formatCurrency(
+                              payment.recalculationHistory[
+                                payment.recalculationHistory.length - 1
+                              ].calculatedAmount
+                            )}
+                          </Typography>
+                        </Grid>
                       </Grid>
-                      <Grid item xs={4}>
-                        <Typography variant="caption" color="text.secondary">
-                          Original Amount
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {formatCurrency(
-                            payment.recalculationHistory[0].startingAmount
-                          )}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={4}>
-                        <Typography variant="caption" color="text.secondary">
-                          Current Amount
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 700,
-                            color: theme.palette.primary.main,
-                          }}
-                        >
-                          {formatCurrency(
-                            payment.recalculationHistory[
-                              payment.recalculationHistory.length - 1
-                            ].calculatedAmount
-                          )}
-                        </Typography>
-                      </Grid>
-                    </Grid>
+                    </Box>
                   </Box>
-                </Box>
-              </Collapse>
-            </Box>
-          </>
-        )}
+                </Collapse>
+              </Box>
+            </>
+          )}
 
-      {/* Creation Date */}
-      <Divider sx={{ my: 3 }} />
-      <Box>
-        <Typography
-          variant="subtitle2"
-          color="text.secondary"
-          sx={{ mb: 1, fontWeight: 600 }}
-        >
-          Created
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {formatDateTime(payment.createdAt)}
-        </Typography>
-      </Box>
-    </Paper>
-  );
-});
+        {/* Creation Date */}
+        <Divider sx={{ my: 3 }} />
+        <Box>
+          <Typography
+            variant="subtitle2"
+            color="text.secondary"
+            sx={{ mb: 1, fontWeight: 600 }}
+          >
+            Created
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {formatDateTime(payment.createdAt)}
+          </Typography>
+        </Box>
+      </Paper>
+    );
+  }
+);
 
-PaymentInformation.displayName = 'PaymentInformation';
+PaymentInformation.displayName = "PaymentInformation";

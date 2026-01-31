@@ -209,12 +209,22 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
           icon: Pending
         };
       case 'overdue':
+      case 'late':
         return {
-          label: 'Overdue',
+          label: 'Late',
           color: theme.palette.error.main,
           bgcolor: alpha(theme.palette.error.main, 0.1),
           textColor: theme.palette.error.main,
           icon: ErrorIcon
+        };
+      case 'partially_paid':
+      case 'partial':
+        return {
+          label: 'Partially Paid',
+          color: theme.palette.info.main,
+          bgcolor: alpha(theme.palette.info.main, 0.1),
+          textColor: theme.palette.info.main,
+          icon: Schedule
         };
       case 'scheduled':
         return {
@@ -233,6 +243,38 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
           icon: Warning
         };
     }
+  };
+
+  // Helper function to determine the effective statuses based on due date
+  const getEffectiveStatuses = (payment: Payment): string[] => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(payment.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    const isPastDue = dueDate < today;
+
+    const statusStr = String(payment.status).toLowerCase();
+    const statuses: string[] = [];
+
+    // If payment is paid, return paid status only
+    if (statusStr === 'paid') {
+      return ['paid'];
+    }
+
+    // If payment is past due, add "late" status
+    if (isPastDue) {
+      statuses.push('late');
+    }
+
+    // Add the payment status (partially_paid, pending, etc.)
+    if (statusStr === 'partially_paid' || statusStr === 'partial') {
+      statuses.push('partially_paid');
+    } else if (!isPastDue) {
+      // Only show original status if not past due (to avoid showing "pending" with "late")
+      statuses.push(statusStr);
+    }
+
+    return statuses.length > 0 ? statuses : [statusStr];
   };
 
   // Memoized event handlers for performance
@@ -526,8 +568,7 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
             </TableHead>
             <TableBody>
               {payments.map((payment: any) => {
-                const statusConfig = getStatusConfig(payment.status);
-                const StatusIcon = statusConfig.icon;
+                const effectiveStatuses = getEffectiveStatuses(payment);
                 
                 return (
                   <TableRow 
@@ -551,20 +592,45 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        icon={<StatusIcon />}
-                        label={statusConfig.label}
-                        size="small"
-                        sx={{
-                          bgcolor: statusConfig.bgcolor,
-                          color: statusConfig.textColor,
-                          fontWeight: 600,
-                          '& .MuiChip-icon': {
-                            color: statusConfig.color,
-                            fontSize: 16
-                          }
-                        }}
-                      />
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {effectiveStatuses.map((status, index) => {
+                          const statusConfig = getStatusConfig(status);
+                          const StatusIcon = statusConfig.icon;
+                          return (
+                            <Chip
+                              key={`${payment.id}-${status}-${index}`}
+                              icon={<StatusIcon />}
+                              label={statusConfig.label}
+                              size="small"
+                              sx={{
+                                bgcolor: statusConfig.bgcolor,
+                                color: statusConfig.textColor,
+                                fontWeight: 600,
+                                '& .MuiChip-icon': {
+                                  color: statusConfig.color,
+                                  fontSize: 16
+                                }
+                              }}
+                            />
+                          );
+                        })}
+                        {payment.applyPenalties && (
+                          <Chip
+                            icon={<Warning />}
+                            label="With Penalties"
+                            size="small"
+                            sx={{
+                              bgcolor: alpha(theme.palette.warning.main, 0.1),
+                              color: theme.palette.warning.main,
+                              fontWeight: 600,
+                              '& .MuiChip-icon': {
+                                color: theme.palette.warning.main,
+                                fontSize: 16
+                              }
+                            }}
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">

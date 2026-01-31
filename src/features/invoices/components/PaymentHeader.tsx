@@ -16,7 +16,8 @@ import {
   Schedule,
   Warning,
   Error as ErrorIcon,
-  Pending
+  Pending,
+  Calculate
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -35,13 +36,17 @@ interface PaymentHeaderProps {
   }) => Promise<void>;
   loading?: boolean;
   disableMarkAsPaid?: boolean;
+  onOpenPenaltyCalculator?: () => void;
+  isContractCompleted?: boolean;
 }
 
 export const PaymentHeader = React.memo<PaymentHeaderProps>(({
   payment,
   onMarkAsPaid,
   loading = false,
-  disableMarkAsPaid = false
+  disableMarkAsPaid = false,
+  onOpenPenaltyCalculator,
+  isContractCompleted = false
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -89,6 +94,51 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return format(dateObj, 'MMMM dd, yyyy');
   };
+
+  // Check if payment is past due
+  const isPastDue = useCallback(() => {
+    const dueDate = new Date(payment.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  }, [payment.dueDate]);
+
+  // Check if penalty calculator should be shown
+  const shouldShowPenaltyCalculator = useCallback(() => {
+    if (!onOpenPenaltyCalculator || isContractCompleted) {
+      return false;
+    }
+
+    // Only show for partially_paid or pending payments
+    const status = String(payment.status);
+    const isEligibleStatus = 
+      status === PaymentStatus.PARTIALLY_PAID || 
+      status === PaymentStatus.PARTIAL ||
+      status === PaymentStatus.PENDING;
+
+    if (!isEligibleStatus) {
+      return false;
+    }
+
+    // Must have a penalty rate configured
+    const hasPenaltyRate = 
+      payment.latePenaltyRatePerDay && 
+      Number(payment.latePenaltyRatePerDay) > 0;
+
+    if (!hasPenaltyRate) {
+      return false;
+    }
+
+    // Must be past due
+    return isPastDue();
+  }, [
+    onOpenPenaltyCalculator, 
+    isContractCompleted, 
+    payment.status, 
+    payment.latePenaltyRatePerDay, 
+    isPastDue
+  ]);
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -227,6 +277,38 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
                 </Typography>
               </Box>
             )}
+            {payment.penaltyAmount && Number(payment.penaltyAmount) > 0 && (
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="body2" sx={{ color: theme.palette.error.main, fontWeight: 600 }}>
+                  Penalties: {formatCurrency(payment.penaltyAmount)}
+                  {payment.paidPenaltyAmount && Number(payment.paidPenaltyAmount) > 0 && (
+                    <Typography component="span" variant="body2" sx={{ color: 'text.secondary', fontWeight: 400, ml: 1 }}>
+                      (Paid: {formatCurrency(payment.paidPenaltyAmount)} • 
+                      Remaining: {formatCurrency(Number(payment.penaltyAmount) - Number(payment.paidPenaltyAmount))})
+                    </Typography>
+                  )}
+                </Typography>
+              </Box>
+            )}
+            {((payment.paidCashAmount && Number(payment.paidCashAmount) >= 0) || 
+              (payment.paidCreditAmount && Number(payment.paidCreditAmount) >= 0)) && (
+              <Box sx={{ mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {payment.paidCashAmount && Number(payment.paidCashAmount) >= 0 && (
+                    <span style={{ color: theme.palette.success.main, fontWeight: 600 }}>
+                      Cash: {formatCurrency(payment.paidCashAmount)}
+                    </span>
+                  )}
+                  {payment.paidCashAmount && Number(payment.paidCashAmount) >= 0 && 
+                   payment.paidCreditAmount && Number(payment.paidCreditAmount) >= 0 && ' • '}
+                  {payment.paidCreditAmount && Number(payment.paidCreditAmount) >= 0 && (
+                    <span style={{ color: theme.palette.warning.main, fontWeight: 600 }}>
+                      Credit: {formatCurrency(payment.paidCreditAmount)}
+                    </span>
+                  )}
+                </Typography>
+              </Box>
+            )}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Chip
                 icon={<StatusIcon />}
@@ -275,6 +357,31 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
               }}
             >
               Mark as Paid
+            </Button>
+          )}
+          
+          {shouldShowPenaltyCalculator() && (
+            <Button
+              variant="outlined"
+              size="large"
+              startIcon={<Calculate />}
+              onClick={onOpenPenaltyCalculator}
+              sx={{
+                borderColor: alpha(theme.palette.warning.main, 0.3),
+                color: theme.palette.warning.main,
+                fontWeight: 600,
+                px: 3,
+                py: 1.5,
+                borderRadius: 2,
+                '&:hover': {
+                  borderColor: theme.palette.warning.main,
+                  bgcolor: alpha(theme.palette.warning.main, 0.05),
+                  transform: 'translateY(-1px)'
+                },
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Calculate Penalties
             </Button>
           )}
           

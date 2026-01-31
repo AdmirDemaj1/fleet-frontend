@@ -7,7 +7,7 @@ import {
   MarkPaymentPaidDto,
   MarkPaymentPaidWithCreditDto,
   RegisterPaymentDto,
-  CustomerCreditBalance,
+  ContractCreditBalance,
   PaymentStatus,
   PaginatedPaymentsResponse
 } from "../types/invoice.types";
@@ -140,8 +140,8 @@ export const paymentsApiNew = {
     return response.data;
   },
 
-  getCustomerCreditBalance: async (customerId: string): Promise<CustomerCreditBalance> => {
-    const response = await api.get<CustomerCreditBalance>(`/payments/customer/${customerId}/credit-balance`);
+  getContractCreditBalance: async (contractId: string): Promise<ContractCreditBalance> => {
+    const response = await api.get<ContractCreditBalance>(`/payments/contract/${contractId}/credit-balance`);
     return response.data;
   },
 

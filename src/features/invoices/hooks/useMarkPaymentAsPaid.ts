@@ -71,7 +71,7 @@ export const useMarkPaymentAsPaid = () => {
           const message = data.applyCreditBalance
             ? `Payment marked as paid. €${overpaymentAmount.toFixed(
                 2
-              )} added to customer credits.`
+              )} added to contract credits.`
             : `Payment marked as paid. €${overpaymentAmount.toFixed(
                 2
               )} will be applied to upcoming payments.`;

@@ -45,6 +45,10 @@ export interface Payment {
   type: PaymentType;
   applyPenalties?: boolean;
   latePenaltyRatePerDay?: number | string;
+  penaltyAmount?: number | string;
+  paidPenaltyAmount?: number | string;
+  paidCashAmount?: number | string;
+  paidCreditAmount?: number | string;
   notes?: string;
   paymentMethod?: string;
   transactionReference?: string;
@@ -97,6 +101,8 @@ export interface MarkPaymentPaidDto {
   paymentMethod: string;
   transactionReference?: string;
   notes?: string;
+  cashAmount?: number; // Amount paid in cash
+  creditAmount?: number; // Amount paid from credit
 }
 
 export interface MarkPaymentPaidWithCreditDto extends MarkPaymentPaidDto {
@@ -112,6 +118,7 @@ export interface ApplyPaymentDto {
   amountReceived: number;
   getFromCredit: boolean;
   creditAmount?: number; // optional: amount to take from credit (defaults to remaining if omitted)
+  cashAmount?: number; // Amount paid in cash
   notes?: string;
 }
 
@@ -183,8 +190,44 @@ export interface PaymentTableRow extends Payment {
   daysPastDue?: number;
 }
 
-export interface CustomerCreditBalance {
-  customerId: string;
+// export interface CustomerCreditBalance {
+//   customerId: string;
+//   creditBalance: number;
+//   lastUpdated: string;
+// }
+
+export interface ContractCreditBalance {
+  contractId: string;
   creditBalance: number;
   lastUpdated: string;
+}
+
+// Penalty Calculation Types
+export interface CalculatePenaltyDto {
+  daysLate?: number;
+  customEndDate?: string; // YYYY-MM-DD
+}
+
+export interface PenaltyDailyBreakdown {
+  day: number;
+  date: string; // YYYY-MM-DD
+  baseAmount: number;
+  penaltyAmount: number;
+  cumulativePenalty: number;
+}
+
+export interface PenaltyCalculationResponse {
+  paymentId: string;
+  originalAmount: number;
+  paidAmount: number;
+  remainingDue: number;
+  dueDate: string; // YYYY-MM-DD
+  calculationEndDate: string; // YYYY-MM-DD
+  daysLate: number;
+  dailyPenaltyRate: number;
+  totalPenalty: number;
+  totalAmountDue: number;
+  dailyBreakdown: PenaltyDailyBreakdown[];
+  penaltiesEnabled: boolean;
+  note: string;
 }

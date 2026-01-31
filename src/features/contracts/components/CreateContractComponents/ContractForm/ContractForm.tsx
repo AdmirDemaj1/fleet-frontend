@@ -605,7 +605,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         const hasAmortizationFile = !!formDataToUse.amortizationPlanFile;
 
         // Validate that amortization file is provided when start date is in the past
-        if (isStartDateInPast && !hasAmortizationFile) {
+        // Only required for NEW contracts, not when editing existing contracts
+        if (!isEdit && isStartDateInPast && !hasAmortizationFile) {
           setSubmitError(
             "Amortization plan Excel file is required when the contract start date is in the past. Please upload the file in the Contract Details step."
           );

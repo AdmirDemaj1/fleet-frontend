@@ -11,16 +11,19 @@ import {
   MarkPaymentPaidWithCreditDto,
   ApplyPaymentDto,
   RegisterPaymentDto,
-  CustomerCreditBalance,
+  
   PaymentStatus,
   PaymentType,
   UpdatePaymentPenaltySettingsDto,
+  CalculatePenaltyDto,
+  PenaltyCalculationResponse,
+  ContractCreditBalance,
 } from "../types/invoice.types";
 
 export const paymentsApi = createApi({
   reducerPath: "paymentsApi",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Payment", "CustomerCredit"],
+  tagTypes: ["Payment", "ContractCredit"],
   endpoints: (builder) => ({
     getPayments: builder.query<
       { payments: Payment[]; total: number; meta: any },
@@ -528,7 +531,7 @@ export const paymentsApi = createApi({
       invalidatesTags: (_result, _error, { id }) => [
         { type: "Payment", id },
         "Payment",
-        "CustomerCredit",
+        "ContractCredit",
       ],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
@@ -583,7 +586,7 @@ export const paymentsApi = createApi({
       invalidatesTags: (_result, _error, { id }) => [
         { type: "Payment", id },
         "Payment",
-        "CustomerCredit",
+        "ContractCredit",
       ],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
@@ -635,7 +638,7 @@ export const paymentsApi = createApi({
       invalidatesTags: (_result, _error, { id }) => [
         { type: "Payment", id },
         "Payment",
-        "CustomerCredit",
+        "ContractCredit",
       ],
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
@@ -685,11 +688,23 @@ export const paymentsApi = createApi({
       },
     }),
 
-    getCustomerCreditBalance: builder.query<CustomerCreditBalance, string>({
-      query: (customerId) => `/payments/customer/${customerId}/credit-balance`,
-      providesTags: (_result, _error, customerId) => [
-        { type: "CustomerCredit", id: customerId },
+    getCustomerCreditBalance: builder.query<ContractCreditBalance, string>({
+      query: (contractId) => `/payments/contract/${contractId}/credit-balance`,
+      providesTags: (_result, _error, contractId) => [
+        { type: "ContractCredit", id: contractId },
       ],
+    }),
+
+    calculatePenalties: builder.mutation<
+      PenaltyCalculationResponse,
+      { id: string; data?: CalculatePenaltyDto }
+    >({
+      query: ({ id, data }) => ({
+        url: `/payments/${id}/calculate-penalties`,
+        method: "POST",
+        body: data || {},
+      }),
+      // This is a read-only calculation, no cache invalidation needed
     }),
   }),
 });
@@ -710,4 +725,5 @@ export const {
   useApplyPaymentMutation,
   useUpdatePaymentPenaltiesMutation,
   useGetCustomerCreditBalanceQuery,
+  useCalculatePenaltiesMutation,
 } = paymentsApi;

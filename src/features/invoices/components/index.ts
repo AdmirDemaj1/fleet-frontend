@@ -4,3 +4,4 @@ export { PaymentHeader } from './PaymentHeader';
 export { PaymentInformation } from './PaymentInformation';
 export { PaymentRelatedInfo } from './PaymentRelatedInfo';
 export { MarkPaymentPaidModal } from './MarkPaymentPaidModal';
+export { PenaltyCalculator, PenaltyCalculatorModal } from './PenaltyCalculator';

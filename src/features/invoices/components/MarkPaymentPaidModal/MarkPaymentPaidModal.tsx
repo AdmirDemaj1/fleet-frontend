@@ -37,6 +37,7 @@ export interface MarkPaymentPaidModalProps {
     overpaymentOption?: 'credit' | 'upcoming_payments';
     getFromCredit?: boolean;
     creditAmount?: number;
+    cashAmount?: number;
   }) => Promise<void>;
   loading?: boolean;
 }
@@ -76,7 +77,8 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
   // Calculated values
   const totalPaymentAmountCents = payment ? toCents(payment.amount) : 0;
   const alreadyPaidAmountCents = payment ? toCents((payment as any).paidAmount || 0) : 0;
-  const paymentAmountCents = Math.max(0, totalPaymentAmountCents - alreadyPaidAmountCents); // remaining due
+  const penaltyAmountCents = payment ? toCents(payment.penaltyAmount || 0) : 0;
+  const paymentAmountCents = Math.max(0, totalPaymentAmountCents - alreadyPaidAmountCents + penaltyAmountCents); // remaining due + penalties
   const paymentAmount = paymentAmountCents / 100;
 
   const actualAmountCents = toCents(formData.actualAmountReceived);
@@ -84,17 +86,39 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
 
   const isOverpayment = actualAmountCents > paymentAmountCents;
   const overpaymentAmount = (actualAmountCents - paymentAmountCents) / 100;
-  const isUnderpayment = actualAmountCents > 0 && actualAmountCents < paymentAmountCents;
+  const isUnderpayment = actualAmountCents >= 0 && actualAmountCents < paymentAmountCents;
   const underpaymentAmount = (paymentAmountCents - actualAmountCents) / 100;
 
   const { data: creditData, isLoading: isCreditLoading } =
-    useGetCustomerCreditBalanceQuery(payment?.customerId ?? '', {
-      skip: !open || !payment?.customerId,
+    useGetCustomerCreditBalanceQuery(payment?.contractId ?? '', {
+      skip: !open || !payment?.contractId,
     });
   const availableCreditCents = toCents((creditData as any)?.creditBalance ?? 0);
   const availableCredit = availableCreditCents / 100;
   const maxCreditUsableCents = Math.min(availableCreditCents, Math.max(0, paymentAmountCents - actualAmountCents));
   const maxCreditUsable = maxCreditUsableCents / 100;
+
+  // Calculate credit amount to be used
+  const creditAmountToUse = getFromCredit && isUnderpayment
+    ? creditMode === 'custom'
+      ? toCents(customCreditAmount) / 100
+      : Math.min(availableCredit, underpaymentAmount)
+    : 0;
+
+  // Calculate cash amount (actual amount received)
+  const cashAmount = actualAmount;
+
+  // Total payment (cash + credit)
+  const totalPaymentAmount = cashAmount + creditAmountToUse;
+
+  // Automatically enable getFromCredit when amount is 0
+  useEffect(() => {
+    if (!open) return;
+    if (actualAmount === 0 && !getFromCredit && availableCredit > 0) {
+      setGetFromCredit(true);
+      setCreditMode('full');
+    }
+  }, [actualAmount, open, getFromCredit, availableCredit]);
 
   // If there is no credit available (or we haven't loaded it yet), ensure credit usage is off.
   useEffect(() => {
@@ -103,12 +127,15 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
     if (isCreditLoading) return;
     if (availableCredit > 0) return;
 
+    // Don't disable if amount is 0 (user must use credit)
+    if (actualAmount === 0) return;
+
     if (getFromCredit) {
       setGetFromCredit(false);
       setCreditMode('full');
       setCustomCreditAmount('');
     }
-  }, [availableCredit, getFromCredit, isCreditLoading, isUnderpayment, open]);
+  }, [availableCredit, getFromCredit, isCreditLoading, isUnderpayment, open, actualAmount]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -125,16 +152,21 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
       setCustomCreditAmount('');
       setErrors({});
     }
-  }, [open, payment, paymentAmountCents]);
+  }, [open, payment, paymentAmountCents, fromCents]);
 
   // Validation
   const validateForm = useCallback(() => {
     const newErrors: { [key: string]: string } = {};
 
-    if (!formData.actualAmountReceived) {
+    if (!formData.actualAmountReceived && formData.actualAmountReceived !== '0') {
       newErrors.actualAmountReceived = 'Amount received is required';
-    } else if (actualAmount <= 0) {
-      newErrors.actualAmountReceived = 'Amount must be greater than 0';
+    } else if (actualAmount < 0) {
+      newErrors.actualAmountReceived = 'Amount cannot be negative';
+    }
+
+    // If amount is 0, must use credit
+    if (actualAmount === 0 && !getFromCredit) {
+      newErrors.getFromCredit = 'When amount is 0, you must use contract credit';
     }
 
     if (!formData.paymentMethod) {
@@ -146,7 +178,7 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
       const maxUsable = maxUsableCents / 100;
 
       if (availableCredit <= 0) {
-        newErrors.getFromCredit = 'Customer has no available credit';
+        newErrors.getFromCredit = 'Contract has no available credit';
       } else if (creditMode === 'custom') {
         const rawCents = toCents(customCreditAmount);
         if (!customCreditAmount) {
@@ -176,16 +208,14 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
         notes: formData.notes || undefined,
         overpaymentOption: isOverpayment ? overpaymentOption : undefined,
         getFromCredit: isUnderpayment ? getFromCredit : undefined,
-        creditAmount:
-          isUnderpayment && getFromCredit && creditMode === 'custom'
-            ? toCents(customCreditAmount) / 100
-            : undefined,
+        cashAmount: cashAmount > 0 ? cashAmount : undefined,
+        creditAmount: creditAmountToUse > 0 ? creditAmountToUse : undefined,
       });
       onClose();
     } catch (error) {
       console.error('Failed to mark payment as paid:', error);
     }
-  }, [validateForm, payment, onMarkAsPaid, formData.paymentMethod, formData.transactionReference, formData.notes, actualAmount, isOverpayment, overpaymentOption, isUnderpayment, getFromCredit, creditMode, toCents, customCreditAmount, onClose]);
+  }, [validateForm, payment, onMarkAsPaid, formData.paymentMethod, formData.transactionReference, formData.notes, actualAmount, isOverpayment, overpaymentOption, isUnderpayment, getFromCredit, creditMode, toCents, customCreditAmount, onClose, cashAmount, creditAmountToUse]);
 
   // Handle input changes
   const handleInputChange = useCallback((field: string, value: string) => {
@@ -235,18 +265,23 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
             Payment Details
           </Typography>
           <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
-            Remaining Due: €{paymentAmount.toFixed(2)}
+            Total Due: €{paymentAmount.toFixed(2)}
           </Typography>
           {alreadyPaidAmountCents > 0 && (
             <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-              Total: €{fromCents(totalPaymentAmountCents)} • Paid: €{fromCents(alreadyPaidAmountCents)}
+              Original: €{fromCents(totalPaymentAmountCents)} • Paid: €{fromCents(alreadyPaidAmountCents)}
             </Typography>
           )}
-          <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+          {penaltyAmountCents > 0 && (
+            <Typography variant="body2" sx={{ color: theme.palette.error.main, fontWeight: 600 }}>
+              Includes Penalties: €{fromCents(penaltyAmountCents)}
+            </Typography>
+          )}
+          <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>
             Due Date: {new Date(payment.dueDate).toLocaleDateString()}
           </Typography>
           <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1 }}>
-            Customer Credit: {isCreditLoading ? 'Loading...' : `€${availableCredit.toFixed(2)}`}
+            Contract Credit: {isCreditLoading ? 'Loading...' : `€${availableCredit.toFixed(2)}`}
           </Typography>
         </Box>
 
@@ -312,15 +347,17 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
                   label={
                     <Box>
                       <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        Add to Customer Credits
+                        Add to Contract Credits
                       </Typography>
                       <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                        The overpayment will be added to the customer's credit balance for future use
+                        The overpayment will be added to the contract's credit balance for future use
                       </Typography>
                     </Box>
                   }
                   sx={{ mb: 1, alignItems: 'flex-start', mt: 1 }}
                 />
+                
+                {/* Todo: Removed for now, maybe to be added in future
                 <FormControlLabel 
                   value="upcoming_payments" 
                   control={<Radio />} 
@@ -335,7 +372,7 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
                     </Box>
                   }
                   sx={{ alignItems: 'flex-start' }}
-                />
+                /> */}
               </RadioGroup>
             </FormControl>
           </Box>
@@ -353,10 +390,13 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
           >
             <Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                Partial Payment Detected
+                {actualAmount === 0 ? 'Payment from Credit Only' : 'Partial Payment Detected'}
               </Typography>
               <Typography variant="body2" sx={{ mb: 1 }}>
-                Remaining amount: €{underpaymentAmount.toFixed(2)}
+                {actualAmount === 0 
+                  ? `Full amount to be paid from credit: €${underpaymentAmount.toFixed(2)}`
+                  : `Remaining amount: €${underpaymentAmount.toFixed(2)}`
+                }
               </Typography>
               <FormControlLabel
                 control={
@@ -381,14 +421,14 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
                 }
                 label={
                   <Typography variant="body2">
-                    Get remaining amount from customer credit
+                    Get remaining amount from contract credit
                   </Typography>
                 }
               />
 
               {!isCreditLoading && availableCredit <= 0 && (
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
-                  No customer credit available.
+                  No contract credit available.
                 </Typography>
               )}
 
@@ -462,6 +502,57 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
               )}
             </Box>
           </Alert>
+        )}
+
+        {/* Payment Breakdown Summary */}
+        {(actualAmount > 0 || creditAmountToUse > 0) && (
+          <Box sx={{ 
+            mb: 3, 
+            p: 2, 
+            bgcolor: alpha(theme.palette.info.main, 0.05),
+            borderRadius: 2,
+            border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`
+          }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: theme.palette.info.main }}>
+              Payment Breakdown
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {cashAmount > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                    Cash Payment:
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
+                    €{cashAmount.toFixed(2)}
+                  </Typography>
+                </Box>
+              )}
+              {creditAmountToUse > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                    From Credit:
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.warning.main }}>
+                    €{creditAmountToUse.toFixed(2)}
+                  </Typography>
+                </Box>
+              )}
+              <Divider sx={{ my: 0.5 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  Total Payment:
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                  €{totalPaymentAmount.toFixed(2)}
+                </Typography>
+              </Box>
+              {totalPaymentAmount < paymentAmount && (
+                <Typography variant="caption" sx={{ color: theme.palette.warning.main, mt: 0.5 }}>
+                  Remaining: €{(paymentAmount - totalPaymentAmount).toFixed(2)}
+                </Typography>
+              )}
+            </Box>
+          </Box>
         )}
 
         <Divider sx={{ my: 3 }} />

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Grid,
@@ -10,12 +10,14 @@ import { useMarkPaymentAsPaid } from '../hooks';
 import { PaymentHeader } from '../components/PaymentHeader';
 import { PaymentInformation } from '../components/PaymentInformation';
 import { PaymentRelatedInfo } from '../components/PaymentRelatedInfo';
+import { PenaltyCalculatorModal } from '../components/PenaltyCalculator';
 import { LoadingSpinner } from '../../../shared/components/LoadingSpinner';
 import { useGetContractQuery } from '../../contracts/api/contractApi';
 import { ContractStatus } from '../../contracts/types/contract.types';
 
 const PaymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [penaltyCalculatorOpen, setPenaltyCalculatorOpen] = useState(false);
   
   const {
     data: payment,
@@ -40,6 +42,7 @@ const PaymentDetailPage: React.FC = () => {
     overpaymentOption?: 'credit' | 'upcoming_payments';
     getFromCredit?: boolean;
     creditAmount?: number;
+    cashAmount?: number;
   }) => {
     if (!payment) return;
 
@@ -52,7 +55,8 @@ const PaymentDetailPage: React.FC = () => {
 
       const totalCents = toCents(payment.amount);
       const paidCents = toCents((payment as any).paidAmount || 0);
-      const dueCents = Math.max(0, totalCents - paidCents); // remaining due
+      const penaltyCents = toCents(payment.penaltyAmount || 0);
+      const dueCents = Math.max(0, totalCents - paidCents + penaltyCents); // remaining due + penalties
       const receivedCents = toCents(data.actualAmountReceived);
 
       const isOverpayment = receivedCents > dueCents;
@@ -81,6 +85,7 @@ const PaymentDetailPage: React.FC = () => {
           amountReceived: receivedCents / 100,
           getFromCredit: !!data.getFromCredit,
           creditAmount: data.getFromCredit ? data.creditAmount : undefined,
+          cashAmount: data.cashAmount,
           notes: data.notes,
         });
       } else {
@@ -89,7 +94,9 @@ const PaymentDetailPage: React.FC = () => {
           paymentDate: data.paymentDate,
           paymentMethod: data.paymentMethod,
           transactionReference: data.transactionReference,
-          notes: data.notes
+          notes: data.notes,
+          cashAmount: data.cashAmount,
+          creditAmount: data.creditAmount,
         });
       }
     } catch (error) {
@@ -142,13 +149,18 @@ const PaymentDetailPage: React.FC = () => {
           onMarkAsPaid={handleMarkAsPaid}
           loading={isMarkingPayment}
           disableMarkAsPaid={isContractCompleted}
+          onOpenPenaltyCalculator={() => setPenaltyCalculatorOpen(true)}
+          isContractCompleted={isContractCompleted}
         />
 
       {/* Main Content */}
       <Grid container spacing={4}>
         {/* Payment Information - Left Column */}
         <Grid item xs={12} lg={8}>
-          <PaymentInformation payment={payment} />
+          <PaymentInformation 
+            payment={payment} 
+            isContractCompleted={isContractCompleted}
+          />
         </Grid>
 
         {/* Related Information - Right Column */}
@@ -159,6 +171,13 @@ const PaymentDetailPage: React.FC = () => {
           />
         </Grid>
       </Grid>
+
+      {/* Penalty Calculator Modal */}
+      <PenaltyCalculatorModal
+        open={penaltyCalculatorOpen}
+        onClose={() => setPenaltyCalculatorOpen(false)}
+        payment={payment}
+      />
     </Box>
   );
 };
