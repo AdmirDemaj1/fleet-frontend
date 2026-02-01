@@ -105,11 +105,12 @@ const CustomerAssetSummary: React.FC<CustomerAssetSummaryProps> = ({ customerId 
   };
 
   // Format currency
+  // TODO: This code is duplicated in a lot of places, we should create a shared function for this.
   const formatCurrency = (amount: number | undefined | null) => {
     if (!amount) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);

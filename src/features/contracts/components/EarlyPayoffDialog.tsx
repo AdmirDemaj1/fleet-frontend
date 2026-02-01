@@ -32,7 +32,7 @@ const formatCurrency = (amount: number | null | undefined): string => {
   if (amount === null || amount === undefined || Number.isNaN(amount)) return "-";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: "EUR",
     minimumFractionDigits: 2,
   }).format(amount);
 };

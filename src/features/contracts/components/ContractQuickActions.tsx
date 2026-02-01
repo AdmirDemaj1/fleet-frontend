@@ -143,7 +143,7 @@ export const ContractQuickActions = React.memo<ContractQuickActionsProps>(({
     if (amount === undefined || amount === null) return "-";
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "EUR",
       minimumFractionDigits: 2,
     }).format(amount);
   };

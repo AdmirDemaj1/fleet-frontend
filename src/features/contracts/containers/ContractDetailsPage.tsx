@@ -61,6 +61,9 @@ export const ContractDetailsPage: React.FC = () => {
     const paidPrincipalAmount = principalAmount && remainingPrincipalAmount ? principalAmount - remainingPrincipalAmount : null;
     const paidInterestAmount = interestAmount && remainingInterestAmount ? interestAmount - remainingInterestAmount : null;
 
+    // Parse credit balance
+    const creditBalance = contract.creditBalance ? parseFloat(contract.creditBalance) : null;
+
     return {
       isLoan,
       totalAmount,
@@ -73,6 +76,7 @@ export const ContractDetailsPage: React.FC = () => {
       remainingInterestAmount,
       paidPrincipalAmount,
       paidInterestAmount,
+      creditBalance,
       type: {
         icon: isLoan ? AccountBalance : TrendingUp,
         color: isLoan ? 'primary' : 'secondary',

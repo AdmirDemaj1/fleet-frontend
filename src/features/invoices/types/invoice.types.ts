@@ -49,6 +49,7 @@ export interface Payment {
   paidPenaltyAmount?: number | string;
   paidCashAmount?: number | string;
   paidCreditAmount?: number | string;
+  overpaid?: number | string;
   notes?: string;
   paymentMethod?: string;
   transactionReference?: string;

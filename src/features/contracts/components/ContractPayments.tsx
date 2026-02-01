@@ -180,7 +180,7 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       minimumFractionDigits: 2,
     }).format(numAmount);
   };

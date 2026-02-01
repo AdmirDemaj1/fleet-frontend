@@ -207,13 +207,13 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
   const { totalDue = 0, nextBillDate = "No active contracts" } =
     financialSummary || {};
 
-  const getStatusFromData = () => {
-    if (totalDue > 0) return "warning";
-    if (contracts.length === 0) return "inactive";
-    return "active";
-  };
+  // const getStatusFromData = () => {
+  //   if (totalDue > 0) return "warning";
+  //   if (contracts.length === 0) return "inactive";
+  //   return "active";
+  // };
 
-  const currentStatus = getStatusFromData();
+  const currentStatus = customerData?.status;
 
   return (
     <Paper

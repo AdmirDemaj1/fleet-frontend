@@ -25,6 +25,7 @@ export enum BusinessType {
     secondaryPhone?: string;
     secondaryEmail?: string;
     additionalNotes?: string;
+    status?: string;
     createdAt?: Date | string; // Accept string from API
     updatedAt?: Date | string; // Accept string from API
     documents?: Document[]; // Array of documents
@@ -74,6 +75,7 @@ export enum BusinessType {
     secondaryPhone?: string;
     secondaryEmail?: string;
     additionalNotes?: string;
+    status?: string;
   }
   
   export interface CreateBusinessCustomerDto {
@@ -89,6 +91,7 @@ export enum BusinessType {
     secondaryPhone?: string;
     secondaryEmail?: string;
     additionalNotes?: string;
+    status?: string;
   }
 
 

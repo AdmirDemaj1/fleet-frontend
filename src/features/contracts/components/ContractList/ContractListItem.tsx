@@ -69,7 +69,7 @@ export const ContractListItem: React.FC<ContractListItemProps> = ({
     const numAmount = parseFloat(amount);
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "EUR",
     }).format(numAmount);
   };
 

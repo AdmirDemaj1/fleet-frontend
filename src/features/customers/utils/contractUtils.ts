@@ -5,7 +5,7 @@ export const formatCurrency = (amount: number | null | undefined): string => {
   if (amount == null || isNaN(amount)) return 'N/A';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'EUR'
   }).format(amount);
 };
 

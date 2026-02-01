@@ -128,7 +128,7 @@ export const PaymentRelatedInfo = React.memo<PaymentRelatedInfoProps>(
         typeof amount === "string" ? parseFloat(amount) : amount;
       return new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: "USD",
+        currency: "EUR",
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
       }).format(numAmount);

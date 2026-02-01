@@ -12,7 +12,8 @@ import {
   AttachMoney,
   TrendingUp,
   AccountBalance,
-  Schedule
+  Schedule,
+  CreditCard
 } from '@mui/icons-material';
 
 interface ContractFinancialOverviewProps {
@@ -26,9 +27,19 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
+    }).format(numAmount);
+  };
+
+  const formatCurrencyWithDecimals = (amount: string | number): string => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(numAmount);
   };
 
@@ -205,7 +216,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
 
         {/* Financial Cards Grid - Including Total Value */}
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6} md={3}>
             <Paper
               elevation={0}
               sx={{
@@ -245,7 +256,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
             </Paper>
           </Grid>
           
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6} md={3}>
             <Paper
               elevation={0}
               sx={{
@@ -285,7 +296,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
             </Paper>
           </Grid>
           
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6} md={3}>
             <Paper
               elevation={0}
               sx={{
@@ -324,6 +335,48 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
               </Typography>
             </Paper>
           </Grid>
+
+          {contractConfig.creditBalance !== null && contractConfig.creditBalance !== undefined && (
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: alpha(theme.palette.secondary.main, 0.04),
+                  border: `1px solid ${alpha(theme.palette.secondary.main, 0.1)}`,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'translateY(-1px)',
+                    boxShadow: `0 6px 16px ${alpha(theme.palette.secondary.main, 0.15)}`
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Avatar
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      bgcolor: alpha(theme.palette.secondary.main, 0.1),
+                      color: 'secondary.main',
+                      mr: 1.5
+                    }}
+                  >
+                    <CreditCard sx={{ fontSize: 18 }} />
+                  </Avatar>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Credit Balance
+                  </Typography>
+                </Box>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: 'secondary.main', mb: 0.5 }}>
+                  {formatCurrencyWithDecimals(contractConfig.creditBalance)}
+                </Typography>
+                <Typography variant="caption" color="secondary.main" sx={{ fontWeight: 500 }}>
+                  Available credit
+                </Typography>
+              </Paper>
+            </Grid>
+          )}
         </Grid>
 
         {/* Principal and Interest Breakdown */}

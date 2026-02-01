@@ -161,6 +161,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
                   Created
                 </TableSortLabel>
               </TableCell>
+              <TableCell>Status</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -174,7 +175,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
             ))}
             {customers.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                   <Box sx={{ 
                     display: 'flex', 
                     flexDirection: 'column', 

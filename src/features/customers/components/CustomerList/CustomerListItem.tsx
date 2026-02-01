@@ -31,6 +31,7 @@ import {
   Edit,
 } from "@mui/icons-material";
 import { Customer, CustomerType } from "../../types/customer.types";
+import { STATUS_CONFIG } from "../../constants/sidebarConstants";
 import dayjs from "dayjs";
 
 interface CustomerListItemProps {
@@ -242,6 +243,28 @@ export const CustomerListItem: React.FC<CustomerListItemProps> = ({
           <Typography variant="body2" color="text.secondary">
             {formatDate(customer.createdAt)}
           </Typography>
+        </TableCell>
+
+        <TableCell>
+          {customer.status ? (
+            <Chip
+              label={customer.status.charAt(0).toUpperCase() + customer.status.slice(1)}
+              size="small"
+              icon={STATUS_CONFIG[customer.status]?.icon}
+              sx={{
+                bgcolor: STATUS_CONFIG[customer.status]?.bgcolor || alpha(theme.palette.primary.main, 0.1),
+                color: STATUS_CONFIG[customer.status]?.color || theme.palette.primary.main,
+                fontWeight: 500,
+                '& .MuiChip-icon': {
+                  color: STATUS_CONFIG[customer.status]?.color || theme.palette.primary.main,
+                },
+              }}
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              N/A
+            </Typography>
+          )}
         </TableCell>
 
         <TableCell align="right">

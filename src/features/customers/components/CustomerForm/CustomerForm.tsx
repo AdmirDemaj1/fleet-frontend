@@ -512,6 +512,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                     data.individualDetails.secondaryEmail || undefined,
                   additionalNotes:
                     data.individualDetails.additionalNotes || undefined,
+                  status: 'inactive', // Explicitly set to inactive
                 }
               : undefined,
             // Include documents for upload after creation (individuals)
@@ -541,16 +542,18 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                           .map((s: any) => s.name)
                           .filter((name: string) => name.trim() !== "")
                       : undefined,
-                  administratorIds:
+                          administratorIds:
                     data.businessDetails.administratorIds &&
                     data.businessDetails.administratorIds.length > 0
                       ? data.businessDetails.administratorIds
                       : undefined,
+                  status: 'inactive',
                 }
               : undefined,
           };
         }
 
+        console.log("Transformed data being sent:", JSON.stringify(transformedData, null, 2));
         await onSubmit(transformedData);
       } catch (error) {
         console.error("Submission failed:", error);

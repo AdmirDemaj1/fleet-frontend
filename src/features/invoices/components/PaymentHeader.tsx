@@ -64,7 +64,7 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       minimumFractionDigits: 2,
     }).format(numAmount);
   }, []);
@@ -296,14 +296,19 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
                 <Typography variant="body2" color="text.secondary">
                   {payment.paidCashAmount && Number(payment.paidCashAmount) >= 0 && (
                     <span style={{ color: theme.palette.success.main, fontWeight: 600 }}>
-                      Cash: {formatCurrency(payment.paidCashAmount)}
+                      Paid In Cash: {formatCurrency(payment.paidCashAmount)}
                     </span>
                   )}
-                  {payment.paidCashAmount && Number(payment.paidCashAmount) >= 0 && 
-                   payment.paidCreditAmount && Number(payment.paidCreditAmount) >= 0 && ' • '}
+                  {' • '}
                   {payment.paidCreditAmount && Number(payment.paidCreditAmount) >= 0 && (
                     <span style={{ color: theme.palette.warning.main, fontWeight: 600 }}>
-                      Credit: {formatCurrency(payment.paidCreditAmount)}
+                      Paid From Credit: {formatCurrency(payment.paidCreditAmount)}
+                    </span>
+                  )}
+                  {' • '}
+                   {payment.overpaid && (
+                    <span style={{ color: theme.palette.warning.main, fontWeight: 600 }}>
+                      Overpaid: {formatCurrency(payment.overpaid)}
                     </span>
                   )}
                 </Typography>

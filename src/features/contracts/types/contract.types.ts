@@ -376,6 +376,7 @@ export interface ContractResponse {
   principalAmount?: string;
   remainingInterestAmount?: string;
   remainingPrincipalAmount?: string;
+  creditBalance?: string;
   createdAt: string;
   updatedAt: string;
   documents?: ContractDocumentResponseDto[];
