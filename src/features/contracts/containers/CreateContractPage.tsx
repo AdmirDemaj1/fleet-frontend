@@ -367,10 +367,18 @@ export const CreateContractPage: React.FC = () => {
         }
       }
 
-      // Prepare migration data
+      // Prepare migration data - remove loanDate from headerData for validation
       const migrationData = {
         ...contractData,
-        ...(amortizations && { amortizations }),
+        ...(amortizations && {
+          amortizations: amortizations.map((am) => ({
+            ...am,
+            headerData: (() => {
+              const { loanDate, ...headerDataWithoutLoanDate } = am.headerData;
+              return headerDataWithoutLoanDate;
+            })(),
+          })),
+        }),
       };
 
       // Validate migration data
