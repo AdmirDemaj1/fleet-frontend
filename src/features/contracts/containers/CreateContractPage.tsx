@@ -292,6 +292,46 @@ export const CreateContractPage: React.FC = () => {
     }
   };
 
+  // Helper function to remove loanDate from amortizations headerData
+  const removeLoanDateFromAmortizations = (
+    amortizations?: Array<{
+      headerData: {
+        currency?: string;
+        creditAmount?: number;
+        interestRate?: number;
+        maturityYears?: number;
+        maturityMonths?: number;
+        monthlyMortgagePayments?: number;
+        disbursementCommission?: number;
+        commissionAmount?: number;
+        interest?: number;
+        principal?: number;
+        loanDate?: string;
+        loanAmount?: number;
+      };
+      scheduleOfPayments: Array<{
+        paymentNumber: number;
+        month: string;
+        beginningBalance: number;
+        monthlyInterestAmount: number;
+        principalRepayment: number;
+        monthlyMortgagePayment: number;
+        endingBalance: number;
+        paidAmount?: number | null;
+        paymentDate?: string | null;
+      }>;
+    }>
+  ) => {
+    if (!amortizations) return undefined;
+    return amortizations.map((am) => ({
+      ...am,
+      headerData: (() => {
+        const { loanDate, ...headerDataWithoutLoanDate } = am.headerData;
+        return headerDataWithoutLoanDate;
+      })(),
+    }));
+  };
+
   const handleValidate = async (data: CreateContractWithDocumentsDto) => {
     try {
       console.log("🔍 Validating migration data:", data);
@@ -368,17 +408,10 @@ export const CreateContractPage: React.FC = () => {
       }
 
       // Prepare migration data - remove loanDate from headerData for validation
+      const cleanedAmortizations = removeLoanDateFromAmortizations(amortizations);
       const migrationData = {
         ...contractData,
-        ...(amortizations && {
-          amortizations: amortizations.map((am) => ({
-            ...am,
-            headerData: (() => {
-              const { loanDate, ...headerDataWithoutLoanDate } = am.headerData;
-              return headerDataWithoutLoanDate;
-            })(),
-          })),
-        }),
+        ...(cleanedAmortizations && { amortizations: cleanedAmortizations }),
       };
 
       // Validate migration data
@@ -535,10 +568,11 @@ export const CreateContractPage: React.FC = () => {
         );
         showInfo("Validating migration data...");
 
-        // Prepare migration data
+        // Prepare migration data - remove loanDate from headerData
+        const cleanedAmortizations = removeLoanDateFromAmortizations(amortizations);
         const migrationData = {
           ...contractData,
-          ...(amortizations && { amortizations }),
+          ...(cleanedAmortizations && { amortizations: cleanedAmortizations }),
         };
 
         // Step 1a: Validate migration data
@@ -610,9 +644,11 @@ export const CreateContractPage: React.FC = () => {
         }
       } else {
         // Step 1: Create the contract normally (with amortizations if provided)
+        // Remove loanDate from headerData for contract creation
+        const cleanedAmortizations = removeLoanDateFromAmortizations(amortizations);
         const contractDataWithAmortization = {
           ...contractData,
-          ...(amortizations && { amortizations }),
+          ...(cleanedAmortizations && { amortizations: cleanedAmortizations }),
         };
 
         response = await createContract(contractDataWithAmortization).unwrap();
