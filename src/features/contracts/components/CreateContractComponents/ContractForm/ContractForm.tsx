@@ -380,8 +380,13 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   useEffect(() => {
     // Add the percentages (e.g., 3 + 2 = 5)
     const totalPercentage = Number(euriborRate) + Number(marginRate);
+    // Check if minimum interest rate should be used
+    const effectiveInterestPercent = 
+      totalPercentage < minTotalAnnualInterestPercent
+        ? minTotalAnnualInterestPercent
+        : totalPercentage;
     // Convert to decimal for the form (e.g., 5 -> 0.05)
-    const totalDecimal = totalPercentage / 100;
+    const totalDecimal = effectiveInterestPercent / 100;
 
     setValue("loanDetails.interestRate", totalDecimal, {
       shouldValidate: true,
@@ -393,11 +398,17 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       marginRate,
       "=",
       totalPercentage,
+      "%",
+      totalPercentage < minTotalAnnualInterestPercent 
+        ? `(using minimum: ${minTotalAnnualInterestPercent}%)`
+        : "",
+      "->",
+      effectiveInterestPercent,
       "% (",
       totalDecimal,
       "decimal)"
     );
-  }, [euriborRate, marginRate, setValue]);
+  }, [euriborRate, marginRate, minTotalAnnualInterestPercent, setValue]);
 
   // Debug logging
   useEffect(() => {
@@ -1559,6 +1570,28 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                         <Calculate sx={{ mr: 1 }} />
                         Loan Summary
                       </Typography>
+                      {/* Show effective interest rate being used */}
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Interest Rate Used:
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Chip
+                            label={
+                              isInterestBelowMinimum
+                                ? `Minimum: ${minTotalAnnualInterestPercent.toFixed(2)}%`
+                                : `Euribor + Margin: ${totalInterestPercent.toFixed(2)}%`
+                            }
+                            color={isInterestBelowMinimum ? "warning" : "primary"}
+                            size="small"
+                          />
+                          {isInterestBelowMinimum && (
+                            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              (Euribor + Margin: {totalInterestPercent.toFixed(2)}% is below minimum)
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
                       <Grid container spacing={2}>
                         <Grid item xs={6} md={3}>
                           <Typography variant="body2" color="text.secondary">

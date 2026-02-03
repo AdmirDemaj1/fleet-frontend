@@ -53,7 +53,7 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
   currentMargin,
 }) => {
   const theme = useTheme();
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError, showInfo } = useNotification();
   
   const [selectedEuriborRateId, setSelectedEuriborRateId] = useState<string>('');
   const [availableEuriborRates, setAvailableEuriborRates] = useState<EuriborRate[]>([]);
@@ -272,12 +272,23 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
         selectedRateDate: selectedRate.rateDate,
       });
 
-      await updateEuriborRate({
+      const response = await updateEuriborRate({
         contractId,
         data: updateData,
       }).unwrap();
 
-      showSuccess('Euribor rate updated successfully');
+      // Display the message from the API response
+      if (response?.data?.message) {
+        if (response.data.skippedRecalculation) {
+          // Show as info when recalculation was skipped
+          showInfo(response.data.message);
+        } else {
+          // Show as success when recalculation was performed
+          showSuccess(response.data.message);
+        }
+      } else {
+        showSuccess('Euribor rate updated successfully');
+      }
       handleClose();
     } catch (error: any) {
       console.error('Error updating Euribor rate:', error);
