@@ -149,6 +149,31 @@ export const IndividualDetailsStep: React.FC = () => {
 
           <Grid item xs={12} sm={6}>
             <Controller
+              name="individualDetails.customerIdentifierNumber"
+              control={control}
+              defaultValue=""
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Customer Identifier Number (Optional)"
+                  fullWidth
+                  error={!!getNestedError('individualDetails.customerIdentifierNumber')}
+                  helperText={getNestedError('individualDetails.customerIdentifierNumber')?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Badge color="action" fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={fieldStyle}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Controller
               name="individualDetails.dateOfBirth"
               control={control}
               defaultValue=""
@@ -164,6 +189,36 @@ export const IndividualDetailsStep: React.FC = () => {
                       required: true,
                       error: !!getNestedError('individualDetails.dateOfBirth'),
                       helperText: getNestedError('individualDetails.dateOfBirth')?.message,
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarToday color="action" fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      },
+                      sx: fieldStyle
+                    },
+                  }}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="individualDetails.generationDate"
+              control={control}
+              defaultValue=""
+              render={({ field }) => (
+                <DatePicker
+                  label="Generation Date (Optional)"
+                  value={field.value ? dayjs(field.value) : null}
+                  onChange={(date) => field.onChange(date?.format("YYYY-MM-DD"))}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      error: !!getNestedError('individualDetails.generationDate'),
+                      helperText: getNestedError('individualDetails.generationDate')?.message,
                       InputProps: {
                         startAdornment: (
                           <InputAdornment position="start">

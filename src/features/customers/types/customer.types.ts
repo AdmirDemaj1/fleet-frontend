@@ -69,6 +69,7 @@ export enum BusinessType {
     lastName: string;
     idNumber: string;
     dateOfBirth: string;
+    customerIdentifierNumber?: string;
     address: string;
     phone: string;
     email: string;
@@ -76,6 +77,7 @@ export enum BusinessType {
     secondaryEmail?: string;
     additionalNotes?: string;
     status?: string;
+    generationDate?: string;
   }
   
   export interface CreateBusinessCustomerDto {
@@ -92,6 +94,7 @@ export enum BusinessType {
     secondaryEmail?: string;
     additionalNotes?: string;
     status?: string;
+    generationDate?: string;
   }
 
 
@@ -236,6 +239,8 @@ export enum BusinessType {
 
   export interface Administrator {
     id: string;
+    firstName: string;
+    lastName: string;
     nuisNipt: string;
     companyName: string;
     companyEmail: string;

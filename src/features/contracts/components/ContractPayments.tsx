@@ -822,13 +822,13 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
               label="Payment Method"
               disabled={isCompletedContract}
             >
-              <MenuItem value="cash">Cash</MenuItem>
+              {/* <MenuItem value="cash">Cash</MenuItem> */}
               <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
-              <MenuItem value="online_banking">Online Banking</MenuItem>
+              {/* <MenuItem value="online_banking">Online Banking</MenuItem>
               <MenuItem value="credit_card">Credit Card</MenuItem>
               <MenuItem value="debit_card">Debit Card</MenuItem>
               <MenuItem value="check">Check</MenuItem>
-              <MenuItem value="other">Other</MenuItem>
+              <MenuItem value="other">Other</MenuItem> */}
             </Select>
           </FormControl>
 

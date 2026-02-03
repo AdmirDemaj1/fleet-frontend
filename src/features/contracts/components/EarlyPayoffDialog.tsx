@@ -240,9 +240,9 @@ export const EarlyPayoffDialog: React.FC<EarlyPayoffDialogProps> = ({
             fullWidth
           >
             <MenuItem value="bank_transfer">Bank transfer</MenuItem>
-            <MenuItem value="cash">Cash</MenuItem>
+            {/* <MenuItem value="cash">Cash</MenuItem>
             <MenuItem value="card">Card</MenuItem>
-            <MenuItem value="other">Other</MenuItem>
+            <MenuItem value="other">Other</MenuItem> */}
           </TextField>
 
           <TextField

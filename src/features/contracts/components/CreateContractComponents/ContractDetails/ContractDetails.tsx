@@ -168,7 +168,7 @@ export const ContractDetails: React.FC<ContractDetailsProps> = ({ isEdit = false
                 required
                 disabled={isEdit}
                 InputProps={{
-                  startAdornment: <span style={{ marginRight: '8px' }}>$</span>,
+                  startAdornment: <span style={{ marginRight: '8px' }}>€</span>,
                   readOnly: isEdit,
                 }}
                 inputProps={{ min: 0, step: 0.01 }}

@@ -85,15 +85,6 @@ const REQUIRED_VEHICLE_DOCUMENTS = [
     requiresExpiryDate: true,
   },
   {
-    category: VehicleDocumentType.INSURANCE,
-    name: "Insurance Certificate",
-    description: "Vehicle insurance policy",
-    isRequired: true,
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true,
-  },
-  {
     category: VehicleDocumentType.TPL,
     name: "Third Party Liability (TPL)",
     description: "TPL insurance certificate",

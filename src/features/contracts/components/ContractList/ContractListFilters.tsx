@@ -251,10 +251,10 @@ export const ContractListFilters: React.FC<ContractListFiltersProps> = ({
                     label="Amount Range"
                   >
                     <MenuItem value="">Any Amount</MenuItem>
-                    <MenuItem value="0-10000">$0 - $10,000</MenuItem>
-                    <MenuItem value="10000-50000">$10,000 - $50,000</MenuItem>
-                    <MenuItem value="50000-100000">$50,000 - $100,000</MenuItem>
-                    <MenuItem value="100000+">$100,000+</MenuItem>
+                    <MenuItem value="0-10000">€0 - €10,000</MenuItem>
+                    <MenuItem value="10000-50000">€10,000 - €50,000</MenuItem>
+                    <MenuItem value="50000-100000">€50,000 - €100,000</MenuItem>
+                    <MenuItem value="100000+">€100,000+</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -345,7 +345,7 @@ export const ContractListFilters: React.FC<ContractListFiltersProps> = ({
             
             {amountRange && (
               <Chip 
-                label={`Amount: ${amountRange === '100000+' ? '$100,000+' : `$${amountRange.replace('-', ' - $')}`}`} 
+                label={`Amount: ${amountRange === '100000+' ? '€100,000+' : `€${amountRange.replace('-', ' - €')}`}`} 
                 size="small"
                 onDelete={() => setAmountRange('')}
                 sx={{ borderRadius: 1.5 }}

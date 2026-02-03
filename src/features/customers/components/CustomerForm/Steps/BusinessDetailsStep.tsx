@@ -24,10 +24,13 @@ import {
   Home,
   Groups,
   Add,
-  Remove
+  Remove,
+  CalendarToday
 } from '@mui/icons-material';
 import { Controller, useFormContext, useFieldArray } from 'react-hook-form';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { MuiTelInput } from 'mui-tel-input';
+import dayjs from 'dayjs';
 import { AdministratorPicker } from '../../AdministratorPicker';
 import { BusinessType } from '../../../types/customer.types';
 
@@ -162,6 +165,36 @@ export const BusinessDetailsStep: React.FC = () => {
                     </Typography>
                   )}
                 </FormControl>
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="businessDetails.generationDate"
+              control={control}
+              defaultValue=""
+              render={({ field }) => (
+                <DatePicker
+                  label="Generation Date (Optional)"
+                  value={field.value ? dayjs(field.value) : null}
+                  onChange={(date) => field.onChange(date?.format("YYYY-MM-DD"))}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      error: !!getNestedError('businessDetails.generationDate'),
+                      helperText: getNestedError('businessDetails.generationDate')?.message,
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarToday color="action" fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      },
+                      sx: fieldStyle
+                    },
+                  }}
+                />
               )}
             />
           </Grid>

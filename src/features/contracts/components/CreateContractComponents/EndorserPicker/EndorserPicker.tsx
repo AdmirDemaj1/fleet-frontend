@@ -1,7 +1,7 @@
 /**
  * EndorserPicker Component
  * 
- * NOTE: Currently using default values for guaranteedAmount ($100,000) 
+ * NOTE: Currently using default values for guaranteedAmount (€100,000) 
  * since the backend doesn't yet include this field in the endorser response.
  * 
  * TODO: Update when backend implements guaranteedAmount field in endorser API
@@ -119,7 +119,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
   const allEndorsers = useMemo(() => 
     customersResponse.map(customer => {
       // Generate a default guarantee amount based on customer (can be customized later)
-      const defaultGuaranteeAmount = 100000; // $100,000 default capacity per customer
+      const defaultGuaranteeAmount = 100000; // €100,000 default capacity per customer
       
       return {
         id: customer.id,
@@ -456,7 +456,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                   )}
                     {option.guaranteedAmount && (
                       <Chip
-                        label={`Max: $${option.guaranteedAmount.toLocaleString()} (default)`}
+                        label={`Max: €${option.guaranteedAmount.toLocaleString()} (default)`}
                         size="small"
                         color="secondary"
                         variant="outlined"
@@ -609,7 +609,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                       error={guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)}
                       InputProps={{
                         startAdornment: (
-                          <InputAdornment position="start">$</InputAdornment>
+                          <InputAdornment position="start">€</InputAdornment>
                         ),
                         inputProps: {
                           max: state.selectedEndorser.remainingGuaranteeCapacity || 100000,
@@ -618,9 +618,9 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                       }}
                       helperText={
                         guaranteeForContract > (state.selectedEndorser.remainingGuaranteeCapacity || 0)
-                          ? `Exceeds max capacity of $${(state.selectedEndorser.remainingGuaranteeCapacity || 0).toLocaleString()}`
+                          ? `Exceeds max capacity of €${(state.selectedEndorser.remainingGuaranteeCapacity || 0).toLocaleString()}`
                           : guaranteeForContract > totalContractAmount
-                          ? `⚠️ Warning: Exceeds contract amount of $${totalContractAmount.toLocaleString()}`
+                          ? `⚠️ Warning: Exceeds contract amount of €${totalContractAmount.toLocaleString()}`
                           : "Amount this endorser will guarantee"
                       }
                       sx={{
@@ -652,7 +652,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                       InputProps={{
                         readOnly: true,
                         startAdornment: (
-                          <InputAdornment position="start">$</InputAdornment>
+                          <InputAdornment position="start">€</InputAdornment>
                         ),
                       }}
                       helperText="Max capacity (default value - pending backend implementation)"
@@ -678,7 +678,7 @@ export const EndorserPicker: React.FC<EndorserPickerProps> = ({
                       InputProps={{
                         readOnly: true,
                         startAdornment: (
-                          <InputAdornment position="start">$</InputAdornment>
+                          <InputAdornment position="start">€</InputAdornment>
                         ),
                       }}
                       helperText="Total contract amount"

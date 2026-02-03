@@ -133,16 +133,6 @@ const OPTIONAL_DOCUMENTS = [
     requiresExpiryDate: false,
   },
   {
-    category: DocumentCategory.INSURANCE,
-    name: "Insurance Certificate",
-    description:
-      "Current vehicle insurance policy (provided by selected vehicle)",
-    isRequired: false, // No longer required for manual upload
-    acceptedTypes: [".pdf", ".jpg", ".jpeg", ".png"],
-    maxSize: 10 * 1024 * 1024, // 10MB
-    requiresExpiryDate: true,
-  },
-  {
     category: DocumentCategory.TPL,
     name: "Third Party Liability (TPL)",
     description:

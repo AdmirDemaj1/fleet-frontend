@@ -1109,7 +1109,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 InputProps={{
                   readOnly: isEdit,
                   startAdornment: (
-                    <InputAdornment position="start">$</InputAdornment>
+                    <InputAdornment position="start">€</InputAdornment>
                   ),
                 }}
                 required
@@ -1413,7 +1413,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 InputProps={{
                   readOnly: true,
                   startAdornment: (
-                    <InputAdornment position="start">$</InputAdornment>
+                    <InputAdornment position="start">€</InputAdornment>
                   ),
                   endAdornment: (
                     <InputAdornment position="end">
@@ -1720,7 +1720,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           : "Not set"}
                       </Typography>
                       <Typography variant="body2">
-                        <strong>Total Amount:</strong> $
+                        <strong>Total Amount:</strong> €
                         {watchedData.totalAmount?.toLocaleString() || "0"}
                       </Typography>
                     </Box>
@@ -1755,19 +1755,42 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           gap: 1,
                         }}
                       >
-                        <Typography variant="body2">
-                          <strong>Interest Rate:</strong>{" "}
-                          {(
-                            (watchedData.loanDetails.interestRate || 0) * 100
-                          ).toFixed(2)}
-                          %
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography variant="body2">
+                            <strong>Euribor + Margin:</strong>{" "}
+                            {totalInterestPercent.toFixed(2)}%
+                          </Typography>
+                          {!isInterestBelowMinimum && (
+                            <Chip 
+                              label="Applied as interest" 
+                              size="small" 
+                              color="success" 
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
+                        {minTotalAnnualInterestPercent && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2">
+                              <strong>Minimum Annual Interest:</strong>{" "}
+                              {minTotalAnnualInterestPercent.toFixed(2)}%
+                            </Typography>
+                            {isInterestBelowMinimum && (
+                              <Chip 
+                                label="Applied as interest" 
+                                size="small" 
+                                color="success" 
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                            )}
+                          </Box>
+                        )}
                         <Typography variant="body2">
                           <strong>Term:</strong>{" "}
                           {watchedData.loanDetails.loanTermMonths} months
                         </Typography>
                         <Typography variant="body2">
-                          <strong>Monthly Payment:</strong> $
+                          <strong>Monthly Payment:</strong> €
                           {watchedData.loanDetails.monthlyPayment?.toFixed(2) ||
                             "0.00"}
                         </Typography>
@@ -1797,7 +1820,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           color="success.main"
                           sx={{ fontWeight: 600 }}
                         >
-                          <strong>Total Interest:</strong> $
+                          <strong>Total Interest:</strong> €
                           {watchedData.loanDetails.monthlyPayment &&
                           watchedData.loanDetails.loanTermMonths
                             ? (
@@ -1812,7 +1835,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           color="primary.main"
                           sx={{ fontWeight: 600 }}
                         >
-                          <strong>Total Repayment:</strong> $
+                          <strong>Total Repayment:</strong> €
                           {watchedData.loanDetails.monthlyPayment &&
                           watchedData.loanDetails.loanTermMonths
                             ? (

@@ -185,7 +185,7 @@ export const CollateralForm: React.FC<CollateralFormProps> = ({
                     )
                   }
                   InputProps={{
-                    startAdornment: <Typography>$</Typography>,
+                    startAdornment: <Typography>€</Typography>,
                   }}
                   required
                 />

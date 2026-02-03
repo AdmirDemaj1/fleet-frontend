@@ -21,7 +21,6 @@ import { BrandLogo } from '../../../../../shared/components';
 // Required document types for a vehicle to be used in a contract
 export const REQUIRED_VEHICLE_DOCUMENT_TYPES = [
   'vehicle_registration',
-  'insurance',
   'tpl',
 //   'vehicle_inspection',
   'casco',

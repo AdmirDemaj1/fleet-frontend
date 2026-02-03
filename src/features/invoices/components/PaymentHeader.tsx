@@ -296,7 +296,7 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
                 <Typography variant="body2" color="text.secondary">
                   {payment.paidCashAmount && Number(payment.paidCashAmount) >= 0 && (
                     <span style={{ color: theme.palette.success.main, fontWeight: 600 }}>
-                      Paid In Cash: {formatCurrency(payment.paidCashAmount)}
+                      Paid: {formatCurrency(payment.paidCashAmount)}
                     </span>
                   )}
                   {' • '}

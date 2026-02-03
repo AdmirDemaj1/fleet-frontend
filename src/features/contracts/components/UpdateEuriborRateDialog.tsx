@@ -307,7 +307,7 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
   const formatPayment = (payment: Payment) => {
     const dateStr = dayjs(payment.dueDate).format('MMM DD, YYYY');
     const amount = typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount;
-    return `Payment #${payment.paymentNumber} - ${dateStr} (${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)})`;
+    return `Payment #${payment.paymentNumber} - ${dateStr} (${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(amount)})`;
   };
 
   return (

@@ -177,12 +177,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               lastName: "",
               idNumber: "",
               dateOfBirth: "",
+              customerIdentifierNumber: "",
               address: "",
               phone: "",
               email: "",
               secondaryPhone: "",
               secondaryEmail: "",
               additionalNotes: "",
+              generationDate: "",
             }
           : undefined,
       individualDocuments: customerType === CustomerType.INDIVIDUAL ? [] : undefined,
@@ -201,6 +203,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               secondaryPhone: "",
               secondaryEmail: "",
               additionalNotes: "",
+              generationDate: "",
             }
           : undefined,
       administratorDetails:
@@ -512,6 +515,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                     data.individualDetails.secondaryEmail || undefined,
                   additionalNotes:
                     data.individualDetails.additionalNotes || undefined,
+                  generationDate:
+                    data.individualDetails.generationDate || undefined,
+                  customerIdentifierNumber:
+                    data.individualDetails.customerIdentifierNumber || undefined,
                   status: 'inactive', // Explicitly set to inactive
                 }
               : undefined,
@@ -535,6 +542,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                     data.businessDetails.secondaryEmail || undefined,
                   additionalNotes:
                     data.businessDetails.additionalNotes || undefined,
+                  generationDate:
+                    data.businessDetails.generationDate || undefined,
                   shareholders:
                     data.businessDetails.shareholders &&
                     data.businessDetails.shareholders.length > 0
@@ -567,7 +576,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     if (initialData) {
       reset({
         customerType: customerType,
-        individualDetails:
+            individualDetails:
           customerType === CustomerType.INDIVIDUAL
             ? {
                 type: CustomerType.INDIVIDUAL,
@@ -575,12 +584,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 lastName: "",
                 idNumber: "",
                 dateOfBirth: "",
+                customerIdentifierNumber: "",
                 address: "",
                 phone: "",
                 email: "",
                 secondaryPhone: "",
                 secondaryEmail: "",
                 additionalNotes: "",
+                generationDate: "",
                 ...initialData.individualDetails,
               }
             : undefined,
@@ -603,6 +614,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 secondaryPhone: "",
                 secondaryEmail: "",
                 additionalNotes: "",
+                generationDate: "",
                 ...initialData.businessDetails,
               }
             : undefined,

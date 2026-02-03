@@ -440,7 +440,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                           Paid
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
-                          {contractConfig.paidPrincipalAmount ? formatCurrency(contractConfig.paidPrincipalAmount) : '$0'}
+                          {contractConfig.paidPrincipalAmount ? formatCurrency(contractConfig.paidPrincipalAmount) : '€0'}
                         </Typography>
                       </Box>
                       <Box sx={{ flex: 1 }}>
@@ -448,7 +448,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                           Remaining
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 600, color: 'warning.main' }}>
-                          {contractConfig.remainingPrincipalAmount ? formatCurrency(contractConfig.remainingPrincipalAmount) : '$0'}
+                          {contractConfig.remainingPrincipalAmount ? formatCurrency(contractConfig.remainingPrincipalAmount) : '€0'}
                         </Typography>
                       </Box>
                     </Box>
@@ -504,7 +504,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                           Paid
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 600, color: 'success.main' }}>
-                          {contractConfig.paidInterestAmount ? formatCurrency(contractConfig.paidInterestAmount) : '$0'}
+                          {contractConfig.paidInterestAmount ? formatCurrency(contractConfig.paidInterestAmount) : '€0'}
                         </Typography>
                       </Box>
                       <Box sx={{ flex: 1 }}>
@@ -512,7 +512,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                           Remaining
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 600, color: 'warning.main' }}>
-                          {contractConfig.remainingInterestAmount ? formatCurrency(contractConfig.remainingInterestAmount) : '$0'}
+                          {contractConfig.remainingInterestAmount ? formatCurrency(contractConfig.remainingInterestAmount) : '€0'}
                         </Typography>
                       </Box>
                     </Box>

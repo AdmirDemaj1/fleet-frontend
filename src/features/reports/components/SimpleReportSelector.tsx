@@ -35,6 +35,8 @@ const reportTypeLabels: Record<SimpleReportType, string> = {
   [SimpleReportType.PAYMENTS_PER_CONTRACT]: "Payments per Contract",
   [SimpleReportType.CUSTOMERS]: "Customers",
   [SimpleReportType.CONTRACTS]: "Contracts",
+  [SimpleReportType.VEHICLES]: "Vehicles",
+  [SimpleReportType.ADMINISTRATORS]: "Administrators",
 };
 
 export const SimpleReportSelector: React.FC<SimpleReportSelectorProps> = ({

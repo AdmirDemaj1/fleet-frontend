@@ -92,6 +92,8 @@ const CustomerAccountAdditionalInfo: React.FC<
     }
   }, [customerData?.type, customerData?.administrators]);
 
+  console.log("🔍 customerDataaaaa:", customerData);
+
   return (
     <Box sx={{ p: 3, pb: 2 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2.5 }}>
@@ -387,7 +389,7 @@ const CustomerAccountAdditionalInfo: React.FC<
                             variant="body2"
                             sx={{ fontWeight: 600, color: "text.primary" }}
                           >
-                            {administrator.administratorName || "Administrator"}
+                            {administrator.firstName + " " + administrator.lastName || "Administrator"}
                           </Typography>
                           {administrator.administratorPosition && (
                             <Typography

@@ -572,10 +572,10 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
           sx={{ mb: 3 }}
         >
           <option value="bank_transfer">Bank Transfer</option>
-          <option value="cash">Cash</option>
+          {/* <option value="cash">Cash</option>
           <option value="check">Check</option>
           <option value="card">Card Payment</option>
-          <option value="other">Other</option>
+          <option value="other">Other</option> */}
         </TextField>
 
         {/* Transaction Reference */}
