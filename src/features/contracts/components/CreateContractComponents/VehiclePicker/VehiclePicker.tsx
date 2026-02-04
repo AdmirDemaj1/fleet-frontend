@@ -1215,6 +1215,7 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
         onClose={handleCloseCreateModal}
         onSubmit={handleCreateVehicle}
         isCreating={state.isCreatingVehicle}
+        requireDocuments={true} // Require documents when creating from contract form
       />
 
       {/* Vehicle Completion Modal - for adding missing info */}

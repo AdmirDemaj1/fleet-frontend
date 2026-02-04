@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { Vehicle, VehicleStatus } from "../../types/vehicleType";
+import { Vehicle, VehicleStatus, VehicleDocumentType } from "../../types/vehicleType";
 import { VehicleDocumentFile } from "../VehicleDocumentUpload";
 import { BasicInfoStep } from "../Steps/BasicInfoStep";
 import { DetailsStep } from "../Steps/DetailsStep";
@@ -28,6 +28,14 @@ import {
   REQUIRED_FIELDS,
   STEP_CONFIG,
 } from "../../utils/vehicleFormValidation";
+
+// Required document types when creating from contract form
+const REQUIRED_DOCUMENT_TYPES = [
+  VehicleDocumentType.VEHICLE_REGISTRATION,
+  VehicleDocumentType.VEHICLE_INSPECTION,
+  VehicleDocumentType.TPL,
+  VehicleDocumentType.CASCO,
+];
 
 // Type for the new submission data format with documents
 interface VehicleSubmissionData {
@@ -53,6 +61,7 @@ interface VehicleFormProps {
   initialDocuments?: VehicleDocumentFile[];
   onPendingDocumentIdsChange?: (ids: string[]) => void;
   onCancel?: () => void;
+  requireDocuments?: boolean; // If true, documents are required before creation (e.g., when creating from contract form)
 }
 
 export const VehicleForm: React.FC<VehicleFormProps> = ({
@@ -67,6 +76,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   initialDocuments = [],
   onPendingDocumentIdsChange,
   onCancel,
+  requireDocuments = false,
 }) => {
   const validationSchema = useMemo(() => createVehicleValidationSchema(), []);
 
@@ -406,6 +416,22 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       }));
   }, [activeStep, errors, getStepFields]);
 
+  // Check if all required documents are uploaded (when requireDocuments is true)
+  const hasAllRequiredDocuments = useMemo(() => {
+    if (!requireDocuments) return true; // Not required, so always true
+    
+    const uploadedDocumentTypes = vehicleDocuments
+      .map((doc) => doc.category)
+      .filter(Boolean);
+    
+    // Check if all 4 required document types are present
+    const hasAllRequired = REQUIRED_DOCUMENT_TYPES.every((requiredType) =>
+      uploadedDocumentTypes.includes(requiredType)
+    );
+    
+    return hasAllRequired;
+  }, [requireDocuments, vehicleDocuments]);
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <FormProvider {...methods}>
@@ -445,6 +471,62 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
 
           {/* Step Content */}
           <Box mb={4}>{renderStepContent()}</Box>
+
+          {/* Required Documents Alert - Show when creating from contract form and documents are incomplete */}
+          {requireDocuments && !hasAllRequiredDocuments && activeStep === STEP_CONFIG.length - 1 && (
+            <Fade in>
+              <Alert 
+                severity="warning" 
+                sx={{ 
+                  mb: 3,
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  '& .MuiAlert-message': {
+                    width: '100%',
+                  }
+                }}
+              >
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                  ⚠️ Complete All Required Documents
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 1.5, fontWeight: 500 }}>
+                  You must upload all 4 required documents before creating the vehicle:
+                </Typography>
+                <Box component="ul" sx={{ m: 0, pl: 3, mb: 1 }}>
+                  {REQUIRED_DOCUMENT_TYPES.map((docType) => {
+                    const isUploaded = vehicleDocuments.some(
+                      (doc) => doc.category === docType
+                    );
+                    // Map document types to readable names
+                    const docNameMap: Record<string, string> = {
+                      [VehicleDocumentType.VEHICLE_REGISTRATION]: 'Vehicle Registration',
+                      [VehicleDocumentType.VEHICLE_INSPECTION]: 'Vehicle Inspection',
+                      [VehicleDocumentType.TPL]: 'TPL (Third Party Liability)',
+                      [VehicleDocumentType.CASCO]: 'CASCO Insurance',
+                    };
+                    const docName = docNameMap[docType] || docType;
+                    return (
+                      <li key={docType}>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            fontWeight: isUploaded ? 500 : 600,
+                            color: isUploaded ? 'success.main' : 'warning.main',
+                          }}
+                        >
+                          {isUploaded ? '✓' : '✗'} {docName}
+                          {isUploaded && ' (Uploaded)'}
+                        </Typography>
+                      </li>
+                    );
+                  })}
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 600, mt: 1 }}>
+                  Please go to the Documents step and upload all required documents to continue.
+                </Typography>
+              </Alert>
+            </Fade>
+          )}
 
           <Divider sx={{ my: 3 }} />
 
@@ -519,7 +601,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                   type="button"
                   variant="contained"
                   color="primary"
-                  disabled={loading || !isValid}
+                  disabled={
+                    loading || 
+                    !isValid || 
+                    (requireDocuments && !hasAllRequiredDocuments) // Require all 4 documents when creating from contract form
+                  }
                   onClick={handleSubmit(handleFinalSubmit)}
                   startIcon={
                     loading ? (
@@ -534,6 +620,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                     fontWeight: 600,
                     boxShadow: 2,
                   }}
+                  title={
+                    requireDocuments && !hasAllRequiredDocuments
+                      ? `Please upload all 4 required documents: Vehicle Registration, Vehicle Inspection, TPL, and CASCO`
+                      : undefined
+                  }
                 >
                   {loading
                     ? "Saving..."

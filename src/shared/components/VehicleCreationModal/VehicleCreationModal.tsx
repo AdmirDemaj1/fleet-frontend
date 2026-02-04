@@ -19,6 +19,7 @@ export interface VehicleCreationModalProps {
   onSubmit: (data: Partial<Vehicle> | { vehicleData: Partial<Vehicle>; files?: File[]; documents?: any[] }) => Promise<void>;
   isCreating: boolean;
   title?: string;
+  requireDocuments?: boolean; // If true, documents are required before creation (e.g., when creating from contract form)
 }
 
 export const VehicleCreationModal: React.FC<VehicleCreationModalProps> = ({
@@ -26,7 +27,8 @@ export const VehicleCreationModal: React.FC<VehicleCreationModalProps> = ({
   onClose,
   onSubmit,
   isCreating,
-  title = "Create New Vehicle"
+  title = "Create New Vehicle",
+  requireDocuments = false
 }) => {
   const [activeStep, setActiveStep] = useState(0);
   const steps = ['Basic Information', 'Details & Specifications', 'Documentation & Valuation'];
@@ -92,6 +94,7 @@ export const VehicleCreationModal: React.FC<VehicleCreationModalProps> = ({
             onStepChange={handleStepChange}
             steps={steps}
             isEdit={false}
+            requireDocuments={requireDocuments}
           />
         </Box>
       </DialogContent>
