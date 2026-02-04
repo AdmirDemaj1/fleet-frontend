@@ -632,8 +632,14 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         }
 
         // Build base contract data
+        // IMPORTANT: If user selected LEASING, treat it as LOAN in the background
+        const contractTypeForSubmission = 
+          formDataToUse.type === ContractType.LEASING 
+            ? ContractType.LOAN 
+            : formDataToUse.type;
+        
         const baseContractData: any = {
-          type: formDataToUse.type,
+          type: contractTypeForSubmission, // Always use LOAN if LEASING was selected
           contractNumber: formDataToUse.contractNumber,
           customerId: formDataToUse.customerId,
           startDate: formDataToUse.startDate,
@@ -788,8 +794,13 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         );
 
         console.log("  📤 Submitting contract with", files.length, "documents");
+        console.log("  🔍 Form data type:", formDataToUse.type);
+        console.log("  🔍 Loan details exists:", !!formDataToUse.loanDetails);
+        console.log("  🔍 Leasing details exists:", !!formDataToUse.leasingDetails);
+        console.log("  🔍 Contract type for submission:", contractTypeForSubmission);
 
-        // Add loan details if it's a loan contract
+        // Always add loan details since we're converting LEASING to LOAN in the background
+        // Check if it's a loan contract (user selected LOAN)
         if (
           formDataToUse.type === ContractType.LOAN &&
           formDataToUse.loanDetails
@@ -801,7 +812,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             formDataToUse.totalAmount;
 
           submitData.loanDetails = {
-            type: formDataToUse.type,
+            type: contractTypeForSubmission, // Use LOAN type
             contractNumber: formDataToUse.contractNumber,
             customerId: formDataToUse.customerId,
             startDate: formDataToUse.startDate,
@@ -813,34 +824,75 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             totalInterest: Math.round(totalInterest * 100) / 100, // Round to 2 decimal places
             minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
             processingFeePercentage:
-              formDataToUse.loanDetails.processingFeePercentage,
+              formDataToUse.loanDetails.processingFeePercentage || 0,
             earlyRepaymentPenalty:
-              formDataToUse.loanDetails.earlyRepaymentPenalty,
+              formDataToUse.loanDetails.earlyRepaymentPenalty || 0,
             paymentScheduleType:
               formDataToUse.loanDetails.paymentScheduleType || "monthly_fixed",
           };
-        }
-
-        // Add leasing details if it's a leasing contract
-        if (
+        } else if (
           formDataToUse.type === ContractType.LEASING &&
           formDataToUse.leasingDetails
         ) {
-          submitData.leasingDetails = {
-            type: formDataToUse.type,
+          // Convert leasing to loan in the background
+          // Map leasing fields to loan fields
+          console.log("🔄 Converting LEASING contract to LOAN in background");
+          console.log("  - Leasing details:", formDataToUse.leasingDetails);
+          
+          // Calculate total interest for the loan
+          const totalInterest =
+            formDataToUse.leasingDetails.monthlyPayment *
+              formDataToUse.leasingDetails.leaseTermMonths -
+            formDataToUse.totalAmount;
+
+          submitData.loanDetails = {
+            type: ContractType.LOAN, // Always use LOAN type
             contractNumber: formDataToUse.contractNumber,
             customerId: formDataToUse.customerId,
             startDate: formDataToUse.startDate,
             endDate: formDataToUse.endDate,
             totalAmount: formDataToUse.totalAmount,
-            residualValue: formDataToUse.leasingDetails.residualValue,
-            leaseTermMonths: formDataToUse.leasingDetails.leaseTermMonths,
+            interestRate: effectiveInterestRate || formDataToUse.loanDetails?.interestRate || 0, // Use calculated effective interest rate, fallback to loanDetails if available
+            loanTermMonths: formDataToUse.leasingDetails.leaseTermMonths, // Map leaseTermMonths to loanTermMonths
             monthlyPayment: formDataToUse.leasingDetails.monthlyPayment,
-            advancePayment: formDataToUse.leasingDetails.advancePayment,
-            withPurchaseOption: formDataToUse.leasingDetails.withPurchaseOption,
-            purchaseOptionPrice:
-              formDataToUse.leasingDetails.purchaseOptionPrice,
+            totalInterest: Math.round(totalInterest * 100) / 100, // Round to 2 decimal places
+            minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
+            processingFeePercentage: 0, // Default for converted leasing
+            earlyRepaymentPenalty: 0, // Default for converted leasing
+            paymentScheduleType: "monthly_fixed",
           };
+          
+          console.log("  - Converted loan details:", submitData.loanDetails);
+        } else {
+          // Fallback: If loanDetails are missing but we have a loan contract, create them
+          // This should not happen in normal flow, but ensures data is always sent
+          console.warn("⚠️ Loan details missing, creating from form data");
+          if (contractTypeForSubmission === ContractType.LOAN) {
+            const loanTermMonths = formDataToUse.loanDetails?.loanTermMonths || 
+              (formDataToUse.endDate && formDataToUse.startDate
+                ? dayjs(formDataToUse.endDate).diff(dayjs(formDataToUse.startDate), 'month')
+                : 36);
+            const monthlyPayment = formDataToUse.loanDetails?.monthlyPayment || 0;
+            const totalInterest = monthlyPayment * loanTermMonths - formDataToUse.totalAmount;
+
+            submitData.loanDetails = {
+              type: ContractType.LOAN,
+              contractNumber: formDataToUse.contractNumber,
+              customerId: formDataToUse.customerId,
+              startDate: formDataToUse.startDate,
+              endDate: formDataToUse.endDate,
+              totalAmount: formDataToUse.totalAmount,
+              interestRate: effectiveInterestRate || baseContractData.interestRate || 0,
+              loanTermMonths: loanTermMonths,
+              monthlyPayment: monthlyPayment,
+              totalInterest: Math.round(totalInterest * 100) / 100,
+              minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
+              processingFeePercentage: formDataToUse.loanDetails?.processingFeePercentage || 0,
+              earlyRepaymentPenalty: formDataToUse.loanDetails?.earlyRepaymentPenalty || 0,
+              paymentScheduleType: formDataToUse.loanDetails?.paymentScheduleType || "monthly_fixed",
+            };
+            console.warn("  - Created fallback loan details:", submitData.loanDetails);
+          }
         }
 
         console.log(
@@ -2380,8 +2432,14 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                             insurancePolicy: vehicle.insurancePolicy,
                           }));
 
+                          // IMPORTANT: If user selected LEASING, treat it as LOAN in the background
+                          const contractTypeForValidation = 
+                            formDataToUse.type === ContractType.LEASING 
+                              ? ContractType.LOAN 
+                              : formDataToUse.type;
+                          
                           const baseContractData: any = {
-                            type: formDataToUse.type,
+                            type: contractTypeForValidation, // Always use LOAN if LEASING was selected
                             contractNumber: formDataToUse.contractNumber,
                             customerId: formDataToUse.customerId,
                             startDate: formDataToUse.startDate,
@@ -2424,7 +2482,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                             baseContractData.euriborTenor = euriborTenor;
                           }
 
-                          // Add loan details if it's a loan contract
+                          // Add loan details if it's a loan contract OR if it's a leasing contract (convert to loan)
                           if (
                             formDataToUse.type === ContractType.LOAN &&
                             formDataToUse.loanDetails
@@ -2435,7 +2493,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                               formDataToUse.totalAmount;
 
                             baseContractData.loanDetails = {
-                              type: formDataToUse.type,
+                              type: contractTypeForValidation, // Use LOAN type
                               contractNumber: formDataToUse.contractNumber,
                               customerId: formDataToUse.customerId,
                               startDate: formDataToUse.startDate,
@@ -2453,28 +2511,31 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                               paymentScheduleType:
                                 formDataToUse.loanDetails.paymentScheduleType,
                             };
-                          }
-
-                          // Add leasing details if it's a leasing contract
-                          if (
+                          } else if (
                             formDataToUse.type === ContractType.LEASING &&
                             formDataToUse.leasingDetails
                           ) {
-                            baseContractData.leasingDetails = {
-                              type: formDataToUse.type,
+                            // Convert leasing to loan in the background for validation
+                            const totalInterest =
+                              formDataToUse.leasingDetails.monthlyPayment *
+                                formDataToUse.leasingDetails.leaseTermMonths -
+                              formDataToUse.totalAmount;
+
+                            baseContractData.loanDetails = {
+                              type: ContractType.LOAN, // Always use LOAN type
                               contractNumber: formDataToUse.contractNumber,
                               customerId: formDataToUse.customerId,
                               startDate: formDataToUse.startDate,
                               endDate: formDataToUse.endDate,
                               totalAmount: formDataToUse.totalAmount,
-                              residualValue: formDataToUse.leasingDetails.residualValue,
-                              leaseTermMonths: formDataToUse.leasingDetails.leaseTermMonths,
+                              interestRate: formDataToUse.loanDetails?.interestRate || 0,
+                              loanTermMonths: formDataToUse.leasingDetails.leaseTermMonths, // Map leaseTermMonths to loanTermMonths
                               monthlyPayment: formDataToUse.leasingDetails.monthlyPayment,
-                              advancePayment: formDataToUse.leasingDetails.advancePayment,
-                              withPurchaseOption:
-                                formDataToUse.leasingDetails.withPurchaseOption,
-                              purchaseOptionPrice:
-                                formDataToUse.leasingDetails.purchaseOptionPrice,
+                              totalInterest: Math.round(totalInterest * 100) / 100,
+                              minimumTotalAnnualInterestPercent: minTotalAnnualInterestPercent,
+                              processingFeePercentage: 0, // Default for converted leasing
+                              earlyRepaymentPenalty: 0, // Default for converted leasing
+                              paymentScheduleType: "monthly_fixed",
                             };
                           }
 
