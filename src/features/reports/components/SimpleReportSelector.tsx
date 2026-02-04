@@ -9,7 +9,10 @@ import {
   TextField,
   Autocomplete,
   CircularProgress,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
+import ClearIcon from "@mui/icons-material/Clear";
 import { SimpleReportType } from "../types/report.types";
 import { customerRtkApi } from "../../customers/api/customerRtkApi";
 import { contractApi } from "../../contracts/api/contractApi";
@@ -256,6 +259,20 @@ export const SimpleReportSelector: React.FC<SimpleReportSelectorProps> = ({
         InputLabelProps={{
           shrink: true,
         }}
+        InputProps={{
+          endAdornment: startDate && !disabled && (
+            <InputAdornment position="end" sx={{ mr: 2 }}>
+              <IconButton
+                size="small"
+                onClick={() => onStartDateChange("")}
+                edge="end"
+                aria-label="clear start date"
+              >
+                <ClearIcon fontSize="small" />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
         fullWidth
       />
 
@@ -267,6 +284,20 @@ export const SimpleReportSelector: React.FC<SimpleReportSelectorProps> = ({
         disabled={disabled}
         InputLabelProps={{
           shrink: true,
+        }}
+        InputProps={{
+          endAdornment: endDate && !disabled && (
+            <InputAdornment position="end" sx={{ mr: 2 }}>
+              <IconButton
+                size="small"
+                onClick={() => onEndDateChange("")}
+                edge="end"
+                aria-label="clear end date"
+              >
+                <ClearIcon fontSize="small" />
+              </IconButton>
+            </InputAdornment>
+          ),
         }}
         fullWidth
       />

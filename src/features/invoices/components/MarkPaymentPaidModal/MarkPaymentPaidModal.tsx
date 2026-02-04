@@ -520,7 +520,7 @@ export const MarkPaymentPaidModal = React.memo<MarkPaymentPaidModalProps>(({
               {cashAmount > 0 && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                    Cash Payment:
+                    Payment:
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.success.main }}>
                     €{cashAmount.toFixed(2)}

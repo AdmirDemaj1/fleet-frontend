@@ -256,7 +256,7 @@ export const DocumentationStep: React.FC = () => {
                       type="number"
                       fullWidth
                       InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        startAdornment: <InputAdornment position="start">€</InputAdornment>,
                       }}
                       inputProps={{ min: 0, max: 10000000, step: '0.01' }}
                       error={!!errors.currentValuation}
@@ -287,7 +287,7 @@ export const DocumentationStep: React.FC = () => {
                       type="number"
                       fullWidth
                       InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        startAdornment: <InputAdornment position="start">€</InputAdornment>,
                       }}
                       inputProps={{ min: 0, max: 10000000, step: '0.01' }}
                       error={!!errors.marketValue}
@@ -318,7 +318,7 @@ export const DocumentationStep: React.FC = () => {
                       type="number"
                       fullWidth
                       InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        startAdornment: <InputAdornment position="start">€</InputAdornment>,
                       }}
                       inputProps={{ min: 0, max: 10000000, step: '0.01' }}
                       error={!!errors.depreciatedValue}

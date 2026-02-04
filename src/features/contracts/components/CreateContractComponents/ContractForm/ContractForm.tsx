@@ -2145,42 +2145,124 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   }}
                 >
                   <CardContent>
-                    <Typography
-                      variant="subtitle1"
-                      gutterBottom
-                      color="primary"
-                      sx={{ fontWeight: 600 }}
-                    >
-                      Documents ({watchedData.documents?.length || 0})
-                    </Typography>
-                    {!watchedData.documents ||
-                    watchedData.documents.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">
-                        No documents uploaded yet - upload below
-                      </Typography>
-                    ) : (
-                      <Box>
-                        <Typography
-                          variant="body2"
-                          color="success.main"
-                          sx={{ fontWeight: 600 }}
-                        >
-                          {watchedData.documents.length} document(s) uploaded
-                        </Typography>
-                        {watchedData.documents.map(
-                          (doc: any, index: number) => (
-                            <Typography
-                              key={index}
-                              variant="caption"
-                              color="text.secondary"
-                              display="block"
-                            >
-                              {doc.name} - {doc.category} ({doc.status})
+                    {(() => {
+                      // Collect all documents: contract documents + customer documents + vehicle documents
+                      const contractDocuments = watchedData.documents || [];
+                      const customerDocuments = watchedData.selectedCustomerData?.documents?.filter(
+                        (doc: any) => doc.type !== "contract_agreement"
+                      ) || [];
+                      const vehicleDocuments = (watchedData.selectedVehicleData || []).flatMap(
+                        (vehicle: any) => vehicle.documents || []
+                      );
+                      
+                      const allDocuments = [
+                        ...contractDocuments,
+                        ...customerDocuments,
+                        ...vehicleDocuments,
+                      ];
+                      
+                      const totalCount = allDocuments.length;
+                      
+                      return (
+                        <>
+                          <Typography
+                            variant="subtitle1"
+                            gutterBottom
+                            color="primary"
+                            sx={{ fontWeight: 600 }}
+                          >
+                            Documents ({totalCount})
+                          </Typography>
+                          {totalCount === 0 ? (
+                            <Typography variant="body2" color="text.secondary">
+                              No documents uploaded yet - upload below
                             </Typography>
-                          )
-                        )}
-                      </Box>
-                    )}
+                          ) : (
+                            <Box>
+                              <Typography
+                                variant="body2"
+                                color="success.main"
+                                sx={{ fontWeight: 600, mb: 1 }}
+                              >
+                                {totalCount} document(s) available
+                              </Typography>
+                              
+                              {/* Contract Documents */}
+                              {contractDocuments.length > 0 && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{ fontWeight: 600, display: "block", mb: 0.5 }}
+                                  >
+                                    Contract Documents ({contractDocuments.length}):
+                                  </Typography>
+                                  {contractDocuments.map((doc: any, index: number) => (
+                                    <Typography
+                                      key={`contract-${index}`}
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                      sx={{ pl: 1 }}
+                                    >
+                                      • {doc.name} - {doc.category} ({doc.status})
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              )}
+                              
+                              {/* Customer Documents */}
+                              {customerDocuments.length > 0 && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{ fontWeight: 600, display: "block", mb: 0.5 }}
+                                  >
+                                    Customer Documents ({customerDocuments.length}):
+                                  </Typography>
+                                  {customerDocuments.map((doc: any, index: number) => (
+                                    <Typography
+                                      key={`customer-${doc.id || index}`}
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                      sx={{ pl: 1 }}
+                                    >
+                                      • {doc.title || doc.name} - {doc.type?.replace(/_/g, " ")}
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              )}
+                              
+                              {/* Vehicle Documents */}
+                              {vehicleDocuments.length > 0 && (
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{ fontWeight: 600, display: "block", mb: 0.5 }}
+                                  >
+                                    Vehicle Documents ({vehicleDocuments.length}):
+                                  </Typography>
+                                  {vehicleDocuments.map((doc: any, index: number) => (
+                                    <Typography
+                                      key={`vehicle-${doc.id || index}`}
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                      sx={{ pl: 1 }}
+                                    >
+                                      • {doc.title || doc.name} - {doc.type?.replace(/_/g, " ")}
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              )}
+                            </Box>
+                          )}
+                        </>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               </Grid>

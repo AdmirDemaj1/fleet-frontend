@@ -16,7 +16,7 @@ import { VehicleForm } from '../../../features/vehicles/components/VehicleForm/V
 export interface VehicleCreationModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Vehicle>) => Promise<void>;
+  onSubmit: (data: Partial<Vehicle> | { vehicleData: Partial<Vehicle>; files?: File[]; documents?: any[] }) => Promise<void>;
   isCreating: boolean;
   title?: string;
 }

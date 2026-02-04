@@ -43,6 +43,7 @@ import {
   BrandLogo,
 } from "../../../../../shared/components";
 import { Vehicle } from "../../../../vehicles/types/vehicleType";
+import { documentApi } from "../../../../../shared/api/documentApi";
 import {
   VehicleCompletionModal,
   REQUIRED_VEHICLE_DOCUMENT_TYPES,
@@ -74,6 +75,7 @@ interface EnhancedVehicleSummary extends VehicleSummary {
   mileage?: number;
   fuelType?: string;
   color?: string;
+  documents?: any[]; // Vehicle documents (insurance, registration, etc.)
 }
 
 interface VehiclePickerState {
@@ -439,26 +441,151 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
   }, []);
 
   const handleCreateVehicle = useCallback(
-    async (vehicleData: Partial<Vehicle>) => {
+    async (submissionData: Partial<Vehicle> | { vehicleData: Partial<Vehicle>; files?: File[]; documents?: any[] }) => {
       try {
         setState((prev) => ({ ...prev, isCreatingVehicle: true }));
 
-        const newVehicle = await vehicleApi.createVehicle(vehicleData);
+        // Extract vehicleData and check if documents are present
+        const isWrappedFormat = "vehicleData" in submissionData;
+        const vehicleData = isWrappedFormat
+          ? (submissionData as { vehicleData: Partial<Vehicle>; files?: File[]; documents?: any[] }).vehicleData
+          : submissionData as Partial<Vehicle>;
+        
+        const files = isWrappedFormat 
+          ? (submissionData as { vehicleData: Partial<Vehicle>; files?: File[]; documents?: any[] }).files 
+          : undefined;
+        const documents = isWrappedFormat
+          ? (submissionData as { vehicleData: Partial<Vehicle>; files?: File[]; documents?: any[] }).documents
+          : undefined;
+        
+        const hasDocuments = !!(files && files.length > 0);
+
+        console.log("🚗 Creating vehicle from contract form:");
+        console.log("  - Is wrapped format:", isWrappedFormat);
+        console.log("  - Vehicle data:", vehicleData);
+        console.log("  - Has documents:", hasDocuments);
+        console.log("  - Files count:", files?.length || 0);
+        console.log("  - Documents metadata count:", documents?.length || 0);
+        if (files && files.length > 0) {
+          console.log("  - Files:", files.map(f => f.name));
+        }
+        if (documents && documents.length > 0) {
+          console.log("  - Documents metadata:", documents);
+        }
+
+        // Step 1: Create the vehicle
+        const response: any = await vehicleApi.createVehicle(vehicleData);
+
+        // Handle different response formats (direct Vehicle, wrapped { data }, or approval response)
+        // Response can be: Vehicle | { data: Vehicle, requiresApproval: boolean } | { vehicle: Vehicle }
+        const createdVehicle: Vehicle | undefined =
+          response?.data ||
+          response?.vehicle ||
+          response;
+        
+        const vehicleId: string | undefined =
+          createdVehicle?.id ||
+          response?.data?.id ||
+          response?.vehicle?.id ||
+          response?.id;
+
+        // Validate that the vehicle was created successfully and has an ID
+        if (!vehicleId) {
+          console.error("❌ Vehicle creation failed - response:", response);
+          throw new Error("Vehicle creation failed: No ID returned");
+        }
+
+        // Check if approval is required
+        if (response?.requiresApproval) {
+          console.warn("⚠️ Vehicle creation requires approval");
+          // Still proceed with document upload if documents were provided
+        }
+
+        console.log("✅ Vehicle created successfully with ID:", vehicleId);
+        console.log("✅ Vehicle data:", createdVehicle);
+
+        // Step 2: Upload documents if any (same as in CreateVehiclePage)
+        let vehicleDocuments: any[] = [];
+        if (hasDocuments && files && files.length > 0) {
+          console.log(`📤 Starting upload of ${files.length} document(s) for vehicle ${vehicleId}...`);
+          
+          // Upload each document
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const meta = documents?.[i];
+            
+            console.log(`📄 Uploading document ${i + 1}/${files.length}: ${file.name}`);
+            console.log(`   - Type: ${meta?.type || VehicleDocumentType.OTHER}`);
+            console.log(`   - Title: ${meta?.title || file.name}`);
+            console.log(`   - Expiry: ${meta?.expiryDate || 'default'}`);
+            
+            try {
+              const docType = (meta?.type as VehicleDocumentType) || VehicleDocumentType.OTHER;
+              const expiryDate = meta?.expiryDate || 
+                new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+              
+              await vehicleApi.uploadVehicleDocument(
+                vehicleId,
+                file,
+                docType,
+                expiryDate,
+                meta?.title || file.name
+              );
+              console.log(`✅ Document ${i + 1}/${files.length} uploaded successfully: ${file.name}`);
+            } catch (docError: any) {
+              console.error(`❌ Failed to upload document ${file.name}:`, docError);
+              console.error(`   Error details:`, docError.response?.data || docError.message);
+              // Continue with other documents even if one fails
+              // User can upload missing documents later
+            }
+          }
+          
+          console.log("✅ Document upload process completed");
+        } else {
+          console.log("ℹ️ No documents to upload");
+        }
+        
+        // Step 3: Always fetch vehicle documents from API after creation
+        // This ensures we have the complete document list, whether documents were just uploaded or not
+        try {
+          console.log(`📥 Fetching vehicle documents for vehicle ${vehicleId}...`);
+          vehicleDocuments = await documentApi.getVehicleDocuments(vehicleId);
+          console.log(`✅ Fetched ${vehicleDocuments.length} vehicle document(s) from API`);
+          console.log(`📄 Vehicle documents:`, vehicleDocuments);
+        } catch (fetchError: any) {
+          console.warn(`⚠️ Failed to fetch vehicle documents:`, fetchError);
+          // Continue without documents - they can be added later
+          vehicleDocuments = [];
+        }
 
         // Transform the created vehicle to match our enhanced type
         const enhancedVehicle: EnhancedVehicleSummary = {
-          id: newVehicle.id,
-          make: newVehicle.make,
-          model: newVehicle.model,
-          year: newVehicle.year,
-          licensePlate: newVehicle.licensePlate,
-          vinNumber: newVehicle.vin,
-          status: "AVAILABLE",
+          id: vehicleId,
+          make: createdVehicle?.make || vehicleData.make || '',
+          model: createdVehicle?.model || vehicleData.model || '',
+          year: createdVehicle?.year || vehicleData.year || new Date().getFullYear(),
+          licensePlate: createdVehicle?.licensePlate || vehicleData.licensePlate || '',
+          vinNumber: createdVehicle?.vin || vehicleData.vin || '',
+          status: "AVAILABLE" as const, // EnhancedVehicleSummary requires "AVAILABLE" status
           isVerified: true,
-          mileage: newVehicle.currentMileage,
-          fuelType: newVehicle.fuelType,
-          color: newVehicle.color,
+          mileage: createdVehicle?.currentMileage || vehicleData.currentMileage,
+          fuelType: createdVehicle?.fuelType || vehicleData.fuelType,
+          color: createdVehicle?.color || vehicleData.color,
+          documents: vehicleDocuments.length > 0 ? vehicleDocuments : undefined, // Include documents fetched from API
         };
+        
+        console.log("📋 Enhanced vehicle with documents:", {
+          id: enhancedVehicle.id,
+          make: enhancedVehicle.make,
+          model: enhancedVehicle.model,
+          documentsCount: enhancedVehicle.documents?.length || 0,
+          documents: enhancedVehicle.documents,
+        });
+
+        // Filter out any null/undefined IDs from existing selection
+        const validSelectedIds = (selectedVehicleIds || []).filter((id): id is string => 
+          id !== null && id !== undefined && typeof id === 'string'
+        );
 
         // Add the newly created vehicle to selected vehicles
         setState((prev) => ({
@@ -468,12 +595,17 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
           isCreatingVehicle: false,
         }));
 
-        // Notify parent component - add to existing selection
-        const newVehicleIds = [...selectedVehicleIds, enhancedVehicle.id];
+        // Notify parent component - add to existing selection (ensure no null values)
+        const newVehicleIds = [...validSelectedIds, enhancedVehicle.id].filter((id): id is string => 
+          id !== null && id !== undefined && typeof id === 'string'
+        );
+        console.log("🔄 Adding vehicle ID to selection:", enhancedVehicle.id);
+        console.log("🔄 All vehicle IDs:", newVehicleIds);
         onVehicleSelect(newVehicleIds);
+        
         // Also pass the full vehicle data
         if (onVehicleDataChange) {
-          const existingVehicles = selectedVehicleData || [];
+          const existingVehicles = (selectedVehicleData || []).filter(v => v && v.id);
           onVehicleDataChange([...existingVehicles, enhancedVehicle]);
         }
 
@@ -482,6 +614,7 @@ export const VehiclePicker: React.FC<VehiclePickerProps> = ({
       } catch (error) {
         console.error("Failed to create vehicle:", error);
         setState((prev) => ({ ...prev, isCreatingVehicle: false }));
+        throw error; // Re-throw to let the form handle the error
       }
     },
     [

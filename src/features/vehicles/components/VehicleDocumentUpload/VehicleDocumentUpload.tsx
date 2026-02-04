@@ -24,6 +24,10 @@ import {
   DialogActions,
   TextField,
 } from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
 import {
   CloudUpload,
   Delete,
@@ -481,16 +485,6 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
         return;
       }
 
-      // Check if expiry date is not in the past
-      const todayDate2 = new Date().toISOString().split("T")[0];
-      if (documentExpiryDate < todayDate2) {
-        setUploadError(
-          "Expiry date cannot be in the past. Please select a valid date."
-        );
-        setReplacingDocumentId(null);
-        return;
-      }
-
       // Upload document immediately with PENDING status
       const uploadedDoc = await documentApi.uploadPendingDocument(pendingFile, {
         type: selectedCategory,
@@ -588,15 +582,6 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
       if (!documentExpiryDate) {
         setUploadError(
           "Expiry date is required for all documents. Please select an expiry date."
-        );
-        return;
-      }
-
-      // Check if expiry date is not in the past
-      const todayDate = new Date().toISOString().split("T")[0];
-      if (documentExpiryDate < todayDate) {
-        setUploadError(
-          "Expiry date cannot be in the past. Please select a valid date."
         );
         return;
       }
@@ -729,15 +714,6 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
       if (!documentExpiryDate) {
         setUploadError(
           "Expiry date is required for all documents. Please select an expiry date."
-        );
-        return;
-      }
-
-      // Check if expiry date is not in the past
-      const todayDate2 = new Date().toISOString().split("T")[0];
-      if (documentExpiryDate < todayDate2) {
-        setUploadError(
-          "Expiry date cannot be in the past. Please select a valid date."
         );
         return;
       }
@@ -1395,41 +1371,30 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
             />
 
             {/* Expiry Date Field - Required for ALL documents */}
-            <TextField
-              fullWidth
-              label="Expiry Date (Required)"
-              type="date"
-              value={documentExpiryDate}
-              onChange={(e) => {
-                const selectedDate = e.target.value;
-                const today = new Date().toISOString().split("T")[0];
-                // Only allow dates that are today or in the future
-                if (selectedDate >= today) {
-                  setDocumentExpiryDate(selectedDate);
-                  setUploadError("");
-                } else {
-                  setUploadError("Expiry date cannot be in the past");
-                }
-              }}
-              required
-              error={
-                documentExpiryDate !== "" &&
-                documentExpiryDate < new Date().toISOString().split("T")[0]
-              }
-              InputLabelProps={{
-                shrink: true,
-              }}
-              inputProps={{
-                min: new Date().toISOString().split("T")[0], // Today as minimum - browser validation
-              }}
-              sx={{ mt: 2 }}
-              helperText={
-                documentExpiryDate !== "" &&
-                documentExpiryDate < new Date().toISOString().split("T")[0]
-                  ? "Expiry date cannot be in the past"
-                  : "Please select the expiry date for this document (must be today or in the future)"
-              }
-            />
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label="Expiry Date (Required)"
+                value={documentExpiryDate ? dayjs(documentExpiryDate) : null}
+                onChange={(newValue) => {
+                  if (newValue) {
+                    const dateString = newValue.format("YYYY-MM-DD");
+                    setDocumentExpiryDate(dateString);
+                    setUploadError("");
+                  } else {
+                    setDocumentExpiryDate("");
+                  }
+                }}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: true,
+                    error: !!uploadError && documentExpiryDate === "",
+                    helperText: "Please select the expiry date for this document",
+                    sx: { mt: 2 },
+                  },
+                }}
+              />
+            </LocalizationProvider>
 
             {/* Error Display */}
             {uploadError && (
@@ -1472,7 +1437,6 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
               !pendingFile ||
               !!uploadError ||
               !documentExpiryDate || // Expiry date is required for ALL documents
-              documentExpiryDate < new Date().toISOString().split("T")[0] || // Cannot be in the past
               replacingDocumentId !== null
             }
           >
