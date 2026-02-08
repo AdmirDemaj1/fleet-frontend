@@ -22,7 +22,8 @@ import {
 import {
   MoreVert,
   Visibility,
-  Receipt
+  Receipt,
+  Schedule
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { Payment, PaymentStatus } from '../../types/invoice.types';
@@ -215,8 +216,14 @@ export const PaymentTable = React.memo<PaymentTableProps>(({
       );
     }
 
-    const statusConfig = PAYMENT_STATUS_CONFIG[payment.status];
-    const StatusIcon = statusConfig?.icon;
+    const statusConfig = PAYMENT_STATUS_CONFIG[payment.status] || {
+      label: payment.status ? String(payment.status).charAt(0).toUpperCase() + String(payment.status).slice(1) : 'Unknown',
+      color: 'grey.main',
+      bgcolor: 'grey.light',
+      icon: Schedule,
+      textColor: 'grey.dark'
+    };
+    const StatusIcon = statusConfig.icon;
     const paymentMethodInfo = getPaymentMethodInfo(payment.paymentMethod);
     const overdue = isOverdue(payment);
     const daysPastDue = overdue ? getDaysPastDue(payment.dueDate) : 0;

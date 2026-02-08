@@ -39,6 +39,7 @@ import {
   LoginPage,
   SignupPage,
   ProtectedRoute,
+  PublicRoute,
   RbacTestingPanel,
 } from "../features/auth";
 import { ExpiringDocumentsPage } from "../features/documents";
@@ -46,9 +47,9 @@ import { ReportsPage } from "../features/reports";
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      {/* Public routes - redirect to dashboard if already authenticated */}
+      <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+      <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
 
       {/* Protected routes */}
       <Route
