@@ -305,7 +305,14 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
       try {
         setState((prev) => ({ ...prev, isCreatingCustomer: true }));
 
-        const newCustomer = await customerApi.create(customerData);
+        // Strip document properties before sending to API
+        // Documents are not part of the customer creation DTO;
+        // the standalone form handles them via useCreateCustomerWithDocument
+        const cleanedData = { ...customerData };
+        delete (cleanedData as any).individualDocuments;
+        delete (cleanedData as any).administratorDocuments;
+
+        const newCustomer = await customerApi.create(cleanedData);
 
         // Transform the created customer to match our enhanced type
         const enhancedCustomer: EnhancedCustomerSummary = {
@@ -323,6 +330,31 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
           status: "active",
           isVerified: true,
         };
+
+        // Upload documents if any were provided
+        if (newCustomer.id) {
+          const individualDocs = (
+            (customerData as any).individualDocuments || []
+          ).filter((d: any) => !!d?.file);
+          const adminDocs = (
+            (customerData as any).administratorDocuments || []
+          ).filter((d: any) => !!d?.file);
+          const docsToUpload = [...individualDocs, ...adminDocs];
+
+          for (const doc of docsToUpload) {
+            try {
+              await customerApi.uploadCustomerDocument(
+                newCustomer.id,
+                doc.file,
+                doc.type,
+                doc.expiryDate,
+                doc.title
+              );
+            } catch (uploadError) {
+              console.error("Failed to upload document:", uploadError);
+            }
+          }
+        }
 
         // Select the newly created customer
         setState((prev) => ({

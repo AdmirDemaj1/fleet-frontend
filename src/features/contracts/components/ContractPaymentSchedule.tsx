@@ -31,6 +31,7 @@ import {
 } from "@mui/icons-material";
 import { ContractResponse } from "../types/contract.types";
 import { useAmortizationPlan } from "../hooks/useAmortizationPlan";
+import { useGetAmortizationScheduleQuery } from "../api/contractApi";
 
 interface PaymentScheduleItem {
   period: number;
@@ -54,6 +55,11 @@ export const ContractPaymentSchedule = React.memo<ContractPaymentScheduleProps>(
     downloadPlan,
     hasPlan,
   } = useAmortizationPlan(contract.id);
+
+  const {
+    data: scheduleResponse,
+    isLoading: scheduleLoading,
+  } = useGetAmortizationScheduleQuery({ contractId: contract.id });
 
   // Print function for the payment schedule table
   const handlePrint = () => {
@@ -453,15 +459,41 @@ export const ContractPaymentSchedule = React.memo<ContractPaymentScheduleProps>(
     printWindow.print();
   };
 
-  // Calculate amortization schedule
+  // Use backend amortization schedule when available, fall back to local calculation
   const paymentSchedule = useMemo<PaymentScheduleItem[]>(() => {
+    // Use actual backend schedule data if available
+    const backendSchedule = scheduleResponse?.data?.schedule;
+    if (backendSchedule && backendSchedule.length > 0) {
+      return backendSchedule.map((entry) => ({
+        period: entry.paymentNumber,
+        payment: entry.monthlyMortgagePayment,
+        principal: entry.principalRepayment,
+        interest: entry.monthlyInterestAmount,
+        balance: entry.endingBalance,
+      }));
+    }
+
+    // Also check sections (grouped schedule) as fallback
+    const sections = scheduleResponse?.data?.sections;
+    if (sections && sections.length > 0) {
+      const allEntries = sections.flatMap((section) => section.entries);
+      if (allEntries.length > 0) {
+        return allEntries.map((entry) => ({
+          period: entry.paymentNumber,
+          payment: entry.monthlyMortgagePayment,
+          principal: entry.principalRepayment,
+          interest: entry.monthlyInterestAmount,
+          balance: entry.endingBalance,
+        }));
+      }
+    }
+
+    // Fallback: calculate locally if no backend data
     const principal = parseFloat(contract.totalAmount || "0");
 
-    // Extract rate and term from different contract types or use defaults
-    let annualRate = 0.05; // Default 5% annual rate
-    let termMonths = 12; // Default 12 months
+    let annualRate = 0.05;
+    let termMonths = 12;
 
-    // Try to get values from contract or calculate from dates
     if (contract.startDate && contract.endDate) {
       const startDate = new Date(contract.startDate);
       const endDate = new Date(contract.endDate);
@@ -471,14 +503,12 @@ export const ContractPaymentSchedule = React.memo<ContractPaymentScheduleProps>(
       termMonths = monthsDiff > 0 ? monthsDiff : 12;
     }
 
-    // For calculation purposes, use a standard rate if not available
     const monthlyRate = annualRate / 12;
 
     if (principal <= 0 || termMonths <= 0) {
       return [];
     }
 
-    // Calculate monthly payment using amortization formula
     const monthlyPayment =
       (principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths))) /
       (Math.pow(1 + monthlyRate, termMonths) - 1);
@@ -501,7 +531,7 @@ export const ContractPaymentSchedule = React.memo<ContractPaymentScheduleProps>(
     }
 
     return schedule;
-  }, [contract.totalAmount, contract.startDate, contract.endDate]);
+  }, [scheduleResponse, contract.totalAmount, contract.startDate, contract.endDate]);
 
   // Format currency
   const formatCurrency = (amount: number): string => {
@@ -940,6 +970,26 @@ export const ContractPaymentSchedule = React.memo<ContractPaymentScheduleProps>(
       monthlyPayment: paymentSchedule[0]?.payment || 0,
     };
   }, [paymentSchedule]);
+
+  if (scheduleLoading) {
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          p: 4,
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          bgcolor: theme.palette.background.paper,
+          textAlign: "center",
+        }}
+      >
+        <CircularProgress size={32} />
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          Loading payment schedule...
+        </Typography>
+      </Paper>
+    );
+  }
 
   if (!summaryStats) {
     return (

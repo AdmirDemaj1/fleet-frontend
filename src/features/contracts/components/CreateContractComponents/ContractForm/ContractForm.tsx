@@ -1650,7 +1650,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                             Principal
                           </Typography>
                           <Typography variant="h6" color="text.primary">
-                            ${watchedData.totalAmount?.toLocaleString()}
+                            €{watchedData.totalAmount?.toLocaleString()}
                           </Typography>
                         </Grid>
                         <Grid item xs={6} md={3}>
@@ -1658,7 +1658,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                             Monthly Payment
                           </Typography>
                           <Typography variant="h6" color="primary.main">
-                            ${watchedData.loanDetails.monthlyPayment.toFixed(2)}
+                            €{watchedData.loanDetails.monthlyPayment.toFixed(2)}
                           </Typography>
                         </Grid>
                         <Grid item xs={6} md={3}>
@@ -1666,7 +1666,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                             Total Interest
                           </Typography>
                           <Typography variant="h6" color="success.main">
-                            $
+                            €
                             {(
                               watchedData.loanDetails.monthlyPayment *
                                 (watchedData.loanDetails.loanTermMonths || 0) -
@@ -1679,7 +1679,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                             Total Repayment
                           </Typography>
                           <Typography variant="h6" color="primary.main">
-                            $
+                            €
                             {(
                               watchedData.loanDetails.monthlyPayment *
                               (watchedData.loanDetails.loanTermMonths || 0)
@@ -2033,7 +2033,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                               color="text.secondary"
                               display="block"
                             >
-                              Value: $
+                              Value: €
                               {(
                                 vehicle.marketValue ||
                                 vehicle.currentValuation ||
@@ -2103,7 +2103,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                                 display="block"
                                 sx={{ fontWeight: 600 }}
                               >
-                                💰 Guarantee Amount: $
+                                💰 Guarantee Amount: €
                                 {watchedData.guaranteeForContract.toLocaleString()}
                                 {watchedData.totalAmount > 0 && (
                                   <>

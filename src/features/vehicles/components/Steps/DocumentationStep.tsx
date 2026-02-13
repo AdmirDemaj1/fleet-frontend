@@ -247,6 +247,37 @@ export const DocumentationStep: React.FC = () => {
             <Grid container spacing={3}>
               <Grid item xs={12} sm={4}>
                 <Controller
+                  name="purchaseValue"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Purchase Value (VLERA 1)"
+                      type="number"
+                      fullWidth
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">€</InputAdornment>,
+                      }}
+                      inputProps={{ min: 0, max: 10000000, step: '0.01' }}
+                      error={!!errors.purchaseValue}
+                      helperText={errors.purchaseValue?.message as string || 'Purchase value of the vehicle'}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                        field.onChange(isNaN(value as number) ? undefined : value);
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2
+                        }
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={4}>
+                <Controller
                   name="currentValuation"
                   control={control}
                   render={({ field }) => (

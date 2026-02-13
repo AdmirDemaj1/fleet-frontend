@@ -153,6 +153,15 @@ export const vehicleApi = {
     
     // Handle numeric fields - ensure they're valid numbers and convert properly
     // Only send if they're valid numbers (not empty strings, not NaN, not Infinity)
+    if (vehicleData.purchaseValue !== undefined && vehicleData.purchaseValue !== null) {
+      const strValue = String(vehicleData.purchaseValue);
+      if (strValue !== '' && strValue !== 'null' && strValue !== 'undefined') {
+        const value = parseFloat(strValue);
+        if (!isNaN(value) && isFinite(value) && value >= 0) {
+          formData.append('purchaseValue', value.toString());
+        }
+      }
+    }
     if (vehicleData.currentValuation !== undefined && vehicleData.currentValuation !== null) {
       const strValue = String(vehicleData.currentValuation);
       if (strValue !== '' && strValue !== 'null' && strValue !== 'undefined') {

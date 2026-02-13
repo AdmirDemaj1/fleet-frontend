@@ -180,6 +180,12 @@ export const createVehicleValidationSchema = () => {
     //     return true;
     //   }),
     
+    purchaseValue: yup
+      .number()
+      .nullable()
+      .min(0, 'Purchase value cannot be negative')
+      .max(10000000, 'Purchase value seems unrealistic (max: €10M)'),
+
     currentValuation: yup
       .number()
       .nullable()
@@ -213,7 +219,7 @@ export const STEP_FIELDS = {
   // Removed commented out fields: 'mileage', 'transmission', 'condition', 'purchasePrice'
   DETAILS: ['currentMileage', 'fuelType', 'legalOwner', 'isLiquidAsset', 'purchaseDate'] as const,
   // Removed commented out fields: 'registrationDate', 'registrationExpiryDate', 'insuranceProvider', 'insurancePolicyNumber', 'insuranceExpiryDate'
-  DOCUMENTATION: ['currentValuation', 'marketValue', 'depreciatedValue'] as const,
+  DOCUMENTATION: ['purchaseValue', 'currentValuation', 'marketValue', 'depreciatedValue'] as const,
   DOCUMENTS: [] as const, // Documents are handled separately
 } as const;
 

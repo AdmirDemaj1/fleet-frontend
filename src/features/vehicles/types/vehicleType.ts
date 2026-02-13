@@ -46,6 +46,7 @@ export interface Vehicle {
   currentValuation?: number;
   marketValue?: number;
   depreciatedValue?: number;
+  purchaseValue?: number;
   purchaseDate?: string;
   purchasePrice?: number;
   registrationExpiry?: string;
