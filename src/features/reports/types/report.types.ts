@@ -6,6 +6,7 @@ export enum SimpleReportType {
   CONTRACTS = 'contracts',
   VEHICLES = 'vehicles',
   ADMINISTRATORS = 'administrators',
+  LATE_PAYMENTS = 'late_payments',
 }
 
 export interface SimplifiedReportRequest {

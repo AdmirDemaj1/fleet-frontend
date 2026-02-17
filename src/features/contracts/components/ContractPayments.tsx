@@ -158,6 +158,16 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
 
   const totalCount = payments.length;
 
+  // Split payments into scheduled and extra
+  const scheduledPayments = useMemo(
+    () => payments.filter((p: Payment) => p.type !== PaymentType.EXTRA),
+    [payments]
+  );
+  const extraPayments = useMemo(
+    () => payments.filter((p: Payment) => p.type === PaymentType.EXTRA),
+    [payments]
+  );
+
   // Find conflicting unpaid payment when prepayment date is selected
   const conflictingPayment = useMemo(() => {
     if (!dialogState.date || !dialogState.isOpen) return null;
@@ -554,127 +564,275 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
           </Typography>
         </Box>
       ) : (
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 600 }}>Due Date</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Amount</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Payment Date</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {payments.map((payment: any) => {
-                const effectiveStatuses = getEffectiveStatuses(payment);
-                
-                return (
-                  <TableRow 
-                    key={payment.id}
-                    sx={{
-                      '&:hover': {
-                        bgcolor: alpha(theme.palette.primary.main, 0.02),
-                        cursor: 'pointer'
-                      }
-                    }}
-                    onClick={() => handlePaymentClick(payment.id)}
-                  >
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {formatDate(payment.dueDate)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                        {formatCurrency(payment.amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                        {effectiveStatuses.map((status, index) => {
-                          const statusConfig = getStatusConfig(status);
-                          const StatusIcon = statusConfig.icon;
-                          return (
-                            <Chip
-                              key={`${payment.id}-${status}-${index}`}
-                              icon={<StatusIcon />}
-                              label={statusConfig.label}
-                              size="small"
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {/* Scheduled Payments Table */}
+          <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5, color: 'text.primary' }}>
+              Scheduled Payments
+              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                ({scheduledPayments.length})
+              </Typography>
+            </Typography>
+            {scheduledPayments.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                No scheduled payments found.
+              </Typography>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600 }}>Due Date</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Amount</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Payment Date</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {scheduledPayments.map((payment: any) => {
+                      const effectiveStatuses = getEffectiveStatuses(payment);
+                      return (
+                        <TableRow
+                          key={payment.id}
+                          sx={{
+                            '&:hover': {
+                              bgcolor: alpha(theme.palette.primary.main, 0.02),
+                              cursor: 'pointer'
+                            }
+                          }}
+                          onClick={() => handlePaymentClick(payment.id)}
+                        >
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {formatDate(payment.dueDate)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                              {formatCurrency(payment.amount)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {effectiveStatuses.map((status, index) => {
+                                const statusConfig = getStatusConfig(status);
+                                const StatusIcon = statusConfig.icon;
+                                return (
+                                  <Chip
+                                    key={`${payment.id}-${status}-${index}`}
+                                    icon={<StatusIcon />}
+                                    label={statusConfig.label}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: statusConfig.bgcolor,
+                                      color: statusConfig.textColor,
+                                      fontWeight: 600,
+                                      '& .MuiChip-icon': {
+                                        color: statusConfig.color,
+                                        fontSize: 16
+                                      }
+                                    }}
+                                  />
+                                );
+                              })}
+                              {payment.applyPenalties && (
+                                <Chip
+                                  icon={<Warning />}
+                                  label="With Penalties"
+                                  size="small"
+                                  sx={{
+                                    bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                    color: theme.palette.warning.main,
+                                    fontWeight: 600,
+                                    '& .MuiChip-icon': {
+                                      color: theme.palette.warning.main,
+                                      fontSize: 16
+                                    }
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {payment.paymentDate ? formatDate(payment.paymentDate) : '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
                               sx={{
-                                bgcolor: statusConfig.bgcolor,
-                                color: statusConfig.textColor,
-                                fontWeight: 600,
-                                '& .MuiChip-icon': {
-                                  color: statusConfig.color,
-                                  fontSize: 16
-                                }
+                                maxWidth: 200,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                               }}
-                            />
-                          );
-                        })}
-                        {payment.applyPenalties && (
-                          <Chip
-                            icon={<Warning />}
-                            label="With Penalties"
-                            size="small"
-                            sx={{
-                              bgcolor: alpha(theme.palette.warning.main, 0.1),
-                              color: theme.palette.warning.main,
-                              fontWeight: 600,
-                              '& .MuiChip-icon': {
-                                color: theme.palette.warning.main,
-                                fontSize: 16
-                              }
-                            }}
-                          />
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {payment.paymentDate ? formatDate(payment.paymentDate) : '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary"
-                        sx={{
-                          maxWidth: 200,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {payment.notes || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="small"
-                        startIcon={<Visibility />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePaymentClick(payment.id);
-                        }}
-                        sx={{
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          minWidth: 'auto',
-                          px: 2
-                        }}
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                            >
+                              {payment.notes || '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="small"
+                              startIcon={<Visibility />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePaymentClick(payment.id);
+                              }}
+                              sx={{
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                minWidth: 'auto',
+                                px: 2
+                              }}
+                            >
+                              View
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+
+          {/* Extra Payments Table */}
+          {extraPayments.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5, color: 'text.primary' }}>
+                Extra Payments
+                <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                  ({extraPayments.length})
+                </Typography>
+              </Typography>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600 }}>Due Date</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Amount</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Payment Date</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Notes</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {extraPayments.map((payment: any) => {
+                      const effectiveStatuses = getEffectiveStatuses(payment);
+                      return (
+                        <TableRow
+                          key={payment.id}
+                          sx={{
+                            '&:hover': {
+                              bgcolor: alpha(theme.palette.success.main, 0.02),
+                              cursor: 'pointer'
+                            }
+                          }}
+                          onClick={() => handlePaymentClick(payment.id)}
+                        >
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {formatDate(payment.dueDate)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>
+                              {formatCurrency(payment.amount)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {effectiveStatuses.map((status, index) => {
+                                const statusConfig = getStatusConfig(status);
+                                const StatusIcon = statusConfig.icon;
+                                return (
+                                  <Chip
+                                    key={`${payment.id}-${status}-${index}`}
+                                    icon={<StatusIcon />}
+                                    label={statusConfig.label}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: statusConfig.bgcolor,
+                                      color: statusConfig.textColor,
+                                      fontWeight: 600,
+                                      '& .MuiChip-icon': {
+                                        color: statusConfig.color,
+                                        fontSize: 16
+                                      }
+                                    }}
+                                  />
+                                );
+                              })}
+                              {payment.applyPenalties && (
+                                <Chip
+                                  icon={<Warning />}
+                                  label="With Penalties"
+                                  size="small"
+                                  sx={{
+                                    bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                    color: theme.palette.warning.main,
+                                    fontWeight: 600,
+                                    '& .MuiChip-icon': {
+                                      color: theme.palette.warning.main,
+                                      fontSize: 16
+                                    }
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {payment.paymentDate ? formatDate(payment.paymentDate) : '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                maxWidth: 200,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {payment.notes || '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="small"
+                              startIcon={<Visibility />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePaymentClick(payment.id);
+                              }}
+                              sx={{
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                minWidth: 'auto',
+                                px: 2
+                              }}
+                            >
+                              View
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+        </Box>
       )}
 
 

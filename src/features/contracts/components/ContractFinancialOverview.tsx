@@ -244,7 +244,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                   <TrendingUp sx={{ fontSize: 18 }} />
                 </Avatar>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Total Value
+                  Total Value (Interest + Principal)
                 </Typography>
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 700, color: 'info.main', mb: 0.5 }}>
@@ -284,7 +284,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                   <AccountBalance sx={{ fontSize: 18 }} />
                 </Avatar>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Amount Paid
+                  Amount Paid (Interest + Principal)
                 </Typography>
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main', mb: 0.5 }}>
@@ -324,7 +324,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                   <Schedule sx={{ fontSize: 18 }} />
                 </Avatar>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Remaining
+                  Remaining (Interest + Principal)
                 </Typography>
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 700, color: 'warning.main', mb: 0.5 }}>
