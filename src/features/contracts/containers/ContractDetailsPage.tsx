@@ -54,6 +54,7 @@ export const ContractDetailsPage: React.FC = () => {
       ? remainingPrincipalAmount + remainingInterestAmount
       : parseFloat(contract.remainingAmount);
     
+    // Todo: Recheck the paid amount calculation
     const paidAmount = totalAmount - remainingAmount;
     const progressPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
 
@@ -63,6 +64,17 @@ export const ContractDetailsPage: React.FC = () => {
 
     // Parse credit balance
     const creditBalance = contract.creditBalance ? parseFloat(contract.creditBalance) : null;
+
+    // Parse interest rate (stored as decimal, e.g. "0.0640" = 6.40%)
+    const interestRate = contract.interestRate ? parseFloat(contract.interestRate) : null;
+
+    const euriborInterestImpact = contract.euriborInterestImpact ? parseFloat(contract.euriborInterestImpact) : null;
+    const totalCurrentPrincipal = contract.totalCurrentPrincipal ? parseFloat(contract.totalCurrentPrincipal) : null;
+    const totalCurrentInterest = contract.totalCurrentInterest ? parseFloat(contract.totalCurrentInterest) : null;
+    const totalRemainingPrincipal = contract.totalRemainingPrincipal ? parseFloat(contract.totalRemainingPrincipal) : null;
+    const totalRemainingInterest = contract.totalRemainingInterest ? parseFloat(contract.totalRemainingInterest) : null;
+    const totalPrincipalPaid = contract.totalPrincipalPaid ? parseFloat(contract.totalPrincipalPaid) : null;
+    const totalInterestPaid = contract.totalInterestPaid ? parseFloat(contract.totalInterestPaid) : null;
 
     return {
       isLoan,
@@ -77,6 +89,16 @@ export const ContractDetailsPage: React.FC = () => {
       paidPrincipalAmount,
       paidInterestAmount,
       creditBalance,
+      interestRate,
+      euriborInterestImpact,
+      prepaymentImpact: contract.prepaymentImpact ?? null,
+      euriborImpact: contract.euriborImpact ?? null,
+      totalCurrentPrincipal,
+      totalCurrentInterest,
+      totalRemainingPrincipal,
+      totalRemainingInterest,
+      totalPrincipalPaid,
+      totalInterestPaid,
       type: {
         icon: isLoan ? AccountBalance : TrendingUp,
         color: isLoan ? 'primary' : 'secondary',
@@ -98,6 +120,8 @@ export const ContractDetailsPage: React.FC = () => {
       }
     };
   }, [contract]);
+
+  console.log('contractConfiggggg', contractConfig);
 
   // Enhanced loading state
   if (isLoading) {
