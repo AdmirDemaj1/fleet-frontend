@@ -254,6 +254,7 @@ const CustomerAccountSidebar: React.FC<CustomerAccountSidebarProps> = ({
         customerData={customerData}
         totalDue={totalDue}
         nextBillDate={nextBillDate}
+        contracts={contracts}
       />
 
       <Divider />

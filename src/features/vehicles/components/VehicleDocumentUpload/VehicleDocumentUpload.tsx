@@ -1373,17 +1373,17 @@ export const VehicleDocumentUpload: React.FC<VehicleDocumentUploadProps> = ({
             {/* Expiry Date Field - Required for ALL documents */}
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
-                label="Expiry Date (Required)"
+              label="Expiry Date (Required)"
                 value={documentExpiryDate ? dayjs(documentExpiryDate) : null}
                 onChange={(newValue) => {
                   if (newValue) {
                     const dateString = newValue.format("YYYY-MM-DD");
                     setDocumentExpiryDate(dateString);
-                    setUploadError("");
-                  } else {
+                  setUploadError("");
+                } else {
                     setDocumentExpiryDate("");
-                  }
-                }}
+                }
+              }}
                 slotProps={{
                   textField: {
                     fullWidth: true,

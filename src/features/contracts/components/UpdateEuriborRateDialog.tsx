@@ -287,7 +287,7 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
           showSuccess(response.data.message);
         }
       } else {
-        showSuccess('Euribor rate updated successfully');
+      showSuccess('Euribor rate updated successfully');
       }
       handleClose();
     } catch (error: any) {

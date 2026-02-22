@@ -9,6 +9,7 @@ import { InvoiceStatusConfig, InvoiceTypeConfig } from '../types/customerInvoice
 export const PAYMENT_STATUS_CONFIG: Record<string, InvoiceStatusConfig> = {
   pending: { icon: <PendingIcon fontSize="small" />, color: 'warning' as const, label: 'Pending' },
   paid: { icon: <CheckCircleIcon fontSize="small" />, color: 'success' as const, label: 'Paid' },
+  settled: { icon: <CheckCircleIcon fontSize="small" />, color: 'success' as const, label: 'Settled' },
   overdue: { icon: <ErrorIcon fontSize="small" />, color: 'error' as const, label: 'Overdue' },
   cancelled: { icon: <ErrorIcon fontSize="small" />, color: 'error' as const, label: 'Cancelled' }
 };

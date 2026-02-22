@@ -5,7 +5,7 @@ export type InvoiceOrder = 'asc' | 'desc';
 export type InvoiceOrderBy = 'amount' | 'dueDate' | 'paymentDate' | 'status' | 'type' | 'createdAt';
 
 // Invoice status and type
-export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
+export type InvoiceStatus = 'pending' | 'paid' | 'settled' | 'overdue' | 'cancelled';
 export type InvoiceType = 'monthly' | 'deposit' | 'final' | 'penalty';
 
 // Invoice interface (based on backend PaymentDto)

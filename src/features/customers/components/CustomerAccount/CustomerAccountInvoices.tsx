@@ -218,18 +218,18 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
           </Box>
           <Divider sx={{ mb: 2 }} />
           <Box sx={{ display: 'flex', mb: 1.5 }}>
-            {['15%', '15%', '15%', '15%', '15%', '15%', '10%'].map((width, i) => (
+            {['15%', '15%', '15%', '15%', '15%', '10%'].map((width, i) => (
               <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
             ))}
           </Box>
           {[...Array(5)].map((_, index) => (
-            <Box key={index} sx={{ 
-              py: 2, 
-              display: 'flex', 
+            <Box key={index} sx={{
+              py: 2,
+              display: 'flex',
               alignItems: 'center',
               borderBottom: index < 4 ? `1px solid ${theme.palette.divider}` : 'none'
             }}>
-              {['15%', '15%', '15%', '15%', '15%', '15%', '10%'].map((width, i) => (
+              {['15%', '15%', '15%', '15%', '15%', '10%'].map((width, i) => (
                 <Skeleton key={i} variant="text" width={width} height={24} sx={{ mr: 2 }} />
               ))}
             </Box>
@@ -352,7 +352,6 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
                     Payment Date
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>Payment Method</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -387,12 +386,12 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {formatDate(invoice.paymentDate)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {invoice.paymentMethod || 'N/A'}
+                      {formatDate(
+                        invoice.paymentDate ||
+                        (invoice as any).settledDate ||
+                        (invoice as any).actualPaymentDate ||
+                        ((invoice.status === 'paid' || invoice.status === 'settled') ? invoice.createdAt : null)
+                      )}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
@@ -410,7 +409,7 @@ const CustomerAccountInvoices: React.FC<CustomerAccountInvoicesProps> = ({ custo
               ))}
               {paginatedInvoices.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                     <Box sx={{ 
                       display: 'flex', 
                       flexDirection: 'column', 

@@ -13,6 +13,7 @@ import {
   Chip,
   useTheme,
   alpha,
+  Skeleton,
 } from "@mui/material";
 import {
   DirectionsCar,
@@ -25,6 +26,8 @@ import {
 } from "@mui/icons-material";
 import { format } from "date-fns";
 import { Vehicle } from "../../types/vehicleType";
+import { customerRtkApi } from "../../../customers/api/customerRtkApi";
+import { useNavigate } from "react-router-dom";
 
 interface VehicleOverviewProps {
   vehicle: Vehicle;
@@ -34,6 +37,25 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
   vehicle,
 }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
+
+  // Fetch customer data using the currentClientId
+  const {
+    data: customer,
+    isLoading: isLoadingCustomer,
+  } = customerRtkApi.useGetCustomerByIdQuery(vehicle.currentClientId!, {
+    skip: !vehicle.currentClientId,
+  });
+
+  const getCustomerName = () => {
+    if (!customer) return '';
+    if (customer.type === 'individual') {
+      return `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
+    } else if (customer.type === 'business') {
+      return customer.legalName || customer.companyName || '';
+    }
+    return customer.companyName || '';
+  };
 
   const getDaysUntilExpiry = (
     expiryDate: string | undefined
@@ -323,7 +345,19 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
-              {vehicle.customerId ? (
+              {isLoadingCustomer ? (
+                <Box>
+                  <Box sx={{ mb: 2 }}>
+                    <Skeleton variant="text" width="40%" height={20} sx={{ mb: 1 }} />
+                    <Skeleton variant="text" width="60%" height={24} />
+                  </Box>
+                  <Box sx={{ mb: 2 }}>
+                    <Skeleton variant="text" width="40%" height={20} sx={{ mb: 1 }} />
+                    <Skeleton variant="text" width="80%" height={24} />
+                  </Box>
+                  <Skeleton variant="rectangular" width={180} height={32} sx={{ borderRadius: 2 }} />
+                </Box>
+              ) : vehicle.currentClientId && customer ? (
                 <Box>
                   <Box sx={{ mb: 2 }}>
                     <Typography
@@ -334,7 +368,7 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                       Customer Name
                     </Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500, mb: 1 }}>
-                      {vehicle.customerName || "Unknown Customer"}
+                      {getCustomerName() || "Unknown Customer"}
                     </Typography>
                   </Box>
 
@@ -350,9 +384,39 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                       variant="body1"
                       sx={{ fontWeight: 500, fontFamily: "monospace" }}
                     >
-                      {vehicle.customerId}
+                      {vehicle.currentClientId}
                     </Typography>
                   </Box>
+
+                  {customer.email && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        Email
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {customer.email}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {customer.phone && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        Phone
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {customer.phone}
+                      </Typography>
+                    </Box>
+                  )}
 
                   <Chip
                     label="View Customer Profile"
@@ -360,6 +424,7 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
                     variant="outlined"
                     color="primary"
                     sx={{ mt: 2 }}
+                    onClick={() => navigate(`/customers/${vehicle.currentClientId}`)}
                   />
                 </Box>
               ) : (
@@ -383,7 +448,7 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
           </Card>
         </Grid>
 
-        {/* Insurance Information */}
+        {/* Insurance Information
         <Grid item xs={12} md={6}>
           <Card
             sx={{
@@ -527,7 +592,7 @@ export const VehicleOverview: React.FC<VehicleOverviewProps> = ({
               </Grid>
             </CardContent>
           </Card>
-        </Grid>
+        </Grid> */}
 
         {/* Legal Information */}
         <Grid item xs={12} md={6}>

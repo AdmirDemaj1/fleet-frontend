@@ -115,7 +115,7 @@ const CustomerAccountAdditionalInfo: React.FC<
         </Typography>
       </Box>
 
-      <List dense disablePadding sx={{ "& .MuiListItem-root": { py: 1.5 } }}>
+      {/* <List dense disablePadding sx={{ "& .MuiListItem-root": { py: 1.5 } }}>
         <ListItem
           disablePadding
           sx={{
@@ -240,7 +240,7 @@ const CustomerAccountAdditionalInfo: React.FC<
             </Typography>
           </ListItem>
         )}
-      </List>
+      </List> */}
 
       {/* Businesses where this customer is used as Administrator */}
       {customerData?.id && (

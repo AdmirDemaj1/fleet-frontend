@@ -24,15 +24,27 @@ export const getCustomerStatus = (contracts: any[]): string => {
 };
 
 export const calculateFinancialSummary = (contracts: any[]): CustomerFinancialSummary => {
-  const totalDue = contracts.reduce((sum: number, contract: any) => sum + (contract?.remainingAmount || 0), 0);
-  const totalContractValue = contracts.reduce((sum: number, contract: any) => sum + (contract?.totalAmount || 0), 0);
+  const totalDue = contracts.reduce((sum: number, contract: any) => {
+    const remainingAmount = typeof contract?.remainingAmount === 'string'
+      ? parseFloat(contract.remainingAmount)
+      : (contract?.remainingAmount || 0);
+    return sum + (isNaN(remainingAmount) ? 0 : remainingAmount);
+  }, 0);
+
+  const totalContractValue = contracts.reduce((sum: number, contract: any) => {
+    const totalAmount = typeof contract?.totalAmount === 'string'
+      ? parseFloat(contract.totalAmount)
+      : (contract?.totalAmount || 0);
+    return sum + (isNaN(totalAmount) ? 0 : totalAmount);
+  }, 0);
+
   const progress = totalContractValue > 0 ? Math.max(0, (1 - totalDue / totalContractValue) * 100) : 100;
-  
+
   // Get next bill date (mock for now - could be calculated from contracts)
-  const nextBillDate = contracts.length > 0 
+  const nextBillDate = contracts.length > 0
     ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     : 'No active contracts';
-    
+
   return {
     totalDue,
     totalContractValue,
