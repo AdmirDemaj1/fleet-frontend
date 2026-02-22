@@ -7,7 +7,8 @@ import {
   Chip,
   useTheme,
   alpha,
-  Avatar
+  Avatar,
+  Tooltip
 } from '@mui/material';
 import {
   ArrowBack,
@@ -104,6 +105,21 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
     return dueDate < today;
   }, [payment.dueDate]);
 
+  // Check if current date is within 1 month before due date
+  const isWithinOneMonthBeforeDueDate = useCallback(() => {
+    const dueDate = new Date(payment.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+
+    // Calculate date 1 month before due date
+    const oneMonthBefore = new Date(dueDate);
+    oneMonthBefore.setMonth(oneMonthBefore.getMonth() - 1);
+
+    // Check if today is >= 1 month before due date
+    return today >= oneMonthBefore;
+  }, [payment.dueDate]);
+
   // Check if penalty calculator should be shown
   const shouldShowPenaltyCalculator = useCallback(() => {
     if (!onOpenPenaltyCalculator || isContractCompleted) {
@@ -112,8 +128,8 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
 
     // Only show for partially_paid or pending payments
     const status = String(payment.status);
-    const isEligibleStatus = 
-      status === PaymentStatus.PARTIALLY_PAID || 
+    const isEligibleStatus =
+      status === PaymentStatus.PARTIALLY_PAID ||
       status === PaymentStatus.PARTIAL ||
       status === PaymentStatus.PENDING;
 
@@ -122,8 +138,8 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
     }
 
     // Must have a penalty rate configured
-    const hasPenaltyRate = 
-      payment.latePenaltyRatePerDay && 
+    const hasPenaltyRate =
+      payment.latePenaltyRatePerDay &&
       Number(payment.latePenaltyRatePerDay) > 0;
 
     if (!hasPenaltyRate) {
@@ -133,10 +149,10 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
     // Must be past due
     return isPastDue();
   }, [
-    onOpenPenaltyCalculator, 
-    isContractCompleted, 
-    payment.status, 
-    payment.latePenaltyRatePerDay, 
+    onOpenPenaltyCalculator,
+    isContractCompleted,
+    payment.status,
+    payment.latePenaltyRatePerDay,
     isPastDue
   ]);
 
@@ -340,29 +356,47 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
         {/* Action Buttons */}
         <Box sx={{ display: 'flex', gap: 2 }}>
           {String(payment.status) !== 'paid' && !disableMarkAsPaid && (
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<CheckCircle />}
-              onClick={handleOpenModal}
-              sx={{
-                bgcolor: theme.palette.success.main,
-                color: theme.palette.success.contrastText,
-                fontWeight: 600,
-                px: 3,
-                py: 1.5,
-                borderRadius: 2,
-                boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
-                '&:hover': {
-                  bgcolor: theme.palette.success.dark,
-                  transform: 'translateY(-1px)',
-                  boxShadow: `0 6px 20px ${alpha(theme.palette.success.main, 0.4)}`
-                },
-                transition: 'all 0.2s ease'
-              }}
+            <Tooltip
+              title={
+                !isWithinOneMonthBeforeDueDate()
+                  ? `This payment can only be marked as paid starting from ${(() => {
+                      const dueDate = new Date(payment.dueDate);
+                      const oneMonthBefore = new Date(dueDate);
+                      oneMonthBefore.setMonth(oneMonthBefore.getMonth() - 1);
+                      return formatDate(oneMonthBefore);
+                    })()}`
+                  : ''
+              }
+              arrow
+              placement="top"
             >
-              Mark as Paid
-            </Button>
+              <span>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<CheckCircle />}
+                  onClick={handleOpenModal}
+                  disabled={!isWithinOneMonthBeforeDueDate()}
+                  sx={{
+                    bgcolor: theme.palette.success.main,
+                    color: theme.palette.success.contrastText,
+                    fontWeight: 600,
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 2,
+                    boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.3)}`,
+                    '&:hover': {
+                      bgcolor: theme.palette.success.dark,
+                      transform: 'translateY(-1px)',
+                      boxShadow: `0 6px 20px ${alpha(theme.palette.success.main, 0.4)}`
+                    },
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Mark as Paid
+                </Button>
+              </span>
+            </Tooltip>
           )}
           
           {shouldShowPenaltyCalculator() && (

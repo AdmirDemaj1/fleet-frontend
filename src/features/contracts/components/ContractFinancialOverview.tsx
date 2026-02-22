@@ -40,8 +40,17 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
     }).format(numAmount);
   };
 
-  const formatPercentage = (rate: number): string => {
-    return `${(rate * 100).toFixed(2)}%`;
+  const formatPercentage = (rate: number, decimalPlaces: number = 2): string => {
+    return `${(rate * 100).toFixed(decimalPlaces)}%`;
+  };
+
+  const getPercentageDecimalPlaces = (rateValue: number): number => {
+    const percentageValue = rateValue * 100;
+    // Convert to string and remove trailing zeros to determine actual decimal places
+    const str = percentageValue.toFixed(10); // Use high precision first
+    const trimmed = parseFloat(str).toString(); // This removes trailing zeros
+    const decimalPart = trimmed.split('.')[1];
+    return decimalPart ? decimalPart.length : 0;
   };
 
   return (
@@ -364,7 +373,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                   </Typography>
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 700, color: 'error.main', mb: 0.5 }}>
-                  {formatPercentage(contractConfig.interestRate)}
+                  {formatPercentage(contractConfig.interestRate, getPercentageDecimalPlaces(contractConfig.interestRate))}
                 </Typography>
                 <Typography variant="caption" color="error.main" sx={{ fontWeight: 500 }}>
                   Current contract rate
@@ -605,7 +614,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                         Original
                       </Typography>
                       <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.secondary', textDecoration: 'line-through' }}>
-                        {(contractConfig.euriborImpact.originalEuriborRate * 100).toFixed(2)}%
+                        {formatPercentage(contractConfig.euriborImpact.originalEuriborRate, getPercentageDecimalPlaces(contractConfig.euriborImpact.originalEuriborRate))}
                       </Typography>
                     </Box>
                     <ArrowForward sx={{ color: 'info.main', fontSize: 20 }} />
@@ -614,7 +623,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                         Current
                       </Typography>
                       <Typography variant="h6" sx={{ fontWeight: 700, color: contractConfig.euriborImpact.currentEuriborRate < contractConfig.euriborImpact.originalEuriborRate ? 'success.main' : 'error.main' }}>
-                        {(contractConfig.euriborImpact.currentEuriborRate * 100).toFixed(2)}%
+                        {formatPercentage(contractConfig.euriborImpact.currentEuriborRate, getPercentageDecimalPlaces(contractConfig.euriborImpact.currentEuriborRate))}
                       </Typography>
                     </Box>
                   </Box>
@@ -633,7 +642,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                         Original
                       </Typography>
                       <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.secondary', textDecoration: 'line-through' }}>
-                        {(contractConfig.euriborImpact.originalInterestRate * 100).toFixed(2)}%
+                        {formatPercentage(contractConfig.euriborImpact.originalInterestRate, getPercentageDecimalPlaces(contractConfig.euriborImpact.originalInterestRate))}
                       </Typography>
                     </Box>
                     <ArrowForward sx={{ color: 'info.main', fontSize: 20 }} />
@@ -642,7 +651,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                         Current
                       </Typography>
                       <Typography variant="h6" sx={{ fontWeight: 700, color: contractConfig.euriborImpact.currentInterestRate < contractConfig.euriborImpact.originalInterestRate ? 'success.main' : 'error.main' }}>
-                        {(contractConfig.euriborImpact.currentInterestRate * 100).toFixed(2)}%
+                        {formatPercentage(contractConfig.euriborImpact.currentInterestRate, getPercentageDecimalPlaces(contractConfig.euriborImpact.currentInterestRate))}
                       </Typography>
                     </Box>
                   </Box>
@@ -713,22 +722,22 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
                           <TableCell align="center" sx={{ fontSize: '0.82rem' }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                               <Typography variant="caption" sx={{ color: 'text.secondary', textDecoration: 'line-through' }}>
-                                {(change.oldEuriborRate * 100).toFixed(2)}%
+                                {formatPercentage(change.oldEuriborRate, getPercentageDecimalPlaces(change.oldEuriborRate))}
                               </Typography>
                               <ArrowForward sx={{ fontSize: 14, color: 'info.main' }} />
                               <Typography variant="caption" sx={{ fontWeight: 600, color: change.newEuriborRate < change.oldEuriborRate ? 'success.main' : 'error.main' }}>
-                                {(change.newEuriborRate * 100).toFixed(2)}%
+                                {formatPercentage(change.newEuriborRate, getPercentageDecimalPlaces(change.newEuriborRate))}
                               </Typography>
                             </Box>
                           </TableCell>
                           <TableCell align="center" sx={{ fontSize: '0.82rem' }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                               <Typography variant="caption" sx={{ color: 'text.secondary', textDecoration: 'line-through' }}>
-                                {(change.oldInterestRate * 100).toFixed(2)}%
+                                {formatPercentage(change.oldInterestRate, getPercentageDecimalPlaces(change.oldInterestRate))}
                               </Typography>
                               <ArrowForward sx={{ fontSize: 14, color: 'info.main' }} />
                               <Typography variant="caption" sx={{ fontWeight: 600, color: change.newInterestRate < change.oldInterestRate ? 'success.main' : 'error.main' }}>
-                                {(change.newInterestRate * 100).toFixed(2)}%
+                                {formatPercentage(change.newInterestRate, getPercentageDecimalPlaces(change.newInterestRate))}
                               </Typography>
                             </Box>
                           </TableCell>

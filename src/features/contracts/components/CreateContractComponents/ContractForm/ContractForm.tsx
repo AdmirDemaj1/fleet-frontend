@@ -1631,8 +1631,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           <Chip
                             label={
                               isInterestBelowMinimum
-                                ? `Minimum: ${minTotalAnnualInterestPercent.toFixed(2)}%`
-                                : `Euribor + Margin: ${totalInterestPercent.toFixed(2)}%`
+                                ? `Minimum: ${minTotalAnnualInterestPercent.toFixed(3)}%`
+                                : `Euribor + Margin: ${totalInterestPercent.toFixed(3)}%`
                             }
                             color={isInterestBelowMinimum ? "warning" : "primary"}
                             size="small"
