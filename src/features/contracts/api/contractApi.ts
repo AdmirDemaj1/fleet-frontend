@@ -20,6 +20,9 @@ import {
 export interface EarlyPayoffRequestDto {
   payoffDate: string; // YYYY-MM-DD
   paymentMethod: string;
+  remainingPrincipal: number;
+  penaltyAmount: number;
+  totalPayoff: number;
   transactionReference?: string;
   notes?: string;
 }

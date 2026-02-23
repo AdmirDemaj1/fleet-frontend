@@ -65,7 +65,6 @@ export const EarlyPayoffDialog: React.FC<EarlyPayoffDialogProps> = ({
 
   const payoffBreakdown = useMemo(() => {
     const remainingPrincipal = safeNumber(contract?.remainingPrincipalAmount);
-    const remainingInterest = safeNumber(contract?.remainingInterestAmount);
 
     const rawPenalty =
       (contract as any)?.loanDetails?.earlyRepaymentPenalty ??
@@ -82,20 +81,18 @@ export const EarlyPayoffDialog: React.FC<EarlyPayoffDialogProps> = ({
           : rawPenalty
         : safeNumber(rawPenalty) ?? 0;
 
-    const hasRemainingAmounts =
-      remainingPrincipal !== null && remainingInterest !== null;
+    const hasRemainingAmounts = remainingPrincipal !== null;
 
     const penaltyAmount =
       remainingPrincipal !== null ? remainingPrincipal * penaltyRate : null;
 
     const totalPayoff =
       hasRemainingAmounts && penaltyAmount !== null
-        ? remainingPrincipal! + remainingInterest! + penaltyAmount
+        ? remainingPrincipal! + penaltyAmount
         : null;
 
     return {
       remainingPrincipal,
-      remainingInterest,
       penaltyRate,
       penaltyAmount,
       totalPayoff,
@@ -117,6 +114,9 @@ export const EarlyPayoffDialog: React.FC<EarlyPayoffDialogProps> = ({
       const payload: EarlyPayoffRequestDto = {
         payoffDate: form.payoffDate,
         paymentMethod: form.paymentMethod,
+        remainingPrincipal: payoffBreakdown.remainingPrincipal ?? 0,
+        penaltyAmount: payoffBreakdown.penaltyAmount ?? 0,
+        totalPayoff: payoffBreakdown.totalPayoff ?? 0,
         transactionReference: form.transactionReference?.trim() || undefined,
         notes: form.notes?.trim() || undefined,
       };
@@ -178,14 +178,6 @@ export const EarlyPayoffDialog: React.FC<EarlyPayoffDialogProps> = ({
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
                 {formatCurrency(payoffBreakdown.remainingPrincipal)}
-              </Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary">
-                Remaining interest
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {formatCurrency(payoffBreakdown.remainingInterest)}
               </Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">

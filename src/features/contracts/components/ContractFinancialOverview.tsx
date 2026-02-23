@@ -165,7 +165,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
             </Grid>
           )}
 
-          {contractConfig.totalCurrentPrincipal !== null && contractConfig.totalCurrentPrincipal !== undefined && (
+          {contractConfig.totalCurrentPrincipal !== null && contractConfig.totalCurrentPrincipal !== undefined && contractConfig.contractStatus !== 'completed' && (
             <Grid item xs={12} sm={6} md={3}>
               <Paper
                 elevation={0}
@@ -227,7 +227,7 @@ export const ContractFinancialOverview = React.memo<ContractFinancialOverviewPro
             </Grid>
           )}
 
-          {contractConfig.totalRemainingPrincipal !== null && contractConfig.totalRemainingPrincipal !== undefined && (
+          {contractConfig.totalRemainingPrincipal !== null && contractConfig.totalRemainingPrincipal !== undefined && contractConfig.contractStatus !== 'completed' && (
             <Grid item xs={12} sm={6} md={3}>
               <Paper
                 elevation={0}

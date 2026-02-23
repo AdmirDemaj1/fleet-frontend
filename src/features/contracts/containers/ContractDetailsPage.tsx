@@ -99,6 +99,7 @@ export const ContractDetailsPage: React.FC = () => {
       totalRemainingInterest,
       totalPrincipalPaid,
       totalInterestPaid,
+      contractStatus: contract.status,
       type: {
         icon: isLoan ? AccountBalance : TrendingUp,
         color: isLoan ? 'primary' : 'secondary',
