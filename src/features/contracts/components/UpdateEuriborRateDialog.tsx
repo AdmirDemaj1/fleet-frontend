@@ -73,6 +73,7 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
     {
       contractId,
       type: PaymentType.SCHEDULED,
+      status: PaymentStatus.PENDING,
     },
     {
       skip: !effectiveDate || !open,
@@ -80,14 +81,14 @@ export const UpdateEuriborRateDialog: React.FC<UpdateEuriborRateDialogProps> = (
   );
   const allPayments = (paymentsData as Payment[] | undefined) ?? EMPTY_PAYMENTS;
 
-  // Filter payments to only include those with payment numbers and are unpaid
+  // Filter payments to only include those with payment numbers and are pending
   const scheduledPayments = React.useMemo(() => {
     return (allPayments as Payment[]).filter(
       (payment: Payment) =>
         payment.paymentNumber !== null &&
         payment.paymentNumber !== undefined &&
         typeof payment.paymentNumber === 'number' &&
-        payment.status !== PaymentStatus.PAID // Only include unpaid payments
+        payment.status === PaymentStatus.PENDING
     ) as Payment[];
   }, [allPayments]);
 

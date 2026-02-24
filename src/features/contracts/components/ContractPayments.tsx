@@ -177,7 +177,7 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
     // Find unpaid scheduled payments that match the prepayment date
     const conflict = payments.find((payment: Payment) => {
       const paymentDueDate = format(new Date(payment.dueDate), 'yyyy-MM-dd');
-      const isUnpaid = payment.status !== PaymentStatus.PAID;
+      const isUnpaid = payment.status === PaymentStatus.PENDING;
       const isScheduled = payment.type === PaymentType.SCHEDULED;
 
       return paymentDueDate === selectedDate && isUnpaid && isScheduled;
@@ -1041,7 +1041,7 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
           <Button
             variant="contained"
             onClick={handleSubmitExtraPayment}
-            disabled={isCompletedContract || isCreatingPayment || !dialogState.amount || parseFloat(dialogState.amount) <= 0 || !dialogState.method}
+            disabled={isCompletedContract || isCreatingPayment || !dialogState.amount || parseFloat(dialogState.amount) <= 0 || !dialogState.method || dialogState.startingFromPaymentNumber === null}
             startIcon={isCreatingPayment ? <CircularProgress size={16} /> : <AttachMoney />}
             sx={{
               textTransform: 'none',

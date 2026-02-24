@@ -85,6 +85,11 @@ export const ContractHeader = React.memo<ContractHeaderProps>(({ contract, contr
           <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
             {contractConfig.type.description}
           </Typography>
+          {contractConfig.creditBalance !== null && contractConfig.creditBalance !== undefined && (
+            <Typography variant="body2" sx={{ fontWeight: 600, mt: 1, color: contractConfig.creditBalance > 0 ? 'success.main' : 'text.secondary' }}>
+              Credit Balance: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(contractConfig.creditBalance)}
+            </Typography>
+          )}
         </Box>
       </Box>
       
