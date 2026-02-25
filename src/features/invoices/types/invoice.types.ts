@@ -217,6 +217,30 @@ export interface PenaltyDailyBreakdown {
   cumulativePenalty: number;
 }
 
+// Payment History Types
+export type PaymentHistoryEventType =
+  | 'entity_created'
+  | 'entity_updated'
+  | 'status_changed'
+  | 'prepayment_applied'
+  | 'euribor_rate_changed'
+  | 'schedule_changed';
+
+export interface PaymentHistoryEntry {
+  eventType: PaymentHistoryEventType;
+  description: string;
+  timestamp: string;
+  userId?: string;
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PaymentHistoryResponse extends Payment {
+  history: PaymentHistoryEntry[];
+  recalculationHistory: RecalculationHistoryEntry[];
+}
+
 export interface PenaltyCalculationResponse {
   paymentId: string;
   originalAmount: number;

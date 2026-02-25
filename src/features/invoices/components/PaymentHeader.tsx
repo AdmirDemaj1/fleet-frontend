@@ -18,7 +18,8 @@ import {
   Warning,
   Error as ErrorIcon,
   Pending,
-  Calculate
+  Calculate,
+  History
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -38,6 +39,7 @@ interface PaymentHeaderProps {
   loading?: boolean;
   disableMarkAsPaid?: boolean;
   onOpenPenaltyCalculator?: () => void;
+  onOpenHistory?: () => void;
   isContractCompleted?: boolean;
 }
 
@@ -47,6 +49,7 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
   loading = false,
   disableMarkAsPaid = false,
   onOpenPenaltyCalculator,
+  onOpenHistory,
   isContractCompleted = false
 }) => {
   const theme = useTheme();
@@ -446,6 +449,31 @@ export const PaymentHeader = React.memo<PaymentHeaderProps>(({
           >
             Receipt
           </Button>
+
+          {onOpenHistory && (
+            <Button
+              variant="outlined"
+              size="large"
+              startIcon={<History />}
+              onClick={onOpenHistory}
+              sx={{
+                borderColor: alpha(theme.palette.info.main, 0.3),
+                color: theme.palette.info.main,
+                fontWeight: 600,
+                px: 3,
+                py: 1.5,
+                borderRadius: 2,
+                '&:hover': {
+                  borderColor: theme.palette.info.main,
+                  bgcolor: alpha(theme.palette.info.main, 0.05),
+                  transform: 'translateY(-1px)'
+                },
+                transition: 'all 0.2s ease'
+              }}
+            >
+              History Tracking
+            </Button>
+          )}
         </Box>
       </Box>
 

@@ -11,6 +11,7 @@ import { PaymentHeader } from '../components/PaymentHeader';
 import { PaymentInformation } from '../components/PaymentInformation';
 import { PaymentRelatedInfo } from '../components/PaymentRelatedInfo';
 import { PenaltyCalculatorModal } from '../components/PenaltyCalculator';
+import { PaymentHistoryDialog } from '../components/PaymentHistoryDialog';
 import { LoadingSpinner } from '../../../shared/components/LoadingSpinner';
 import { useGetContractQuery } from '../../contracts/api/contractApi';
 import { ContractStatus } from '../../contracts/types/contract.types';
@@ -18,6 +19,7 @@ import { ContractStatus } from '../../contracts/types/contract.types';
 const PaymentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [penaltyCalculatorOpen, setPenaltyCalculatorOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   
   const {
     data: payment,
@@ -150,6 +152,7 @@ const PaymentDetailPage: React.FC = () => {
           loading={isMarkingPayment}
           disableMarkAsPaid={isContractCompleted}
           onOpenPenaltyCalculator={() => setPenaltyCalculatorOpen(true)}
+          onOpenHistory={() => setHistoryDialogOpen(true)}
           isContractCompleted={isContractCompleted}
         />
 
@@ -177,6 +180,13 @@ const PaymentDetailPage: React.FC = () => {
         open={penaltyCalculatorOpen}
         onClose={() => setPenaltyCalculatorOpen(false)}
         payment={payment}
+      />
+
+      {/* Payment History Dialog */}
+      <PaymentHistoryDialog
+        open={historyDialogOpen}
+        onClose={() => setHistoryDialogOpen(false)}
+        paymentId={payment.id}
       />
     </Box>
   );

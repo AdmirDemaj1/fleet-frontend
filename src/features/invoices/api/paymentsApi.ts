@@ -18,6 +18,7 @@ import {
   CalculatePenaltyDto,
   PenaltyCalculationResponse,
   ContractCreditBalance,
+  PaymentHistoryResponse,
 } from "../types/invoice.types";
 
 export const paymentsApi = createApi({
@@ -695,6 +696,11 @@ export const paymentsApi = createApi({
       ],
     }),
 
+    getPaymentHistory: builder.query<PaymentHistoryResponse, string>({
+      query: (id) => `/payments/${id}/history`,
+      providesTags: (_result, _error, id) => [{ type: "Payment", id: `history-${id}` }],
+    }),
+
     calculatePenalties: builder.mutation<
       PenaltyCalculationResponse,
       { id: string; data?: CalculatePenaltyDto }
@@ -726,4 +732,5 @@ export const {
   useUpdatePaymentPenaltiesMutation,
   useGetCustomerCreditBalanceQuery,
   useCalculatePenaltiesMutation,
+  useGetPaymentHistoryQuery,
 } = paymentsApi;

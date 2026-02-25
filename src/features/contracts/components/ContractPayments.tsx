@@ -168,22 +168,63 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
     [payments]
   );
 
-  // Find conflicting unpaid payment when prepayment date is selected
-  const conflictingPayment = useMemo(() => {
+  // Check for outstanding partially paid or late payments
+  const outstandingPayments = useMemo(
+    () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return payments.filter((p: Payment) => {
+        if (
+          p.status === PaymentStatus.PARTIALLY_PAID ||
+          p.status === PaymentStatus.PARTIAL ||
+          p.status === PaymentStatus.OVERDUE ||
+          p.status === ('late' as PaymentStatus)
+        ) {
+          return true;
+        }
+        // Pending payments that are past due are effectively "late"
+        if (p.status === PaymentStatus.PENDING) {
+          const dueDate = new Date(p.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+          return dueDate < today;
+        }
+        return false;
+      });
+    },
+    [payments]
+  );
+  const hasOutstandingPayments = outstandingPayments.length > 0;
+  const [outstandingWarningOpen, setOutstandingWarningOpen] = useState(false);
+
+  // Find the closest unpaid scheduled payment to the selected date
+  const closestPayment = useMemo(() => {
     if (!dialogState.date || !dialogState.isOpen) return null;
 
-    const selectedDate = format(new Date(dialogState.date), 'yyyy-MM-dd');
+    const selectedTime = new Date(dialogState.date).getTime();
 
-    // Find unpaid scheduled payments that match the prepayment date
-    const conflict = payments.find((payment: Payment) => {
-      const paymentDueDate = format(new Date(payment.dueDate), 'yyyy-MM-dd');
-      const isUnpaid = payment.status === PaymentStatus.PENDING;
+    const unpaidScheduled = payments.filter((payment: Payment) => {
+      const isUnpaid = payment.status === PaymentStatus.PENDING ||
+        payment.status === PaymentStatus.PARTIALLY_PAID ||
+        payment.status === PaymentStatus.PARTIAL;
       const isScheduled = payment.type === PaymentType.SCHEDULED;
-
-      return paymentDueDate === selectedDate && isUnpaid && isScheduled;
+      return isUnpaid && isScheduled;
     });
 
-    return conflict || null;
+    if (unpaidScheduled.length === 0) return null;
+
+    // Sort by absolute distance to selected date, pick closest
+    let closest = unpaidScheduled[0];
+    let closestDiff = Math.abs(new Date(closest.dueDate).getTime() - selectedTime);
+
+    for (let i = 1; i < unpaidScheduled.length; i++) {
+      const diff = Math.abs(new Date(unpaidScheduled[i].dueDate).getTime() - selectedTime);
+      if (diff < closestDiff) {
+        closest = unpaidScheduled[i];
+        closestDiff = diff;
+      }
+    }
+
+    return closest;
   }, [dialogState.date, payments, dialogState.isOpen]);
 
   const formatCurrency = (amount: string | number): string => {
@@ -312,8 +353,12 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
 
   const handleOpenExtraPaymentDialog = useCallback(() => {
     if (isCompletedContract) return;
+    if (hasOutstandingPayments) {
+      setOutstandingWarningOpen(true);
+      return;
+    }
     dispatch({ type: 'OPEN_DIALOG' });
-  }, [isCompletedContract]);
+  }, [isCompletedContract, hasOutstandingPayments]);
 
   const handleCloseExtraPaymentDialog = useCallback(() => {
     dispatch({ type: 'CLOSE_DIALOG' });
@@ -914,25 +959,25 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
             required
           />
 
-          {/* Conflict Warning */}
-          {conflictingPayment && (
-            <Alert 
-              severity="warning" 
+          {/* Closest Payment Info */}
+          {closestPayment && (
+            <Alert
+              severity="info"
               sx={{ mb: 3 }}
               icon={<Warning />}
             >
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                Date Conflict Detected
+                Closest Unpaid Payment
               </Typography>
               <Typography variant="body2" sx={{ mb: 2 }}>
-                The selected date ({formatDate(conflictingPayment.dueDate)}) conflicts with an existing unpaid payment:
+                The closest unpaid payment to the selected date:
               </Typography>
-              <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.warning.main, 0.1), borderRadius: 1 }}>
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.info.main, 0.1), borderRadius: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  Payment #{conflictingPayment.paymentNumber || 'N/A'} - {formatCurrency(conflictingPayment.amount)}
+                  Payment #{closestPayment.paymentNumber || 'N/A'} - {formatCurrency(closestPayment.amount)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Due Date: {formatDate(conflictingPayment.dueDate)} | Status: {conflictingPayment.status}
+                  Due Date: {formatDate(closestPayment.dueDate)} | Status: {closestPayment.status}
                 </Typography>
               </Box>
               <FormControl fullWidth>
@@ -945,7 +990,7 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
                     if (value !== '') {
                       dispatch({
                         type: 'SET_STARTING_PAYMENT',
-                        payload: { number: Number(value), id: conflictingPayment.id }
+                        payload: { number: Number(value), id: closestPayment.id }
                       });
                     } else {
                       dispatch({ type: 'RESET_STARTING_PAYMENT' });
@@ -957,9 +1002,9 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
                   <MenuItem value="">
                     <em>Don't affect any payment</em>
                   </MenuItem>
-                  {conflictingPayment.paymentNumber && (
-                    <MenuItem value={conflictingPayment.paymentNumber}>
-                      Affect Payment #{conflictingPayment.paymentNumber}
+                  {closestPayment.paymentNumber && (
+                    <MenuItem value={closestPayment.paymentNumber}>
+                      Affect Payment #{closestPayment.paymentNumber}
                     </MenuItem>
                   )}
                 </Select>
@@ -1041,7 +1086,7 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
           <Button
             variant="contained"
             onClick={handleSubmitExtraPayment}
-            disabled={isCompletedContract || isCreatingPayment || !dialogState.amount || parseFloat(dialogState.amount) <= 0 || !dialogState.method || dialogState.startingFromPaymentNumber === null}
+            disabled={isCompletedContract || isCreatingPayment || !dialogState.amount || parseFloat(dialogState.amount) <= 0 || !dialogState.method}
             startIcon={isCreatingPayment ? <CircularProgress size={16} /> : <AttachMoney />}
             sx={{
               textTransform: 'none',
@@ -1053,6 +1098,78 @@ export const ContractPayments = React.memo<ContractPaymentsProps>(({ contractId,
             }}
           >
             {isCreatingPayment ? 'Recording...' : 'Record Prepayment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Outstanding Payments Warning Dialog */}
+      <Dialog
+        open={outstandingWarningOpen}
+        onClose={() => setOutstandingWarningOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Outstanding Payments
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+              There are {outstandingPayments.length} payment{outstandingPayments.length !== 1 ? 's' : ''} that need to be resolved first.
+            </Typography>
+            <Typography variant="body2">
+              Please pay all partially paid, late, or overdue payments before recording an extra payment.
+            </Typography>
+          </Alert>
+          {outstandingPayments.map((p: Payment) => {
+            const dueDate = new Date(p.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const isPastDue = dueDate < now;
+            const displayStatus = p.status === PaymentStatus.PENDING && isPastDue ? 'late' : p.status;
+            const chipColor = displayStatus === 'late' ? 'error' : 'warning';
+            return (
+              <Box
+                key={p.id}
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: 1.5,
+                  mb: 1,
+                  borderRadius: 1,
+                  bgcolor: alpha(theme.palette.warning.main, 0.06),
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`,
+                }}
+              >
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Payment #{p.paymentNumber || 'N/A'}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Due: {format(new Date(p.dueDate), 'MMM dd, yyyy')}
+                  </Typography>
+                </Box>
+                <Chip
+                  label={displayStatus}
+                  size="small"
+                  color={chipColor}
+                  variant="outlined"
+                  sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                />
+              </Box>
+            );
+          })}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setOutstandingWarningOpen(false)}
+            variant="contained"
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            Understood
           </Button>
         </DialogActions>
       </Dialog>
