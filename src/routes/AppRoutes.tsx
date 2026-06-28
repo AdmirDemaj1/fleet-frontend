@@ -44,23 +44,27 @@ import {
 } from "../features/auth";
 import { ExpiringDocumentsPage } from "../features/documents";
 import { ReportsPage } from "../features/reports";
+import { LandingPage } from "../features/landing/LandingPage";
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
+      {/* Landing page - public default route */}
+      <Route path="/" element={<LandingPage />} />
+
       {/* Public routes - redirect to dashboard if already authenticated */}
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
 
-      {/* Protected routes */}
+      {/* Protected routes - pathless layout route keeps all paths at their original URLs */}
       <Route
-        path="/"
         element={
           <ProtectedRoute>
             <DashboardLayout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
 
         <Route path="customers">
           <Route index element={<CustomersPage />} />

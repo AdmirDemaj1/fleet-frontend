@@ -70,7 +70,7 @@ export const ReportsPage: React.FC = () => {
         <Link
           component="button"
           variant="body2"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/dashboard")}
           sx={{ display: "flex", alignItems: "center" }}
         >
           <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" />

@@ -65,55 +65,55 @@ const menuItems: MenuItem[] = [
     id: 'dashboard',
     text: 'Dashboard', 
     icon: <DashboardIcon />, 
-    path: '/' 
+    path: '/dashboard'
   },
-  { 
+  {
     id: 'customers',
-    text: 'Customers', 
-    icon: <PeopleIcon />, 
+    text: 'Customers',
+    icon: <PeopleIcon />,
     path: '/customers'
   },
-  { 
+  {
     id: 'vehicles',
-    text: 'Vehicles', 
-    icon: <VehiclesIcon />, 
+    text: 'Vehicles',
+    icon: <VehiclesIcon />,
     path: '/vehicles'
   },
-  { 
+  {
     id: 'contracts',
-    text: 'Contracts', 
-    icon: <ContractsIcon />, 
-    path: '/contracts' 
+    text: 'Contracts',
+    icon: <ContractsIcon />,
+    path: '/contracts'
   },
-  { 
+  {
     id: 'payments',
-    text: 'Payments', 
-    icon: <PaymentIcon />, 
-    path: '/payments' 
+    text: 'Payments',
+    icon: <PaymentIcon />,
+    path: '/payments'
   },
-  { 
+  {
     id: 'reports',
-    text: 'Reports', 
-    icon: <ReportsIcon />, 
-    path: '/reports' 
+    text: 'Reports',
+    icon: <ReportsIcon />,
+    path: '/reports'
   },
-  { 
+  {
     id: 'approvals',
-    text: 'Approval Requests', 
-    icon: <ApprovalsIcon />, 
-    path: '/approvals' 
+    text: 'Approval Requests',
+    icon: <ApprovalsIcon />,
+    path: '/approvals'
   },
-  { 
+  {
     id: 'endorsers',
-    text: 'Endorsers', 
-    icon: <EndorsersIcon />, 
-    path: '/endorsers' 
+    text: 'Endorsers',
+    icon: <EndorsersIcon />,
+    path: '/endorsers'
   },
-  { 
+  {
     id: 'euribor-rates',
-    text: 'Euribor Rates', 
-    icon: <EuriborIcon />, 
-    path: '/euribor-rates' 
+    text: 'Euribor Rates',
+    icon: <EuriborIcon />,
+    path: '/euribor-rates'
   },
   {
     id: 'Audit',
@@ -121,17 +121,17 @@ const menuItems: MenuItem[] = [
     icon: <AnalyticsIcon />,
     path: '/logs'
   },
-  { 
+  {
     id: 'expiring-documents',
-    text: 'Expiring Documents', 
-    icon: <ExpiringDocumentsIcon />, 
-    path: '/documents/expiring' 
+    text: 'Expiring Documents',
+    icon: <ExpiringDocumentsIcon />,
+    path: '/documents/expiring'
   },
-  { 
+  {
     id: 'rbac-testing',
-    text: 'RBAC Testing', 
-    icon: <SecurityIcon />, 
-    path: '/rbac-testing' 
+    text: 'RBAC Testing',
+    icon: <SecurityIcon />,
+    path: '/rbac-testing'
   }
 ];
 
@@ -585,7 +585,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       bgcolor: theme.palette.background.paper,
       position: 'relative',
     }}>
-      {LogoSection}
+      {/* {LogoSection} */}
       {NavigationSection}
       {CollapseToggleSection}
     </Box>

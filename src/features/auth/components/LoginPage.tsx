@@ -67,7 +67,7 @@ export const LoginPage: React.FC = () => {
     
     try {
       await login(formData);
-      navigate('/');
+      navigate('/dashboard');
     } catch (error) {
       // Error is handled by the auth context
     }
