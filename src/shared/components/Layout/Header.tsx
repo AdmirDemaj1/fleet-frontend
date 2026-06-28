@@ -13,23 +13,25 @@ import {
   Stack,
   Divider,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Tooltip,
 } from '@mui/material';
-import { 
-  Logout, 
+import {
+  Logout,
   Settings,
   Person,
   Help,
-  KeyboardArrowDown
+  KeyboardArrowDown,
+  SmartToy,
 } from '@mui/icons-material';
 import { ThemeToggle } from '../Layout/ThemeToggle';
 import { useAuth } from '../../../features/auth';
 
 interface HeaderProps {
-  // No props needed since we removed sidebar functionality
+  onChatOpen?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = () => {
+export const Header: React.FC<HeaderProps> = ({ onChatOpen }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const theme = useTheme();
   const { user, logout } = useAuth();
@@ -94,6 +96,29 @@ export const Header: React.FC<HeaderProps> = () => {
 
         {/* Right side actions */}
         <Stack direction="row" spacing={1} alignItems="center">
+          {/* AI Chat button */}
+          {onChatOpen && (
+            <Tooltip title="AI Assistant">
+              <IconButton
+                size="medium"
+                onClick={onChatOpen}
+                sx={{
+                  borderRadius: 1.5,
+                  border: `1px solid transparent`,
+                  transition: 'all 0.2s ease',
+                  color: theme.palette.text.secondary,
+                  '&:hover': {
+                    borderColor: alpha(theme.palette.primary.main, 0.2),
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
+                  },
+                }}
+              >
+                <SmartToy fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+
           {/* Theme toggle */}
           <ThemeToggle />
 

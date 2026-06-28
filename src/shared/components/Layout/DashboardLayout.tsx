@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { 
-  Box, 
-  CssBaseline, 
-  useTheme, 
+import {
+  Box,
+  CssBaseline,
+  useTheme,
   useMediaQuery,
   alpha
 } from '@mui/material';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { ChatDrawer } from '../../../features/chat';
 
 const DRAWER_WIDTH = 300;
 const COLLAPSED_WIDTH = 80;
@@ -20,6 +21,7 @@ export const DashboardLayout: React.FC = () => {
   
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Default to collapsed
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Handle responsive changes
   useEffect(() => {
@@ -50,7 +52,7 @@ export const DashboardLayout: React.FC = () => {
       <CssBaseline />
       
       {/* Header */}
-      <Header />
+      <Header onChatOpen={() => setChatOpen(true)} />
 
       {/* Sidebar */}
       <Sidebar
@@ -106,6 +108,8 @@ export const DashboardLayout: React.FC = () => {
           <Outlet />
         </Box>
       </Box>
+      {/* AI Chat Drawer */}
+      <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
     </Box>
   );
 };
