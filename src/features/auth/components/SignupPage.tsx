@@ -134,7 +134,7 @@ export const SignupPage: React.FC = () => {
     
     try {
       await signup(formData);
-      navigate('/');
+      navigate('/dashboard');
     } catch (error) {
       // Error is handled by the auth context
     }

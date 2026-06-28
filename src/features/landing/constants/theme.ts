@@ -1,0 +1,9 @@
+export const BG     = '#080e1a';
+export const SURFACE = '#0f172a';
+export const CARD   = '#111827';
+export const BORDER = 'rgba(255,255,255,0.07)';
+export const BLUE   = '#3b82f6';
+export const INDIGO = '#6366f1';
+export const CYAN   = '#06b6d4';
+export const GREEN  = '#10b981';
+export const AMBER  = '#f59e0b';
