@@ -1,73 +1,52 @@
 import { api } from "../../../shared/utils/api";
 import {
   AuthResponse,
+  CompanyRegistrationRequest,
+  CompanyRegistrationResponse,
+  AcceptInviteRequest,
   RefreshResponse,
   SignInRequest,
-  SignUpRequest,
   RefreshTokenRequest,
   LogoutResponse,
 } from "../types/auth.types";
 
 class AuthApi {
   private readonly AUTH_ENDPOINTS = {
-    SIGNUP: "/auth/signup",
+    REGISTER: "/auth/register",
+    ACCEPT_INVITE: "/auth/accept-invite",
     SIGNIN: "/auth/signin",
     REFRESH: "/auth/refresh-token",
     LOGOUT: "/auth/logout",
     VALIDATE: "/auth/validate",
   };
 
-  /**
-   * Sign up a new user
-   */
-  async signUp(signUpData: SignUpRequest): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>(
-      this.AUTH_ENDPOINTS.SIGNUP,
-      signUpData
-    );
+  async register(data: CompanyRegistrationRequest): Promise<CompanyRegistrationResponse> {
+    const response = await api.post<CompanyRegistrationResponse>(this.AUTH_ENDPOINTS.REGISTER, data);
     return response.data;
   }
 
-  /**
-   * Sign in an existing user
-   */
+  async acceptInvite(data: AcceptInviteRequest): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>(this.AUTH_ENDPOINTS.ACCEPT_INVITE, data);
+    return response.data;
+  }
+
   async signIn(signInData: SignInRequest): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>(
-      this.AUTH_ENDPOINTS.SIGNIN,
-      signInData
-    );
+    const response = await api.post<AuthResponse>(this.AUTH_ENDPOINTS.SIGNIN, signInData);
     return response.data;
   }
 
-  /**
-   * Refresh access token using refresh token
-   */
-  async refreshToken(
-    refreshTokenData: RefreshTokenRequest
-  ): Promise<RefreshResponse> {
-    const response = await api.post<RefreshResponse>(
-      this.AUTH_ENDPOINTS.REFRESH,
-      refreshTokenData
-    );
+  async refreshToken(refreshTokenData: RefreshTokenRequest): Promise<RefreshResponse> {
+    const response = await api.post<RefreshResponse>(this.AUTH_ENDPOINTS.REFRESH, refreshTokenData);
     return response.data;
   }
 
-  /**
-   * Logout user (invalidate refresh token)
-   */
   async logout(userId: string): Promise<LogoutResponse> {
-    const response = await api.post<LogoutResponse>(
-      this.AUTH_ENDPOINTS.LOGOUT,
-      { userId }
-    );
+    const response = await api.post<LogoutResponse>(this.AUTH_ENDPOINTS.LOGOUT, { userId });
     return response.data;
   }
 
-  /**
-   * Validate user token and get user data
-   */
-  async validateUser(userId: string): Promise<{ user: any }> {
-    const response = await api.get<{ user: any }>(`${this.AUTH_ENDPOINTS.VALIDATE}/${userId}`);
+  async validateUser(userId: string): Promise<{ valid: boolean; user: any; message: string }> {
+    const response = await api.get<{ valid: boolean; user: any; message: string }>(`${this.AUTH_ENDPOINTS.VALIDATE}/${userId}`);
     return response.data;
   }
 }

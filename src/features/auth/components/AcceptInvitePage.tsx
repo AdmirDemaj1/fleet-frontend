@@ -7,41 +7,41 @@ import {
   Button,
   Typography,
   Alert,
-  Link,
   Divider,
   InputAdornment,
   IconButton,
-  Grid,
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
   Email,
   Lock,
-  Person,
-  PersonOutline,
-  Business,
+  AccountBox,
 } from '@mui/icons-material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { CompanyRegistrationCredentials } from '../types/auth.types';
+import { AcceptInviteCredentials } from '../types/auth.types';
 
-export const SignupPage: React.FC = () => {
+export const AcceptInvitePage: React.FC = () => {
   const navigate = useNavigate();
-  const { register, isLoading, error } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { acceptInvite, isLoading, error } = useAuth();
+
+  const tokenFromParams = searchParams.get('token') || '';
+  const emailFromParams = searchParams.get('email') || '';
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formData, setFormData] = useState<CompanyRegistrationCredentials>({
-    companyName: '',
-    administratorFirstName: '',
-    administratorLastName: '',
-    administratorEmail: '',
-    administratorPassword: '',
+  const [formData, setFormData] = useState<AcceptInviteCredentials>({
+    token: tokenFromParams,
+    email: emailFromParams,
+    username: '',
+    password: '',
     confirmPassword: '',
   });
-  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof CompanyRegistrationCredentials, string>>>({});
+  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof AcceptInviteCredentials, string>>>({});
 
-  const handleChange = (field: keyof CompanyRegistrationCredentials) => (
+  const handleChange = (field: keyof AcceptInviteCredentials) => (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     setFormData(prev => ({
@@ -57,37 +57,27 @@ export const SignupPage: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    const errors: Partial<Record<keyof CompanyRegistrationCredentials, string>> = {};
+    const errors: Partial<Record<keyof AcceptInviteCredentials, string>> = {};
 
-    if (!formData.companyName.trim()) {
-      errors.companyName = 'Company name is required';
+    if (!formData.username.trim()) {
+      errors.username = 'Username is required';
+    } else if (formData.username.length < 3) {
+      errors.username = 'Username must be at least 3 characters long';
+    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      errors.username = 'Username can only contain letters, numbers, and underscores';
     }
 
-    if (!formData.administratorFirstName.trim()) {
-      errors.administratorFirstName = 'First name is required';
-    }
-
-    if (!formData.administratorLastName.trim()) {
-      errors.administratorLastName = 'Last name is required';
-    }
-
-    if (!formData.administratorEmail) {
-      errors.administratorEmail = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.administratorEmail)) {
-      errors.administratorEmail = 'Please enter a valid email address';
-    }
-
-    if (!formData.administratorPassword) {
-      errors.administratorPassword = 'Password is required';
-    } else if (formData.administratorPassword.length < 8) {
-      errors.administratorPassword = 'Password must be at least 8 characters long';
-    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(formData.administratorPassword)) {
-      errors.administratorPassword = 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
+    if (!formData.password) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      errors.password = 'Password must be at least 8 characters long';
+    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(formData.password)) {
+      errors.password = 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
     }
 
     if (!formData.confirmPassword) {
       errors.confirmPassword = 'Please confirm your password';
-    } else if (formData.administratorPassword !== formData.confirmPassword) {
+    } else if (formData.password !== formData.confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
 
@@ -103,7 +93,7 @@ export const SignupPage: React.FC = () => {
     }
 
     try {
-      await register(formData);
+      await acceptInvite(formData);
       navigate('/dashboard');
     } catch (error) {
       // Error is handled by the auth context
@@ -143,7 +133,7 @@ export const SignupPage: React.FC = () => {
               Fleet Manager
             </Typography>
             <Typography variant="body1" color="text.secondary" mt={1}>
-              Register your company
+              Accept your invitation
             </Typography>
           </Box>
 
@@ -153,93 +143,60 @@ export const SignupPage: React.FC = () => {
             </Alert>
           )}
 
+          {!tokenFromParams && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              No invitation token found. Please use the link from your invitation email.
+            </Alert>
+          )}
+
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Company Name"
-              value={formData.companyName}
-              onChange={handleChange('companyName')}
-              error={!!validationErrors.companyName}
-              helperText={validationErrors.companyName}
+              label="Email"
+              type="email"
+              value={formData.email}
               margin="normal"
               InputProps={{
+                readOnly: true,
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Business color={validationErrors.companyName ? 'error' : 'action'} />
+                    <Email color="action" />
                   </InputAdornment>
                 ),
               }}
+              sx={{ mb: 1 }}
             />
-
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  value={formData.administratorFirstName}
-                  onChange={handleChange('administratorFirstName')}
-                  error={!!validationErrors.administratorFirstName}
-                  helperText={validationErrors.administratorFirstName}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Person color={validationErrors.administratorFirstName ? 'error' : 'action'} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  value={formData.administratorLastName}
-                  onChange={handleChange('administratorLastName')}
-                  error={!!validationErrors.administratorLastName}
-                  helperText={validationErrors.administratorLastName}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PersonOutline color={validationErrors.administratorLastName ? 'error' : 'action'} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-            </Grid>
 
             <TextField
               fullWidth
-              label="Administrator Email"
-              type="email"
-              value={formData.administratorEmail}
-              onChange={handleChange('administratorEmail')}
-              error={!!validationErrors.administratorEmail}
-              helperText={validationErrors.administratorEmail}
+              label="Username"
+              value={formData.username}
+              onChange={handleChange('username')}
+              error={!!validationErrors.username}
+              helperText={validationErrors.username || 'Username can only contain letters, numbers, and underscores'}
               margin="normal"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Email color={validationErrors.administratorEmail ? 'error' : 'action'} />
+                    <AccountBox color={validationErrors.username ? 'error' : 'action'} />
                   </InputAdornment>
                 ),
               }}
-              sx={{ mt: 2 }}
             />
 
             <TextField
               fullWidth
               label="Password"
               type={showPassword ? 'text' : 'password'}
-              value={formData.administratorPassword}
-              onChange={handleChange('administratorPassword')}
-              error={!!validationErrors.administratorPassword}
-              helperText={validationErrors.administratorPassword || 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'}
+              value={formData.password}
+              onChange={handleChange('password')}
+              error={!!validationErrors.password}
+              helperText={validationErrors.password || 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'}
               margin="normal"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Lock color={validationErrors.administratorPassword ? 'error' : 'action'} />
+                    <Lock color={validationErrors.password ? 'error' : 'action'} />
                   </InputAdornment>
                 ),
                 endAdornment: (
@@ -291,7 +248,7 @@ export const SignupPage: React.FC = () => {
               fullWidth
               variant="contained"
               size="large"
-              disabled={isLoading}
+              disabled={isLoading || !tokenFromParams}
               sx={{
                 py: 1.5,
                 mb: 2,
@@ -300,7 +257,7 @@ export const SignupPage: React.FC = () => {
                 fontWeight: 600
               }}
             >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
+              {isLoading ? 'Accepting Invitation...' : 'Accept Invitation'}
             </Button>
 
             <Divider sx={{ my: 2 }}>
@@ -312,14 +269,15 @@ export const SignupPage: React.FC = () => {
             <Box textAlign="center">
               <Typography variant="body2" color="text.secondary">
                 Already have an account?{' '}
-                <Link
-                  component={RouterLink}
-                  to="/login"
-                  underline="hover"
-                  sx={{ fontWeight: 600 }}
+                <Typography
+                  component="a"
+                  href="/login"
+                  variant="body2"
+                  color="primary"
+                  sx={{ fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
                   Sign in
-                </Link>
+                </Typography>
               </Typography>
             </Box>
           </Box>

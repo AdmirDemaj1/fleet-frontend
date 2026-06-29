@@ -112,13 +112,11 @@ export const useRbacTesting = () => {
     if (!state.userInfo) return null;
     
     return {
-      role: state.userInfo.role,
-      isAdmin: state.userInfo.isAdmin,
-      isLowTier: state.userInfo.isLowTier,
+      isAdministrator: state.userInfo.isAdministrator,
       canApprove: state.userInfo.canApprove,
-      displayName: state.userInfo.isAdmin ? 'Admin User' : 'Low Tier User',
-      description: state.userInfo.isAdmin 
-        ? 'Full access and approval rights' 
+      displayName: state.userInfo.isAdministrator ? 'Admin User' : 'Standard User',
+      description: state.userInfo.isAdministrator
+        ? 'Full access and approval rights'
         : 'Requires approval for most actions'
     };
   }, [state.userInfo]);

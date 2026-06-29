@@ -38,6 +38,7 @@ import { ApprovalRequestsPage } from "../features/approvals/containers";
 import {
   LoginPage,
   SignupPage,
+  AcceptInvitePage,
   ProtectedRoute,
   PublicRoute,
   RbacTestingPanel,
@@ -45,6 +46,7 @@ import {
 import { ExpiringDocumentsPage } from "../features/documents";
 import { ReportsPage } from "../features/reports";
 import { LandingPage } from "../features/landing/LandingPage";
+import { AdminPage } from "../features/admin";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -55,6 +57,7 @@ export const AppRoutes: React.FC = () => {
       {/* Public routes - redirect to dashboard if already authenticated */}
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+      <Route path="/auth/accept-invite" element={<AcceptInvitePage />} />
 
       {/* Protected routes - pathless layout route keeps all paths at their original URLs */}
       <Route
@@ -123,6 +126,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="documents/expiring" element={<ExpiringDocumentsPage />} />
 
         <Route path="reports" element={<ReportsPage />} />
+
+        <Route path="admin" element={<AdminPage />} />
 
         <Route path="rbac-testing" element={<RbacTestingPanel />} />
 

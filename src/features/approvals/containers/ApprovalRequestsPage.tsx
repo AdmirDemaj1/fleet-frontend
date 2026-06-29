@@ -41,7 +41,7 @@ export const ApprovalRequestsPage: React.FC = () => {
     handleExecute,
     refetch,
     isAdmin,
-  } = useApprovalRequests(user ? { id: user.id, role: user.role } : undefined);
+  } = useApprovalRequests(user ? { id: user.id, isAdministrator: user.isAdministrator } : undefined);
 
 
   if (error) {
@@ -141,7 +141,7 @@ export const ApprovalRequestsPage: React.FC = () => {
         <ApprovalRequestTable
           requests={requests}
           loading={isLoading || isProcessing || isCanceling || !!executingRequestId}
-          currentUser={user ? { id: user.id, role: user.role } : undefined}
+          currentUser={user ? { id: user.id, isAdministrator: user.isAdministrator } : undefined}
           onApprove={handleApprove}
           onReject={handleReject}
           onCancel={handleCancel}

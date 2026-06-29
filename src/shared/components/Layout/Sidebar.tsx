@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAppSelector } from '../../../app/hooks';
 import { useEuriborStatus } from '../../../features/euribor/hooks/useEuriborStatus';
 import {
   Drawer,
@@ -359,19 +360,32 @@ const SidebarMenuItem: React.FC<{
   );
 });
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  open, 
-  collapsed, 
-  onClose, 
+export const Sidebar: React.FC<SidebarProps> = ({
+  open,
+  collapsed,
+  onClose,
   onToggleCollapse,
-  isMobile, 
-  drawerWidth, 
-  collapsedWidth 
+  isMobile,
+  drawerWidth,
+  collapsedWidth
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const euriborStatus = useEuriborStatus();
+  const authUser = useAppSelector((state) => state.auth.user);
+
+  const visibleMenuItems = useMemo(() => {
+    const adminItem: MenuItem = {
+      id: 'admin',
+      text: 'Admin',
+      icon: <AdministratorIcon />,
+      path: '/admin',
+    };
+    return authUser?.isAdministrator
+      ? [...menuItems, adminItem]
+      : menuItems;
+  }, [authUser?.isAdministrator]);
 
   const handleNavigate = useCallback((path: string) => {
     navigate(path);
@@ -467,7 +481,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       scrollbarColor: `${alpha(theme.palette.primary.main, 0.2)} ${alpha(theme.palette.background.paper, 0.1)}`,
     }}>
       <List sx={{ px: collapsed && !isMobile ? 0 : 1 }}>
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const isSelected = item.path ? (
             location.pathname === item.path || 
             (item.path !== '/' && location.pathname.startsWith(item.path))
@@ -492,7 +506,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </List>
     </Box>
-  ), [theme, collapsed, isMobile, location.pathname, handleNavigate, onClose, euriborStatus.missingTodayRatesCount]);
+  ), [theme, collapsed, isMobile, location.pathname, handleNavigate, onClose, euriborStatus.missingTodayRatesCount, visibleMenuItems]);
 
   // Enhanced collapse toggle section
   const CollapseToggleSection = useMemo(() => (

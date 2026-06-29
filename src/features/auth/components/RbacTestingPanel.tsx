@@ -133,7 +133,7 @@ export const RbacTestingPanel: React.FC = () => {
               {hasUserInfo && userInfo && (
                 <Box>
                   <Box display="flex" alignItems="center" gap={2} mb={2}>
-                    {roleInfo?.isAdmin ? (
+                    {roleInfo?.isAdministrator ? (
                       <AdminPanelSettings color="primary" />
                     ) : (
                       <Person color="secondary" />
@@ -146,7 +146,7 @@ export const RbacTestingPanel: React.FC = () => {
                     </Box>
                     <Chip
                       label={roleInfo?.displayName}
-                      color={roleInfo?.isAdmin ? "primary" : "secondary"}
+                      color={roleInfo?.isAdministrator ? "primary" : "secondary"}
                       size="small"
                     />
                   </Box>

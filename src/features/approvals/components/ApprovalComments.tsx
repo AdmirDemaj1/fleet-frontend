@@ -41,7 +41,7 @@ dayjs.extend(relativeTime);
 
 interface ApprovalCommentsProps {
   request: ApprovalRequest;
-  currentUser?: { id: string; role: string };
+  currentUser?: { id: string; isAdministrator: boolean };
   onRefresh?: () => void;
 }
 
@@ -82,7 +82,7 @@ export const ApprovalComments: React.FC<ApprovalCommentsProps> = ({
   // Use fetched comments from API, fallback to request.comments if available
   const comments = fetchedComments || request.comments || [];
   const unresolvedCount = comments.filter(c => !c.isResolved).length;
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.isAdministrator ?? false;
   
   // Check requestorId from both top-level field and nested requestor object
   const requestorId = request.requestorId || request.requestor?.id;
@@ -95,7 +95,7 @@ export const ApprovalComments: React.FC<ApprovalCommentsProps> = ({
   // Debug logging
   console.log('ApprovalComments Debug:', {
     currentUserId: currentUser?.id,
-    currentUserRole: currentUser?.role,
+    currentUserIsAdministrator: currentUser?.isAdministrator,
     requestorId,
     'request.requestorId': request.requestorId,
     'request.requestor?.id': request.requestor?.id,

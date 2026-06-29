@@ -45,7 +45,7 @@ interface ApprovalActionModalsProps {
   onViewClose: () => void;
   
   // Current user for comments
-  currentUser?: { id: string; role: string };
+  currentUser?: { id: string; isAdministrator: boolean };
   
   // Refresh callback
   onRefresh?: () => void;

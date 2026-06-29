@@ -34,7 +34,7 @@ import { ApprovalActionModals } from "./ApprovalActionModals";
 interface ApprovalRequestTableProps {
   requests: ApprovalRequest[];
   loading?: boolean;
-  currentUser?: { id: string; role: string };
+  currentUser?: { id: string; isAdministrator: boolean };
   onApprove?: (requestId: string, data: { reason?: string }) => void;
   onReject?: (requestId: string, data: { reason: string }) => void;
   onCancel?: (requestId: string) => void;
@@ -121,7 +121,7 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
   const canApproveOrReject = (request: ApprovalRequest): boolean => {
     return (
       request.status === ApprovalStatus.PENDING &&
-      currentUser?.role === "admin" &&
+      currentUser?.isAdministrator === true &&
       request.requestorId !== currentUser?.id
     );
   };
@@ -129,7 +129,7 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
   const canCancel = (request: ApprovalRequest): boolean => {
     return (
       (request.status === ApprovalStatus.PENDING || request.status === ApprovalStatus.CANNOT_BE_EXECUTED) &&
-      (request.requestorId === currentUser?.id || currentUser?.role === "admin")
+      (request.requestorId === currentUser?.id || currentUser?.isAdministrator === true)
     );
   };
 
@@ -137,9 +137,8 @@ export const ApprovalRequestTable: React.FC<ApprovalRequestTableProps> = ({
     return (
       request.status === ApprovalStatus.APPROVED &&
       currentUser !== undefined &&
-      !request.isExecuted && // Don't show execute button if already executed
-      // Admins, users, and low-tier users can execute approved requests
-      (currentUser.role === "admin" || currentUser.role === "user" || currentUser.role === "low_tier")
+      !request.isExecuted // Don't show execute button if already executed
+      // Any authenticated user can execute approved requests
     );
   };
 

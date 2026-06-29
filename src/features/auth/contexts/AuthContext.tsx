@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
-import { 
-  loginStart, 
-  loginSuccess, 
+import {
+  loginStart,
+  loginSuccess,
   loginFailure,
   signupStart,
   signupSuccess,
@@ -14,7 +14,7 @@ import {
   initializeAuth,
   syncAuthState
 } from '../slices/authSlice';
-import { LoginCredentials, SignupCredentials, User } from '../types/auth.types';
+import { LoginCredentials, CompanyRegistrationCredentials, AcceptInviteCredentials, User } from '../types/auth.types';
 import { authApi } from '../api/authApi';
 import { tokenStorage } from '../utils/tokenStorage';
 import '../utils/authDebug'; // Load debug utilities
@@ -25,7 +25,8 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
-  signup: (credentials: SignupCredentials) => Promise<void>;
+  register: (credentials: CompanyRegistrationCredentials) => Promise<void>;
+  acceptInvite: (credentials: AcceptInviteCredentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
 }
@@ -52,11 +53,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleStorageChange = useCallback((event: StorageEvent) => {
     if (event.key === 'fleet_access_token' || event.key === 'fleet_refresh_token' || event.key === 'fleet_user') {
       console.log('🔄 Storage change detected in another tab:', event.key);
-      
+
       // Get current token and user data
       const tokenData = tokenStorage.getTokens();
       const userData = tokenStorage.getUser();
-      
+
       // Sync the auth state
       dispatch(syncAuthState({
         isAuthenticated: !!(tokenData && userData && !tokenStorage.isAccessTokenExpired()),
@@ -70,7 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleTokenRefresh = useCallback((event: CustomEvent) => {
     console.log('🔄 Token refreshed by API interceptor');
     const { accessToken, refreshToken: newRefreshToken, expiresIn } = event.detail;
-    
+
     // Update Redux state with new tokens
     dispatch(refreshTokenSuccess({
       accessToken,
@@ -93,13 +94,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Add storage event listener for cross-tab sync
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Add token refresh event listener
     window.addEventListener('tokenRefreshed', handleTokenRefresh as EventListener);
 
     // Add auth invalidated event listener
     window.addEventListener('authInvalidated', handleAuthInvalidated as EventListener);
-    
+
     // Cleanup on unmount
     return () => {
       window.removeEventListener('storage', handleStorageChange);
@@ -111,12 +112,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginCredentials): Promise<void> => {
     try {
       dispatch(loginStart());
-      
+
       const authResponse = await authApi.signIn({
         usernameOrEmail: credentials.usernameOrEmail,
         password: credentials.password
       });
-      
+
       dispatch(loginSuccess(authResponse));
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Login failed';
@@ -125,33 +126,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signup = async (credentials: SignupCredentials): Promise<void> => {
+  const register = async (credentials: CompanyRegistrationCredentials): Promise<void> => {
     try {
       dispatch(signupStart());
-      
-      // Validate passwords match (frontend validation)
+      if (credentials.administratorPassword !== credentials.confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+      const authResponse = await authApi.register({
+        companyName: credentials.companyName,
+        administratorEmail: credentials.administratorEmail,
+        administratorPassword: credentials.administratorPassword,
+        administratorFirstName: credentials.administratorFirstName,
+        administratorLastName: credentials.administratorLastName,
+      });
+      dispatch(signupSuccess(authResponse));
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Registration failed';
+      dispatch(signupFailure(errorMessage));
+      throw error;
+    }
+  };
+
+  const acceptInvite = async (credentials: AcceptInviteCredentials): Promise<void> => {
+    try {
+      dispatch(loginStart());
       if (credentials.password !== credentials.confirmPassword) {
         throw new Error('Passwords do not match');
       }
-      
-      const signUpRequest = {
-        username: credentials.username,
+      const authResponse = await authApi.acceptInvite({
+        token: credentials.token,
         email: credentials.email,
         password: credentials.password,
-        firstName: credentials.firstName,
-        lastName: credentials.lastName,
-        phone: credentials.phone,
-        department: credentials.department,
-        role: credentials.role,
-        secretKey: credentials.secretKey
-      };
-      
-      const authResponse = await authApi.signUp(signUpRequest);
-      
-      dispatch(signupSuccess(authResponse));
+        username: credentials.username,
+      });
+      dispatch(loginSuccess(authResponse));
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Signup failed';
-      dispatch(signupFailure(errorMessage));
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to accept invite';
+      dispatch(loginFailure(errorMessage));
       throw error;
     }
   };
@@ -159,14 +170,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshToken = async (): Promise<void> => {
     try {
       dispatch(refreshTokenStart());
-      
+
       const refreshToken = tokenStorage.getRefreshToken();
       if (!refreshToken) {
         throw new Error('No refresh token available');
       }
-      
+
       const refreshResponse = await authApi.refreshToken({ refreshToken });
-      
+
       dispatch(refreshTokenSuccess(refreshResponse));
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Token refresh failed';
@@ -196,7 +207,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     error,
     login,
-    signup,
+    register,
+    acceptInvite,
     logout: handleLogout,
     refreshToken,
   };

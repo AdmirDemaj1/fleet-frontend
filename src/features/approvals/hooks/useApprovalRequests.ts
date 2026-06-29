@@ -8,7 +8,7 @@ import { ApprovalRequestFilters, ApprovalQueryParams, ApprovalDecisionDto, Appro
 import { executeApprovalRequest } from '../utils/approvalExecutor';
 import { useNotification } from '../../../shared/hooks/useNotification';
 
-export const useApprovalRequests = (currentUser?: { id: string; role: string }) => {
+export const useApprovalRequests = (currentUser?: { id: string; isAdministrator: boolean }) => {
   const { showNotification } = useNotification();
   
   // State for filters and pagination
@@ -162,7 +162,7 @@ export const useApprovalRequests = (currentUser?: { id: string; role: string }) 
   }, [showNotification, refetch]);
 
   // Determine if user can see admin features
-  const isAdmin = useMemo(() => currentUser?.role === 'admin', [currentUser?.role]);
+  const isAdmin = useMemo(() => currentUser?.isAdministrator ?? false, [currentUser?.isAdministrator]);
 
   return {
     // Data
