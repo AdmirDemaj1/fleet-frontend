@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box } from '@mui/material';
 import { LandingNavbar } from './components/LandingNavbar';
 import { HeroSection } from './components/HeroSection';
@@ -10,8 +10,14 @@ import { PricingSection } from './components/PricingSection';
 import { CtaBanner } from './components/CtaBanner';
 import { LandingFooter } from './components/LandingFooter';
 import { BG } from './constants/theme';
+import { track } from '../../shared/analytics';
 
-export const LandingPage: React.FC = () => (
+export const LandingPage: React.FC = () => {
+  useEffect(() => {
+    track('landing_page_view');
+  }, []);
+
+  return (
   <Box sx={{ backgroundColor: BG, minHeight: '100vh', color: '#fff', overflowX: 'hidden' }}>
     <LandingNavbar />
     <HeroSection />
@@ -23,4 +29,5 @@ export const LandingPage: React.FC = () => (
     <CtaBanner />
     <LandingFooter />
   </Box>
-);
+  );
+};
