@@ -125,7 +125,10 @@ export default async function handler(req: Req, res: Res) {
 
   try {
     const base = (process.env.AXIOM_URL ?? 'https://api.axiom.co').replace(/\/$/, '');
-    const r = await fetch(`${base}/v1/datasets/${encodeURIComponent(dataset)}/ingest`, {
+    // Regional edge domains use /v1/ingest/{dataset}; api.axiom.co uses /v1/datasets/{dataset}/ingest.
+    const ds = encodeURIComponent(dataset);
+    const path = base.includes('.edge.axiom.co') ? `/v1/ingest/${ds}` : `/v1/datasets/${ds}/ingest`;
+    const r = await fetch(`${base}${path}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify([record]),
